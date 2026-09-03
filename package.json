@@ -1,0 +1,23 @@
+{
+  "name": "aqualino",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "mobile:start": "pnpm --filter @aqualino/mobile start",
+    "mobile:android": "pnpm --filter @aqualino/mobile android",
+    "mobile:android:light": "ANDROID_HOME=$HOME/Android/Sdk ANDROID_SDK_ROOT=$HOME/Android/Sdk CMAKE_BUILD_PARALLEL_LEVEL=2 nice -n 10 taskset -c 0-3 pnpm --filter @aqualino/mobile android",
+    "mobile:android:all": "pnpm --filter @aqualino/mobile android:all",
+    "mobile:ios": "pnpm --filter @aqualino/mobile ios",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "openapi:lint": "redocly lint packages/contracts/openapi.yaml"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.50.0"
+  }
+}

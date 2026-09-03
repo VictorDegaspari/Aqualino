@@ -1,0 +1,10 @@
+.git
+.env
+**/.env
+**/vendor
+**/node_modules
+**/build
+**/Pods
+**/.gradle
+coverage
+

@@ -1,0 +1,17 @@
+{
+  "name": "@aqualino/design-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/typescript/index.ts",
+  "types": "src/typescript/index.ts",
+  "scripts": {
+    "lint": "node -e \"process.exit(0)\"",
+    "test": "node -e \"process.exit(0)\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}
+

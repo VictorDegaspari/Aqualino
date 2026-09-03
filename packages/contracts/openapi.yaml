@@ -1,0 +1,1096 @@
+openapi: 3.1.0
+info:
+  title: Aqualino API
+  version: 0.1.0
+  description: Contrato HTTP versionado da primeira entrega utilizável do Aqualino.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: http://localhost:8080/api
+    description: Ambiente local Docker
+tags:
+  - name: System
+    description: Disponibilidade e diagnóstico sem dados pessoais.
+  - name: Authentication
+    description: Criação, autenticação, recuperação e encerramento de sessão.
+  - name: Account
+    description: Perfil, preferências e ciclo de vida da conta atual.
+  - name: Hydration
+    description: Metas, totais e registros idempotentes de hidratação.
+  - name: Gamification
+    description: Progresso saudável calculado no servidor.
+  - name: Inventory
+    description: Saldos pessoais de consumíveis controlados pelo servidor.
+  - name: Widget
+    description: Snapshot versionado compartilhado com os widgets nativos.
+security:
+  - bearerAuth: []
+paths:
+  /v1/health:
+    get:
+      operationId: getHealth
+      summary: Verifica a disponibilidade da API
+      tags: [System]
+      security: []
+      responses:
+        '200':
+          description: API disponível.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [status]
+                    properties:
+                      status:
+                        type: string
+                        const: ok
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /v1/auth/register:
+    post:
+      operationId: register
+      summary: Cria uma conta e um token do dispositivo
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterInput'
+      responses:
+        '201':
+          description: Conta criada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/auth/login:
+    post:
+      operationId: login
+      summary: Autentica por e-mail e senha
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+      responses:
+        '200':
+          description: Sessão criada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      summary: Revoga o token atual
+      tags: [Authentication]
+      responses:
+        '200':
+          description: Token revogado.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [logged_out]
+                    properties:
+                      logged_out:
+                        type: boolean
+                        const: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      summary: Solicita recuperação sem revelar se a conta existe
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+      responses:
+        '202':
+          description: Solicitação aceita.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageEnvelope'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/me:
+    get:
+      operationId: getMe
+      summary: Retorna a conta atual e seu progresso
+      tags: [Account]
+      responses:
+        '200':
+          description: Conta atual.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CurrentUser'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    delete:
+      operationId: deleteMe
+      summary: Exclui a conta atual e revoga seus tokens
+      tags: [Account]
+      responses:
+        '204':
+          description: Conta excluída.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/me/profile:
+    patch:
+      operationId: updateProfile
+      summary: Atualiza perfil e conclusão do onboarding
+      tags: [Account]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileInput'
+      responses:
+        '200':
+          description: Perfil atualizado.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /v1/hydration/today:
+    get:
+      operationId: getHydrationToday
+      summary: Retorna o progresso do dia civil do usuário
+      tags: [Hydration]
+      responses:
+        '200':
+          description: Hidratação de hoje e estado do mascote.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [today, week, mascot]
+                    properties:
+                      today:
+                        $ref: '#/components/schemas/HydrationToday'
+                      week:
+                        $ref: '#/components/schemas/HydrationWeek'
+                      mascot:
+                        $ref: '#/components/schemas/WidgetSnapshot'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/hydration/logs:
+    get:
+      operationId: listHydrationLogs
+      summary: Lista registros de um dia com paginação
+      tags: [Hydration]
+      parameters:
+        - in: query
+          name: local_date
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        '200':
+          description: Página de registros.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HydrationLogPage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    post:
+      operationId: createHydrationLog
+      summary: Registra água de forma idempotente
+      description: Repetir o mesmo `client_event_id` para o mesmo usuário devolve o mesmo resultado lógico sem criar outro registro.
+      tags: [Hydration]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordWaterInput'
+      responses:
+        '201':
+          description: Registro criado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordWaterEnvelope'
+        '200':
+          description: Retry idempotente de um registro existente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordWaterEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /v1/hydration/goals/current:
+    get:
+      operationId: getCurrentHydrationGoal
+      summary: Retorna a meta vigente no dia civil atual
+      tags: [Hydration]
+      responses:
+        '200':
+          description: Meta vigente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HydrationGoalEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    put:
+      operationId: replaceCurrentHydrationGoal
+      summary: Cria uma nova versão da meta diária
+      tags: [Hydration]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [daily_goal_ml]
+              properties:
+                daily_goal_ml:
+                  type: integer
+                  minimum: 500
+                  maximum: 10000
+      responses:
+        '200':
+          description: Meta substituída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HydrationGoalEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /v1/gamification/snapshot:
+    get:
+      operationId: getGamificationSnapshot
+      summary: Retorna XP, nível, sequência e estado visual
+      tags: [Gamification]
+      responses:
+        '200':
+          description: Snapshot de gamificação.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [xp_total, level, streak, mascot]
+                    properties:
+                      xp_total:
+                        type: integer
+                        minimum: 0
+                      level:
+                        type: integer
+                        minimum: 1
+                      streak:
+                        type: integer
+                        minimum: 0
+                      mascot:
+                        $ref: '#/components/schemas/WidgetSnapshot'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/inventory:
+    get:
+      operationId: getInventory
+      summary: Retorna os saldos de poções da conta atual
+      description: Retorna todos os tipos de poção do MVP, incluindo os que ainda possuem saldo zero. A consulta não cria registros de saldo.
+      tags: [Inventory]
+      responses:
+        '200':
+          description: Inventário pessoal atual.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/inventory/streak-freezes:
+    post:
+      operationId: armHydrationStreakFreeze
+      summary: Reserva um Congelamento para a próxima falta elegível
+      description: A unidade permanece reservada e só é consumida quando uma falta de hidratação elegível realmente ocorre.
+      tags: [Inventory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UseStreakPotionInput'
+      responses:
+        '201':
+          description: Congelamento armado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PotionActionEnvelope'
+        '200':
+          description: Repetição idempotente da ativação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PotionActionEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/inventory/streak-freezes/{effectId}:
+    delete:
+      operationId: releaseHydrationStreakFreeze
+      summary: Cancela uma proteção armada e libera sua unidade
+      tags: [Inventory]
+      parameters:
+        - name: effectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Proteção cancelada ou repetição idempotente do cancelamento.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PotionActionEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/inventory/streak-revivals:
+    post:
+      operationId: reviveHydrationStreak
+      summary: Recupera a quebra de hidratação mais recente
+      description: Consome uma Poção de reacender quando uma quebra única ainda está dentro da janela de 48 horas.
+      tags: [Inventory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UseStreakPotionInput'
+      responses:
+        '201':
+          description: Quebra recuperada e poção consumida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PotionActionEnvelope'
+        '200':
+          description: Repetição idempotente da recuperação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PotionActionEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/widget/snapshot:
+    get:
+      operationId: getWidgetSnapshot
+      summary: Retorna o snapshot local versionado do widget
+      tags: [Widget]
+      responses:
+        '200':
+          description: Snapshot compatível com WidgetKit e Glance.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/WidgetSnapshot'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum token
+  responses:
+    BadRequest:
+      description: Requisição inválida.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Unauthenticated:
+      description: Token ausente ou inválido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFound:
+      description: Recurso não encontrado ou pertencente a outra conta.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Conflict:
+      description: Ação incompatível com o saldo ou estado atual.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ValidationError:
+      description: Entrada inválida.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    TooManyRequests:
+      description: Limite de requisições excedido.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    RegisterInput:
+      type: object
+      additionalProperties: false
+      required: [email, password, password_confirmation, display_name, username, timezone, terms_accepted, terms_version]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          format: password
+          minLength: 8
+        password_confirmation:
+          type: string
+          format: password
+        display_name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        username:
+          type: string
+          pattern: '^[a-z0-9_]{3,24}$'
+        timezone:
+          type: string
+          example: America/Sao_Paulo
+        terms_accepted:
+          type: boolean
+          const: true
+        terms_version:
+          type: string
+          maxLength: 32
+          example: '2026-09-01'
+        device_name:
+          type: string
+          maxLength: 80
+          default: mobile
+    LoginInput:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        device_name:
+          type: string
+          maxLength: 80
+          default: mobile
+    UpdateProfileInput:
+      type: object
+      additionalProperties: false
+      properties:
+        display_name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        username:
+          type: string
+          pattern: '^[a-z0-9_]{3,24}$'
+        timezone:
+          type: string
+        locale:
+          type: string
+          enum: [pt-BR, en-US]
+        favorite_volumes_ml:
+          type: array
+          minItems: 1
+          maxItems: 6
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 50
+            maximum: 2000
+        onboarding_completed:
+          type: boolean
+    AuthEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [token, token_type, user]
+          properties:
+            token:
+              type: string
+            token_type:
+              type: string
+              const: Bearer
+            user:
+              $ref: '#/components/schemas/AuthUser'
+    AuthUser:
+      type: object
+      required: [id, email, profile]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        profile:
+          $ref: '#/components/schemas/UserProfile'
+    CurrentUser:
+      allOf:
+        - $ref: '#/components/schemas/AuthUser'
+        - type: object
+          required: [xp_total, level, goal, streak]
+          properties:
+            xp_total:
+              type: integer
+              minimum: 0
+            level:
+              type: integer
+              minimum: 1
+            goal:
+              oneOf:
+                - $ref: '#/components/schemas/HydrationGoal'
+                - type: 'null'
+            streak:
+              type: integer
+              minimum: 0
+    UserProfile:
+      type: object
+      required: [user_id, display_name, username, timezone, locale, favorite_volumes_ml]
+      properties:
+        user_id:
+          type: string
+        display_name:
+          type: string
+        username:
+          type: string
+        avatar_url:
+          type: [string, 'null']
+          format: uri
+        timezone:
+          type: string
+        locale:
+          type: string
+          enum: [pt-BR, en-US]
+        favorite_volumes_ml:
+          type: array
+          items:
+            type: integer
+        onboarding_completed_at:
+          type: [string, 'null']
+          format: date-time
+    HydrationGoal:
+      type: object
+      required: [id, user_id, daily_goal_ml, starts_on, source]
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        daily_goal_ml:
+          type: integer
+          minimum: 500
+          maximum: 10000
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: [string, 'null']
+          format: date
+        source:
+          type: string
+    HydrationGoalEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/HydrationGoal'
+            - type: 'null'
+    HydrationToday:
+      type: object
+      required: [local_date, timezone, total_ml, goal_ml, percentage, goal_achieved, log_count]
+      properties:
+        local_date:
+          type: string
+          format: date
+        timezone:
+          type: string
+        total_ml:
+          type: integer
+          minimum: 0
+        goal_ml:
+          type: integer
+          minimum: 1
+        percentage:
+          type: integer
+          minimum: 0
+        goal_achieved:
+          type: boolean
+        log_count:
+          type: integer
+          minimum: 0
+    HydrationWeekDayState:
+      type: string
+      enum: [future, no_record, in_progress, goal_achieved, missed]
+    HydrationWeekDay:
+      type: object
+      additionalProperties: false
+      required: [date, weekday, state, total_ml, goal_ml, percentage, is_today, is_trophy, protection]
+      properties:
+        date:
+          type: string
+          format: date
+        weekday:
+          type: integer
+          minimum: 1
+          maximum: 7
+        state:
+          $ref: '#/components/schemas/HydrationWeekDayState'
+        total_ml:
+          type: integer
+          minimum: 0
+        goal_ml:
+          type: integer
+          minimum: 1
+        percentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+        is_today:
+          type: boolean
+        is_trophy:
+          type: boolean
+        protection:
+          oneOf:
+            - $ref: '#/components/schemas/InventoryItemCode'
+            - type: 'null'
+    HydrationWeek:
+      type: object
+      additionalProperties: false
+      required: [mode, starts_on, ends_on, current_date, timezone, completed_goal_days, total_ml, days]
+      properties:
+        mode:
+          type: string
+          const: civil_week
+        starts_on:
+          type: string
+          format: date
+        ends_on:
+          type: string
+          format: date
+        current_date:
+          type: string
+          format: date
+        timezone:
+          type: string
+        completed_goal_days:
+          type: integer
+          minimum: 0
+          maximum: 7
+        total_ml:
+          type: integer
+          minimum: 0
+        days:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items:
+            $ref: '#/components/schemas/HydrationWeekDay'
+    HydrationLog:
+      type: object
+      required: [id, amount_ml, occurred_at, local_date, source, client_event_id]
+      properties:
+        id:
+          type: string
+        amount_ml:
+          type: integer
+          minimum: 50
+          maximum: 2000
+        occurred_at:
+          type: string
+          format: date-time
+        local_date:
+          type: string
+          format: date
+        source:
+          type: string
+          enum: [mobile, widget, shortcut, import]
+        client_event_id:
+          type: string
+          format: uuid
+    RecordWaterInput:
+      type: object
+      additionalProperties: false
+      required: [amount_ml, source, client_event_id]
+      properties:
+        amount_ml:
+          type: integer
+          minimum: 50
+          maximum: 2000
+        occurred_at:
+          type: string
+          format: date-time
+          description: Ausente significa o horário atual do servidor.
+        source:
+          type: string
+          enum: [mobile, widget, shortcut, import]
+        client_event_id:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+          maxProperties: 8
+          additionalProperties: true
+    RecordWaterResult:
+      type: object
+      required: [log, idempotent_replay, today, gamification, mascot, widget]
+      properties:
+        log:
+          $ref: '#/components/schemas/HydrationLog'
+        idempotent_replay:
+          type: boolean
+        today:
+          $ref: '#/components/schemas/HydrationToday'
+        gamification:
+          type: object
+          required: [xp_awarded, xp_total, level, streak, new_achievements]
+          properties:
+            xp_awarded:
+              type: integer
+              minimum: 0
+            xp_total:
+              type: integer
+              minimum: 0
+            level:
+              type: integer
+              minimum: 1
+            streak:
+              type: integer
+              minimum: 0
+            new_achievements:
+              type: array
+              items:
+                type: string
+        mascot:
+          type: object
+          required: [condition, decoration, animation, static_asset]
+          properties:
+            condition:
+              $ref: '#/components/schemas/MascotCondition'
+            decoration:
+              type: [string, 'null']
+            animation:
+              type: string
+            static_asset:
+              type: string
+        widget:
+          $ref: '#/components/schemas/WidgetSnapshot'
+    RecordWaterEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/RecordWaterResult'
+    HydrationLogPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HydrationLog'
+        meta:
+          type: object
+          required: [current_page, last_page, per_page, total]
+          properties:
+            current_page:
+              type: integer
+            last_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+    InventoryItemCode:
+      type: string
+      enum: [streak_freeze, streak_revive]
+    InventoryItem:
+      type: object
+      additionalProperties: false
+      required: [code, quantity, reserved_quantity, available_quantity]
+      properties:
+        code:
+          $ref: '#/components/schemas/InventoryItemCode'
+        quantity:
+          type: integer
+          minimum: 0
+        reserved_quantity:
+          type: integer
+          minimum: 0
+          description: Unidades reservadas por uma proteção armada.
+        available_quantity:
+          type: integer
+          minimum: 0
+    HydrationFreezeState:
+      type: object
+      additionalProperties: false
+      required: [id, status, eligible_from, created_at]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [armed, suspended]
+        eligible_from:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+    InventoryUsage:
+      type: object
+      additionalProperties: false
+      required: [blocked_by_group_challenge, hydration_freeze]
+      properties:
+        blocked_by_group_challenge:
+          type: boolean
+        hydration_freeze:
+          oneOf:
+            - $ref: '#/components/schemas/HydrationFreezeState'
+            - type: 'null'
+    Inventory:
+      type: object
+      additionalProperties: false
+      required: [items, usage]
+      properties:
+        items:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/InventoryItem'
+        usage:
+          $ref: '#/components/schemas/InventoryUsage'
+    InventoryEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Inventory'
+    UseStreakPotionInput:
+      type: object
+      additionalProperties: false
+      required: [client_action_id]
+      properties:
+        client_action_id:
+          type: string
+          format: uuid
+    StreakPotionEffect:
+      type: object
+      additionalProperties: false
+      required: [id, item_code, scope_type, status, eligible_from, target_local_date, created_at]
+      properties:
+        id:
+          type: string
+        item_code:
+          $ref: '#/components/schemas/InventoryItemCode'
+        scope_type:
+          type: string
+          const: hydration
+        status:
+          type: string
+          enum: [armed, consumed, released]
+        eligible_from:
+          type: [string, 'null']
+          format: date
+        target_local_date:
+          type: [string, 'null']
+          format: date
+        created_at:
+          type: string
+          format: date-time
+    PotionActionResult:
+      type: object
+      additionalProperties: false
+      required: [effect, inventory, streak, idempotent_replay]
+      properties:
+        effect:
+          $ref: '#/components/schemas/StreakPotionEffect'
+        inventory:
+          $ref: '#/components/schemas/Inventory'
+        streak:
+          type: integer
+          minimum: 0
+        idempotent_replay:
+          type: boolean
+    PotionActionEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PotionActionResult'
+    WidgetSnapshot:
+      type: object
+      required: [schema_version, generated_at, user_timezone, last_log_at, days_since_last_log, last_log_semantic_key, today_total_ml, daily_goal_ml, condition, decoration, animation, static_asset]
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        generated_at:
+          type: string
+          format: date-time
+        user_timezone:
+          type: string
+        last_log_at:
+          type: [string, 'null']
+          format: date-time
+        days_since_last_log:
+          type: [integer, 'null']
+          minimum: 0
+        last_log_semantic_key:
+          type: string
+          enum: [no_history, today, yesterday, days_ago]
+        today_total_ml:
+          type: integer
+          minimum: 0
+        daily_goal_ml:
+          type: integer
+          minimum: 1
+        condition:
+          $ref: '#/components/schemas/MascotCondition'
+        decoration:
+          type: [string, 'null']
+        animation:
+          type: string
+        static_asset:
+          type: string
+    MascotCondition:
+      type: string
+      enum: [empty, happy, angry, boiling, skeleton]
+    MessageEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [message]
+          properties:
+            message:
+              type: string
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, fields, request_id]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            fields:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+            request_id:
+              type: string

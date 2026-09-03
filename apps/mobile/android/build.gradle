@@ -1,0 +1,36 @@
+buildscript {
+    ext {
+        buildToolsVersion = "37.0.0"
+        minSdkVersion = 24
+        compileSdkVersion = 37
+        targetSdkVersion = 36
+        ndkVersion = "27.1.12297006"
+        kotlinVersion = "2.2.0"
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        classpath("org.jetbrains.kotlin:compose-compiler-gradle-plugin:$kotlinVersion")
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"
+
+// Android Studio requests the native CMake model during Gradle Sync, before
+// Nitro Modules' prepareHeaders task runs. Prefab rejects a missing headers
+// directory at configuration time, so make the publication root available
+// early; prepareHeaders still populates it before compilation.
+gradle.beforeProject { targetProject ->
+    if (targetProject.name == "react-native-nitro-modules") {
+        targetProject.layout.buildDirectory
+            .dir("headers/nitromodules")
+            .get()
+            .asFile
+            .mkdirs()
+    }
+}
