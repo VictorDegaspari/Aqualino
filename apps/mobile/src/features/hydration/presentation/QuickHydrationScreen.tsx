@@ -5,19 +5,29 @@ import {tokens} from '@aqualino/design-tokens';
 import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
 import {Screen} from '../../../shared/components/Screen';
 import {PrimaryButton} from '../../../shared/components/PrimaryButton';
+import {haptics} from '../../../shared/device/haptics';
 import {useSessionStore} from '../../auth/application/sessionStore';
+import {useHydrationPreferencesStore} from '../application/hydrationPreferencesStore';
 import {useHydrationHome} from './useHydrationHome';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'QuickHydration'>;
 
 export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Element {
   const volumes = useSessionStore(state => state.user?.profile.favorite_volumes_ml ?? [200, 300, 500]);
+  const selectAmount = useHydrationPreferencesStore(state => state.selectAmount);
   const {record, isRecording} = useHydrationHome();
-  const source = route.params?.source === 'widget' ? 'widget' : 'shortcut';
+  const source = route.params?.source === 'widget'
+    ? 'widget'
+    : route.params?.source === 'mobile'
+      ? 'mobile'
+      : 'shortcut';
 
   const submit = async (amount: number) => {
+    selectAmount(amount);
+    haptics.selection();
     try {
       await record({amountMl: amount, source});
+      haptics.success();
       navigation.navigate('Home');
     } catch (error) {
       Alert.alert('Não foi possível registrar', error instanceof Error ? error.message : 'Tente novamente.');

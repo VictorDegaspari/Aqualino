@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="224" viewBox="0 0 96 112">
+  <defs>
+    <linearGradient id="drop" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#5cf4ff"/><stop offset=".48" stop-color="#118cf0"/><stop offset="1" stop-color="#005dc7"/></linearGradient>
+    <radialGradient id="base"><stop stop-color="#16cfff" stop-opacity=".6"/><stop offset="1" stop-color="#0061be" stop-opacity="0"/></radialGradient>
+    <filter id="g" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <ellipse cx="48" cy="94" rx="42" ry="13" fill="url(#base)"/>
+  <ellipse cx="48" cy="92" rx="37" ry="10" fill="none" stroke="#087de0" stroke-width="2.5"/>
+  <ellipse cx="48" cy="92" rx="25" ry="6" fill="none" stroke="#37dff9" stroke-width="1.5"/>
+  <path d="M48 8C36 27 22 41 22 59c0 18 12 31 26 31s26-13 26-31C74 41 60 27 48 8z" fill="url(#drop)" stroke="#78efff" stroke-width="2.2" filter="url(#g)"/>
+  <path d="M37 29c-6 9-9 17-10 25" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".55"/>
+  <path d="m36 59 8 8 17-20" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

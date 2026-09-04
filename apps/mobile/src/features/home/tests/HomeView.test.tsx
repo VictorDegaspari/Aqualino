@@ -1,5 +1,6 @@
 import React from 'react';
 import {fireEvent, render} from '@testing-library/react-native';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
 import type {HydrationHomeData} from '../../hydration/data/hydrationRemoteRepository';
 import {HomeView} from '../presentation/HomeView';
 
@@ -30,30 +31,39 @@ const data: HydrationHomeData = {
 };
 
 const props = {
-  data, loading: false, offline: false, syncing: false, pending: 0, volumes: [200, 300],
-  displayName: 'Ana', streak: 2, level: 1, onHydrate: jest.fn(), onRetry: jest.fn(),
+  data, loading: false, offline: false, syncing: false, pending: 0,
+  displayName: 'Ana', streak: 2, xp: 320, onRetry: jest.fn(), onOpenHydration: jest.fn(),
   onOpenInventory: jest.fn(), onSignOut: jest.fn(),
 };
 
+const safeAreaMetrics = {
+  frame: {x: 0, y: 0, width: 375, height: 812},
+  insets: {top: 44, right: 0, bottom: 34, left: 0},
+};
+
+function renderHome(view: React.ReactElement) {
+  return render(<SafeAreaProvider initialMetrics={safeAreaMetrics}>{view}</SafeAreaProvider>);
+}
+
 test('renders loading state', async () => {
-  expect((await render(<HomeView {...props} data={undefined} loading />)).getByLabelText('Carregando hidratação')).toBeTruthy();
+  expect((await renderHome(<HomeView {...props} data={undefined} loading />)).getByLabelText('Carregando hidratação')).toBeTruthy();
 });
 
 test('renders error state with retry', async () => {
-  const view = await render(<HomeView {...props} data={undefined} error="Sem conexão" />);
+  const view = await renderHome(<HomeView {...props} data={undefined} error="Sem conexão" />);
   await fireEvent.press(view.getByRole('button', {name: 'Tentar novamente'}));
   expect(props.onRetry).toHaveBeenCalled();
 });
 
-test('renders friendly empty and accessible quick volumes', async () => {
-  const view = await render(<HomeView {...props} />);
+test('renders friendly empty state and opens the hydration picker', async () => {
+  const view = await renderHome(<HomeView {...props} />);
   expect(view.getByText('Sua primeira gota de hoje está a um toque.')).toBeTruthy();
-  await fireEvent.press(view.getByLabelText('Registrar 300 mililitros'));
-  expect(props.onHydrate).toHaveBeenCalledWith(300);
+  await fireEvent.press(view.getByRole('button', {name: 'Bebi água'}));
+  expect(props.onOpenHydration).toHaveBeenCalledTimes(1);
 });
 
 test('renders offline pending state', async () => {
-  const view = await render(<HomeView {...props} offline pending={2} />);
+  const view = await renderHome(<HomeView {...props} offline pending={2} />);
   expect(view.getByText('2 registro(s) aguardando sincronização')).toBeTruthy();
 });
 
@@ -63,19 +73,29 @@ test('renders successful progress and mascot state', async () => {
     week: data.week,
     mascot: {...data.mascot, condition: 'happy', static_asset: 'aqualino_happy'},
   };
-  const view = await render(<HomeView {...props} data={hydrated} />);
-  expect(view.getByText('1000 ml')).toBeTruthy();
+  const view = await renderHome(<HomeView {...props} data={hydrated} />);
+  expect(view.getByText('1.000 ml')).toBeTruthy();
   expect(view.getByLabelText('Aqualino está feliz')).toBeTruthy();
-  expect(view.getByText('Seu caminho de 7 dias')).toBeTruthy();
-  expect(view.getByLabelText('1 de 7 metas atingidas')).toBeTruthy();
+  expect(view.getByText('Desafio atual')).toBeTruthy();
+  expect(view.getByRole('tab', {name: 'Grupo'})).toBeTruthy();
   expect(view.getByLabelText(/TER, 01\/09: Meta perdida.*Protegido por congelamento/)).toBeTruthy();
   expect(view.getByLabelText(/DOM, 06\/09: Futuro/)).toBeTruthy();
 });
 
-test('opens the inventory from the Home header', async () => {
+test('opens the inventory from the XP status', async () => {
   const onOpenInventory = jest.fn();
-  const view = await render(<HomeView {...props} onOpenInventory={onOpenInventory} />);
+  const view = await renderHome(<HomeView {...props} onOpenInventory={onOpenInventory} />);
 
-  await fireEvent.press(view.getByRole('button', {name: 'Inventário'}));
+  await fireEvent.press(view.getByRole('button', {name: 'Abrir inventário, 320 XP'}));
   expect(onOpenInventory).toHaveBeenCalledTimes(1);
+});
+
+test('opens hydration details when a challenge day is pressed', async () => {
+  const view = await renderHome(<HomeView {...props} />);
+
+  await fireEvent.press(view.getByLabelText(/TER, 01\/09: Meta perdida/));
+
+  expect(view.getByText('TER • 01 SET')).toBeTruthy();
+  expect(view.getByText('Meta não atingida')).toBeTruthy();
+  expect(view.getByText('Faltaram 1.700 ml')).toBeTruthy();
 });

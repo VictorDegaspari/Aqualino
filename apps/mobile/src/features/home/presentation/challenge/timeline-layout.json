@@ -1,0 +1,12 @@
+{
+  "canvasWidth": 343,
+  "canvasHeight": 690,
+  "labelLeft": 12,
+  "labelWidth": 64,
+  "statsLeft": 244,
+  "statsWidth": 94,
+  "timelineCenterX": 150,
+  "firstNodeY": 66,
+  "dayVerticalDistance": 92,
+  "zigzagOffsets": [-34, 34, -34, 34, -34, 34, -16]
+}

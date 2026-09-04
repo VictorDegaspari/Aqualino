@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="686" height="1380" viewBox="0 0 343 690">
+  <defs>
+    <linearGradient id="stream" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#19dfff" stop-opacity=".88"/>
+      <stop offset=".5" stop-color="#087fd8" stop-opacity=".78"/>
+      <stop offset="1" stop-color="#0465b8" stop-opacity=".46"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-10%" width="180%" height="120%"><feGaussianBlur stdDeviation="5"/></filter>
+  </defs>
+  <path d="M 128 66 C 128 113.84, 172 110.16, 172 158 C 172 205.84, 144 202.16, 144 250 C 144 297.84000000000003, 172 294.15999999999997, 172 342 C 172 389.84000000000003, 128 386.15999999999997, 128 434 C 128 481.84000000000003, 172 478.15999999999997, 172 526 C 172 573.84, 150 570.16, 150 618" fill="none" stroke="#00b9ff" stroke-opacity=".34" stroke-width="18" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M 128 66 C 128 113.84, 172 110.16, 172 158 C 172 205.84, 144 202.16, 144 250 C 144 297.84000000000003, 172 294.15999999999997, 172 342 C 172 389.84000000000003, 128 386.15999999999997, 128 434 C 128 481.84000000000003, 172 478.15999999999997, 172 526 C 172 573.84, 150 570.16, 150 618" fill="none" stroke="url(#stream)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M 128 66 C 128 113.84, 172 110.16, 172 158 C 172 205.84, 144 202.16, 144 250 C 144 297.84000000000003, 172 294.15999999999997, 172 342 C 172 389.84000000000003, 128 386.15999999999997, 128 434 C 128 481.84000000000003, 172 478.15999999999997, 172 526 C 172 573.84, 150 570.16, 150 618" fill="none" stroke="#a3fbff" stroke-opacity=".46" stroke-width="1.4" stroke-linecap="round" transform="translate(-1.5 -1)"/>
+</svg>
