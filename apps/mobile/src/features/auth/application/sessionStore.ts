@@ -3,6 +3,7 @@ import {create} from 'zustand';
 import {AppError} from '../../../shared/errors/AppError';
 import {secureTokenStore} from '../../../shared/security/secureTokenStore';
 import {secureUserStore} from '../../../shared/security/secureUserStore';
+import {secureRememberedTokenStore} from '../../../shared/security/secureRememberedTokenStore';
 import {setWidgetAuthenticationState} from '../../widget/data/widgetBridge';
 import {authRepository, type AuthResult} from '../data/authRepository';
 import {useRememberedAccountsStore} from './rememberedAccountsStore';
@@ -16,6 +17,8 @@ interface SessionState {
   authenticate: (result: AuthResult) => Promise<void>;
   refreshUser: () => Promise<void>;
   signOut: () => Promise<void>;
+  resumeRememberedAccount: (accountId: string) => Promise<boolean>;
+  removeRememberedAccount: (accountId: string) => Promise<void>;
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -62,6 +65,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   async authenticate(result) {
     await secureTokenStore.set(result.token);
     await secureUserStore.set(result.user).catch(() => undefined);
+    await secureRememberedTokenStore.set(result.user.id, result.token).catch(() => undefined);
     useRememberedAccountsStore.getState().remember(result.user);
     updateWidgetAuthenticationSafely(true);
     set({status: 'signedIn', user: result.user});
@@ -74,13 +78,53 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
   async signOut() {
+    const user = get().user;
+    const token = secureTokenStore.getCached();
+    if (user && token) {
+      await secureRememberedTokenStore.set(user.id, token).catch(() => undefined);
+    }
+    await clearLocalSession();
+    updateWidgetAuthenticationSafely(false);
+    set({status: 'signedOut', user: null});
+  },
+  async resumeRememberedAccount(accountId) {
+    const token = await secureRememberedTokenStore.get(accountId);
+    if (!token) return false;
+
+    await secureTokenStore.set(token);
     try {
-      await authRepository.logout();
-    } finally {
+      const user = await authRepository.me();
+      await get().authenticate({token, token_type: 'Bearer', user});
+      return true;
+    } catch (error) {
       await clearLocalSession();
+      if (isInvalidSession(error)) {
+        await secureRememberedTokenStore.clear(accountId).catch(() => undefined);
+        useRememberedAccountsStore.getState().forget(accountId);
+      }
       updateWidgetAuthenticationSafely(false);
       set({status: 'signedOut', user: null});
+      throw error;
     }
+  },
+  async removeRememberedAccount(accountId) {
+    const token = await secureRememberedTokenStore.get(accountId);
+    if (token) {
+      await secureTokenStore.set(token);
+      try {
+        await authRepository.logout();
+      } catch (error) {
+        if (!isInvalidSession(error)) throw error;
+      }
+    }
+
+    await Promise.allSettled([
+      secureRememberedTokenStore.clear(accountId),
+      clearLocalSession(),
+    ]);
+    useRememberedAccountsStore.getState().forget(accountId);
+    updateWidgetAuthenticationSafely(false);
+    set({status: 'signedOut', user: null});
   },
 }));
 

@@ -1,7 +1,7 @@
 import React, {useCallback} from 'react';
 import {Alert} from 'react-native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useNavigation} from '@react-navigation/native';
+import {useIsFocused, useNavigation} from '@react-navigation/native';
 import {launchCamera} from 'react-native-image-picker';
 import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
 import {useSessionStore} from '../../auth/application/sessionStore';
@@ -11,6 +11,7 @@ import {HomeView} from './HomeView';
 
 export function HomeScreen(): React.JSX.Element {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const isFocused = useIsFocused();
   const user = useSessionStore(state => state.user);
   const {query} = useHydrationHome();
   const syncing = useSyncStatusStore(state => state.syncing);
@@ -57,6 +58,7 @@ export function HomeScreen(): React.JSX.Element {
       streak={user?.streak ?? 0}
       xp={user?.xp_total ?? 0}
       hasActiveGroup={false}
+      motionEnabled={isFocused}
       onRetry={query.refetch}
       onOpenHydration={openHydrationCamera}
       onOpenInventory={openInventory}

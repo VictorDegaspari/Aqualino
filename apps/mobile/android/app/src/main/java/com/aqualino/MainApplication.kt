@@ -1,6 +1,7 @@
 package com.aqualino
 
 import android.app.Application
+import com.facebook.react.common.assets.ReactFontManager
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -23,6 +24,7 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    ReactFontManager.getInstance().addCustomFont(this, "Nunito", R.font.nunito)
     loadReactNative(this)
   }
 }

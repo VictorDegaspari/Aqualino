@@ -27,7 +27,7 @@ export const ChallengeSceneDecoration = memo(function ChallengeSceneDecorationVi
   const imageStyles = useMemo(() => createImageStyles(height), [height]);
 
   return (
-    <View pointerEvents="none" style={styles.scene}>
+    <View testID="challenge-scene-decoration" pointerEvents="none" style={styles.scene}>
       <ParallaxLayer asset="coralLeftBack" containerStyle={[styles.leftBack, styles.coralBack]} depth={0.36} imageStyle={imageStyles.coral} reduceMotion={reduceMotion} sensor={rotation.sensor} />
       <ParallaxLayer asset="coralRightBack" containerStyle={[styles.rightBack, styles.coralBack]} depth={0.32} imageStyle={imageStyles.coral} reduceMotion={reduceMotion} sensor={rotation.sensor} />
       <ParallaxLayer asset="clownfish" containerStyle={styles.fish} depth={0.5} imageStyle={imageStyles.fish} reduceMotion={reduceMotion} sensor={rotation.sensor} />

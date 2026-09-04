@@ -31,6 +31,8 @@ class RegisterRequest extends FormRequest
             'username' => ['required', 'string', 'regex:/^[a-z0-9_]{3,24}$/', 'unique:user_profiles,username'],
             'timezone' => ['required', 'string', Rule::in(DateTimeZone::listIdentifiers())],
             'locale' => ['sometimes', 'string', Rule::in(['pt-BR', 'en-US'])],
+            'daily_goal_ml' => ['sometimes', 'integer', 'between:500,10000'],
+            'onboarding_completed' => ['sometimes', 'boolean'],
             'terms_accepted' => ['accepted'],
             'terms_version' => ['required', 'string', 'max:32'],
             'device_name' => ['sometimes', 'string', 'max:80'],

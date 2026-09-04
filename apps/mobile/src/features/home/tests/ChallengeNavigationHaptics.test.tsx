@@ -30,7 +30,7 @@ test('gives subtle feedback only when the challenge mode changes', async () => {
   expect(onChange).toHaveBeenCalledWith('solo');
 });
 
-test('gives subtle feedback when navigating to another bottom tab', async () => {
+test('gives a quick impact when navigating to another bottom tab', async () => {
   const onOpenProfile = jest.fn();
   const view = await render(
     <SafeAreaProvider initialMetrics={safeAreaMetrics}>
@@ -42,7 +42,7 @@ test('gives subtle feedback when navigating to another bottom tab', async () => 
 
   expect(triggerMock).toHaveBeenCalledTimes(1);
   expect(triggerMock).toHaveBeenCalledWith(
-    'selection',
+    'impactLight',
     expect.objectContaining({enableVibrateFallback: false}),
   );
   expect(onOpenProfile).toHaveBeenCalledTimes(1);

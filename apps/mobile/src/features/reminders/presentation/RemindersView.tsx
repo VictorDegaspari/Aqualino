@@ -3,6 +3,7 @@ import {Image, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View}
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {BellIcon} from '../../../shared/components/BellIcon';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
+import {TabScreenHeader} from '../../../shared/components/TabScreenHeader';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import type {HydrationReminder} from '../application/reminderStore';
 import type {ReminderPermissionIssue} from '../application/reminderNotificationService';
@@ -94,13 +95,11 @@ export function RemindersView(props: Props): React.JSX.Element {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
-          <View style={styles.hero}>
-            <View style={styles.heroIcon}>
-              <BellIcon size={38} color={challengeTheme.colors.cyanStrong} />
-            </View>
-            <Text accessibilityRole="header" style={styles.title}>Lembretes</Text>
-            <Text style={styles.subtitle}>Pequenas pausas ao longo do dia para você manter o ritmo.</Text>
-          </View>
+          <TabScreenHeader
+            title="Lembretes"
+            subtitle="Pequenas pausas ao longo do dia para manter o ritmo."
+            icon={<BellIcon size={34} color={challengeTheme.colors.cyanStrong} />}
+          />
 
           <View style={styles.summaryCard}>
             <View style={styles.summaryIcon}>
@@ -337,14 +336,6 @@ const styles = StyleSheet.create({
   backgroundOverlay: {position: 'absolute', width: '100%', height: '100%', backgroundColor: 'rgba(0, 13, 32, 0.64)'},
   safeArea: {flex: 1},
   content: {paddingHorizontal: 20, paddingTop: 18, paddingBottom: 30, gap: 17},
-  hero: {alignItems: 'center', gap: 7},
-  heroIcon: {
-    width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(11, 225, 236, 0.14)', borderWidth: 1, borderColor: 'rgba(51, 243, 250, 0.54)',
-    shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.4, shadowRadius: 15, shadowOffset: {width: 0, height: 2}, elevation: 8,
-  },
-  title: {fontSize: 30, lineHeight: 37, fontWeight: '900', color: challengeTheme.colors.text},
-  subtitle: {maxWidth: 305, textAlign: 'center', fontSize: 15, lineHeight: 21, color: challengeTheme.colors.muted},
   summaryCard: {
     minHeight: 86, flexDirection: 'row', alignItems: 'center', gap: 13, padding: 16,
     borderRadius: challengeTheme.radius.panel, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong,

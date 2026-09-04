@@ -96,7 +96,7 @@ function Bubble({config, index, viewportHeight}: {config: typeof bubbles[number]
   }));
 
   return (
-    <Animated.View style={[styles.bubble, baseStyle, animatedStyle]}>
+    <Animated.View testID="challenge-bubble" style={[styles.bubble, baseStyle, animatedStyle]}>
       <View style={styles.highlight} />
     </Animated.View>
   );

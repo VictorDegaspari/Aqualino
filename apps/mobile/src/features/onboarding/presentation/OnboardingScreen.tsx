@@ -5,6 +5,7 @@ import {LanguageSelector} from '../../../shared/components/LanguageSelector';
 import {AppError} from '../../../shared/errors/AppError';
 import {appCopy} from '../../../shared/i18n/appLocale';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
+import {typography} from '../../../shared/theme/typography';
 import {useSessionStore} from '../../auth/application/sessionStore';
 import {authRepository} from '../../auth/data/authRepository';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
@@ -197,33 +198,33 @@ const styles = StyleSheet.create({
   hero: {alignItems: 'center', gap: 8},
   iconOrb: {width: 82, height: 82, borderRadius: 41, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(11, 225, 236, 0.14)', borderWidth: 1, borderColor: 'rgba(51, 243, 250, 0.56)', shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.4, shadowRadius: 18, shadowOffset: {width: 0, height: 0}, elevation: 8},
   syncMascot: {width: 98, height: 88},
-  title: {fontSize: 29, lineHeight: 36, fontWeight: '900', color: challengeTheme.colors.text, textAlign: 'center'},
-  subtitle: {maxWidth: 295, color: challengeTheme.colors.muted, fontSize: 15, lineHeight: 21, textAlign: 'center'},
+  title: {fontFamily: typography.family, fontSize: 29, lineHeight: 36, fontWeight: '900', color: challengeTheme.colors.text, textAlign: 'center'},
+  subtitle: {fontFamily: typography.family, maxWidth: 295, color: challengeTheme.colors.muted, fontSize: 15, lineHeight: 21, textAlign: 'center'},
   panel: {gap: 9, padding: 20, borderRadius: challengeTheme.radius.panel, backgroundColor: challengeTheme.colors.panel, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, shadowColor: '#000000', shadowOpacity: 0.28, shadowRadius: 18, shadowOffset: {width: 0, height: 10}, elevation: 7},
   goalHeader: {minHeight: 90, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8},
   goalCopy: {flex: 1, gap: 3},
   goalMascot: {width: 112, height: 92, marginRight: -9},
-  sectionTitle: {fontSize: 19, lineHeight: 25, fontWeight: '900', color: challengeTheme.colors.text},
-  sectionSubtitle: {fontSize: 13, lineHeight: 19, color: challengeTheme.colors.muted},
+  sectionTitle: {fontFamily: typography.family, fontSize: 19, lineHeight: 25, fontWeight: '900', color: challengeTheme.colors.text},
+  sectionSubtitle: {fontFamily: typography.family, fontSize: 13, lineHeight: 19, color: challengeTheme.colors.muted},
   goalInput: {height: 62, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 17, borderRadius: 17, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panelSoft},
-  goalValue: {flex: 1, padding: 0, color: challengeTheme.colors.text, fontSize: 23, fontWeight: '900'},
-  goalUnit: {fontSize: 15, fontWeight: '800', color: challengeTheme.colors.muted},
+  goalValue: {fontFamily: typography.family, flex: 1, padding: 0, color: challengeTheme.colors.text, fontSize: 23, fontWeight: '900'},
+  goalUnit: {fontFamily: typography.family, fontSize: 15, fontWeight: '800', color: challengeTheme.colors.muted},
   volumesHeader: {marginTop: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10},
   volumesCopy: {flex: 1, gap: 3},
   chips: {flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8},
   chip: {minWidth: '46%', flexGrow: 1, height: 49, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: challengeTheme.radius.pill, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panelSoft},
   chipSelected: {borderColor: challengeTheme.colors.cyanStrong, backgroundColor: challengeTheme.colors.cyanStrong},
   chipPressed: {opacity: 0.8, transform: [{scale: 0.98}]},
-  chipText: {fontSize: 15, fontWeight: '800', color: challengeTheme.colors.text},
+  chipText: {fontFamily: typography.family, fontSize: 15, fontWeight: '800', color: challengeTheme.colors.text},
   chipTextSelected: {color: challengeTheme.colors.backgroundDeep},
   languageSection: {gap: 7, marginTop: 17, paddingTop: 17, borderTopWidth: 1, borderTopColor: challengeTheme.colors.border},
   timezone: {marginTop: 15, flexDirection: 'row', alignItems: 'center', gap: 7},
-  timezoneText: {fontSize: 12, lineHeight: 17, color: challengeTheme.colors.muted},
-  notice: {marginTop: 4, fontSize: 12, lineHeight: 17, color: '#B4D5E7'},
-  error: {marginTop: 4, color: challengeTheme.colors.danger, textAlign: 'center'},
+  timezoneText: {fontFamily: typography.family, fontSize: 12, lineHeight: 17, color: challengeTheme.colors.muted},
+  notice: {fontFamily: typography.family, marginTop: 4, fontSize: 12, lineHeight: 17, color: '#C3D8D9'},
+  error: {fontFamily: typography.family, marginTop: 4, color: challengeTheme.colors.danger, textAlign: 'center'},
   finishButton: {height: 56, marginTop: 14, alignItems: 'center', justifyContent: 'center', borderRadius: challengeTheme.radius.pill, backgroundColor: challengeTheme.colors.cyanStrong, shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.55, shadowRadius: 12, shadowOffset: {width: 0, height: 5}, elevation: 8},
   finishButtonDisabled: {opacity: 0.42, shadowOpacity: 0},
   finishButtonPressed: {transform: [{scale: 0.985}, {translateY: 2}]},
-  finishLabel: {fontSize: 17, lineHeight: 22, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
+  finishLabel: {fontFamily: typography.family, fontSize: 17, lineHeight: 22, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
   gaugeDock: {marginTop: 2, paddingBottom: 6},
 });

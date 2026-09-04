@@ -17,11 +17,26 @@ use Illuminate\Support\Facades\Password;
 
 class AuthController extends Controller
 {
+    public function usernameAvailability(Request $request): JsonResponse
+    {
+        $username = mb_strtolower(trim((string) $request->query('username')));
+        $isValid = preg_match('/^[a-z0-9_]{3,24}$/', $username) === 1;
+
+        return response()->json([
+            'data' => [
+                'valid' => $isValid,
+                'available' => $isValid && ! UserProfile::query()->where('username', $username)->exists(),
+            ],
+        ]);
+    }
+
     public function register(RegisterRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $dailyGoalMl = $validated['daily_goal_ml'] ?? 2000;
+        $onboardingCompletedAt = ($validated['onboarding_completed'] ?? false) ? now() : null;
 
-        [$user, $token] = DB::transaction(function () use ($validated): array {
+        [$user, $token] = DB::transaction(function () use ($dailyGoalMl, $onboardingCompletedAt, $validated): array {
             $user = User::query()->create([
                 'email' => $validated['email'],
                 'password' => $validated['password'],
@@ -36,11 +51,12 @@ class AuthController extends Controller
                 'timezone' => $validated['timezone'],
                 'locale' => $validated['locale'] ?? 'pt-BR',
                 'favorite_volumes_ml' => [200, 300, 500],
+                'onboarding_completed_at' => $onboardingCompletedAt,
             ]);
 
             HydrationGoal::query()->create([
                 'user_id' => $user->id,
-                'daily_goal_ml' => 2000,
+                'daily_goal_ml' => $dailyGoalMl,
                 'starts_on' => now($validated['timezone'])->toDateString(),
                 'source' => 'onboarding',
             ]);

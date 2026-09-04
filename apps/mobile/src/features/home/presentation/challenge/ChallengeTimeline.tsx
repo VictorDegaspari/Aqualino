@@ -23,12 +23,13 @@ interface Props {
   week: HydrationWeek;
   mode: ChallengeMode;
   groupAvailable: boolean;
+  motionEnabled?: boolean;
   refreshing?: boolean;
   onModeChange: (mode: ChallengeMode) => void;
   onRefresh: () => void;
 }
 
-export function ChallengeTimeline({week, mode, groupAvailable, refreshing = false, onModeChange, onRefresh}: Props): React.JSX.Element {
+export function ChallengeTimeline({week, mode, groupAvailable, motionEnabled = true, refreshing = false, onModeChange, onRefresh}: Props): React.JSX.Element {
   const [viewportHeight, setViewportHeight] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
   const [selected, setSelected] = useState<{day: HydrationWeekDay; index: number}>();
@@ -86,11 +87,11 @@ export function ChallengeTimeline({week, mode, groupAvailable, refreshing = fals
           <View style={layout.scene}>
             <ChallengePath scale={scale} />
             {week.days.map((day, index) => (
-              <ChallengeDay day={day} index={index} key={day.date} scale={scale} onPress={handleDayPress} />
+              <ChallengeDay day={day} index={index} key={day.date} scale={scale} motionEnabled={motionEnabled} onPress={handleDayPress} />
             ))}
           </View>
         </ScrollView>
-        <ChallengeBubbles viewportHeight={viewportHeight || 320} />
+        {motionEnabled ? <ChallengeBubbles viewportHeight={viewportHeight || 320} /> : null}
         <View pointerEvents="none" style={styles.topFade} />
         <View pointerEvents="none" style={styles.bottomFade} />
       </View>

@@ -17,6 +17,7 @@ export interface RememberedAccount {
 interface RememberedAccountsState {
   accounts: RememberedAccount[];
   remember: (user: User) => void;
+  forget: (accountId: string) => void;
 }
 
 function readAccounts(): RememberedAccount[] {
@@ -56,6 +57,13 @@ export const useRememberedAccountsStore = create<RememberedAccountsState>(set =>
         account,
         ...state.accounts.filter(candidate => candidate.id !== account.id),
       ].slice(0, maximumRememberedAccounts);
+      storage.set(accountsKey, JSON.stringify(accounts));
+      return {accounts};
+    });
+  },
+  forget(accountId) {
+    set(state => {
+      const accounts = state.accounts.filter(account => account.id !== accountId);
       storage.set(accountsKey, JSON.stringify(accounts));
       return {accounts};
     });

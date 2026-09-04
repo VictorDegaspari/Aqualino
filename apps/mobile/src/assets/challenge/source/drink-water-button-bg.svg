@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="680" height="160" viewBox="0 0 340 80">
   <defs>
-    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#40e5e1"/><stop offset=".5" stop-color="#10cbd1"/><stop offset="1" stop-color="#079aaf"/></linearGradient>
-    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#aaffff"/><stop offset=".42" stop-color="#24f4fa"/><stop offset="1" stop-color="#00a8d0"/></linearGradient>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#78b8c2"/><stop offset=".5" stop-color="#4b97a6"/><stop offset="1" stop-color="#2e7488"/></linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c1e4e5"/><stop offset=".42" stop-color="#8bc6ce"/><stop offset="1" stop-color="#4b92a5"/></linearGradient>
     <filter id="g" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
-  <rect x="7" y="8" width="326" height="67" rx="34" fill="#003a66" opacity=".85"/>
+  <rect x="7" y="8" width="326" height="67" rx="34" fill="#123c52" opacity=".82"/>
   <rect x="4" y="3" width="332" height="69" rx="35" fill="url(#face)" stroke="url(#rim)" stroke-width="3" filter="url(#g)"/>
-  <path d="M30 12c69-7 219-7 281 0" fill="none" stroke="#d2ffff" stroke-width="3.5" stroke-linecap="round" opacity=".66"/>
-  <path d="M24 57c62 12 98-5 145 2s90 3 147-4" fill="none" stroke="#007f9d" stroke-width="4" opacity=".45"/>
-  <ellipse cx="308" cy="24" rx="7" ry="12" fill="#c8ffff" opacity=".45" transform="rotate(-24 308 24)"/>
-  <ellipse cx="44" cy="17" rx="13" ry="4" fill="#eaffff" opacity=".52" transform="rotate(-8 44 17)"/>
+  <path d="M30 12c69-7 219-7 281 0" fill="none" stroke="#e1f1ef" stroke-width="3.5" stroke-linecap="round" opacity=".52"/>
+  <path d="M24 57c62 12 98-5 145 2s90 3 147-4" fill="none" stroke="#245d70" stroke-width="4" opacity=".42"/>
+  <ellipse cx="308" cy="24" rx="7" ry="12" fill="#e0f0ef" opacity=".38" transform="rotate(-24 308 24)"/>
+  <ellipse cx="44" cy="17" rx="13" ry="4" fill="#edf8f6" opacity=".42" transform="rotate(-8 44 17)"/>
 </svg>

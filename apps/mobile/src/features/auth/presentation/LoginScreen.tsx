@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import {Pressable, StyleSheet, Text} from 'react-native';
 import {AppError} from '../../../shared/errors/AppError';
 import {appCopy} from '../../../shared/i18n/appLocale';
+import {typography} from '../../../shared/theme/typography';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {useOnboardingPreferencesStore} from '../../onboarding/application/onboardingPreferencesStore';
 import {useSessionStore} from '../application/sessionStore';
@@ -75,8 +76,8 @@ export function LoginForm({initialEmail = '', onAuthenticated, onCreateAccount}:
 }
 
 const styles = StyleSheet.create({
-  error: {color: challengeTheme.colors.danger, textAlign: 'center', fontWeight: '700'},
+  error: {fontFamily: typography.family, color: challengeTheme.colors.danger, textAlign: 'center', fontWeight: '700'},
   linkButton: {minHeight: 45, alignItems: 'center', justifyContent: 'center'},
-  link: {fontSize: 14, lineHeight: 19, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
+  link: {fontFamily: typography.family, fontSize: 14, lineHeight: 19, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
   linkPressed: {opacity: 0.75},
 });

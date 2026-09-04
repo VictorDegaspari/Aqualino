@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
-import {NavigationContainer, useNavigationContainerRef} from '@react-navigation/native';
+import {NavigationContainer, StackActions, useNavigationContainerRef} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {AppLoadingScreen} from '../presentation/AppLoadingScreen';
 import {useSessionStore} from '../../features/auth/application/sessionStore';
@@ -47,6 +47,18 @@ export function AppNavigation(): React.JSX.Element {
 
   const activeTab = tabForRoute(activeRoute);
   const showBottomNavigation = status === 'signedIn' && Boolean(user?.profile.onboarding_completed_at) && Boolean(activeTab);
+  const sessionNavigationKey = status === 'signedOut'
+    ? 'signed-out'
+    : user?.profile.onboarding_completed_at
+      ? 'signed-in'
+      : 'onboarding';
+  const replaceTab = (route: TabRouteName) => {
+    if (!navigationRef.isReady() || navigationRef.getCurrentRoute()?.name === route) {
+      return;
+    }
+
+    navigationRef.dispatch(StackActions.replace(route));
+  };
 
   return (
     <View style={styles.root}>
@@ -56,61 +68,47 @@ export function AppNavigation(): React.JSX.Element {
         onReady={() => setActiveRoute(navigationRef.getCurrentRoute()?.name)}
         onStateChange={() => setActiveRoute(navigationRef.getCurrentRoute()?.name)}>
         <Stack.Navigator screenOptions={{headerShadowVisible: false}}>
-        {status === 'signedOut' ? (
-          <Stack.Screen name="Welcome" getComponent={getWelcomeScreen} options={{headerShown: false}} />
-        ) : !user?.profile.onboarding_completed_at ? (
-          <Stack.Screen name="Onboarding" getComponent={getOnboardingScreen} options={{headerShown: false}} />
-        ) : (
-          <>
-            <Stack.Screen name="Home" getComponent={getHomeScreen} options={{headerShown: false}} />
-            <Stack.Screen name="Groups" getComponent={getGroupsScreen} options={{headerShown: false}} />
-            <Stack.Screen name="Reminders" getComponent={getRemindersScreen} options={{headerShown: false}} />
-            <Stack.Screen name="Inventory" getComponent={getInventoryScreen} options={{
-              title: 'Inventário',
-              headerStyle: {backgroundColor: challengeTheme.colors.background},
-              headerTintColor: challengeTheme.colors.text,
-              headerTitleStyle: {fontWeight: '900'},
-              contentStyle: {backgroundColor: challengeTheme.colors.background},
-            }} />
-            <Stack.Screen
-              name="History"
-              getComponent={getHistoryScreen}
+          <Stack.Group navigationKey={sessionNavigationKey}>
+            {status === 'signedOut' ? (
+              <Stack.Screen name="Welcome" getComponent={getWelcomeScreen} options={{headerShown: false}} />
+            ) : !user?.profile.onboarding_completed_at ? (
+              <Stack.Screen name="Onboarding" getComponent={getOnboardingScreen} options={{headerShown: false}} />
+            ) : (
+              <>
+                <Stack.Screen name="Home" getComponent={getHomeScreen} options={tabScreenOptions} />
+                <Stack.Screen name="Groups" getComponent={getGroupsScreen} options={tabScreenOptions} />
+                <Stack.Screen name="Reminders" getComponent={getRemindersScreen} options={tabScreenOptions} />
+                <Stack.Screen name="Inventory" getComponent={getInventoryScreen} options={{
+                  title: 'Inventário',
+                  headerStyle: {backgroundColor: challengeTheme.colors.background},
+                  headerTintColor: challengeTheme.colors.text,
+                  headerTitleStyle: {fontWeight: '900'},
+                  contentStyle: {backgroundColor: challengeTheme.colors.background},
+                }} />
+                <Stack.Screen name="History" getComponent={getHistoryScreen} options={tabScreenOptions} />
+                <Stack.Screen name="Profile" getComponent={getProfileScreen} options={tabScreenOptions} />
+              </>
+            )}
+            <Stack.Screen name="QuickHydration" getComponent={getQuickHydrationRoute}
               options={{
-                title: 'Histórico',
+                presentation: 'modal',
+                title: 'Bebi água',
                 headerStyle: {backgroundColor: challengeTheme.colors.background},
                 headerTintColor: challengeTheme.colors.text,
                 headerTitleStyle: {fontWeight: '900'},
                 contentStyle: {backgroundColor: challengeTheme.colors.background},
-              }}
-            />
-            <Stack.Screen name="Profile" getComponent={getProfileScreen} options={{
-              title: 'Perfil',
-              headerStyle: {backgroundColor: challengeTheme.colors.background},
-              headerTintColor: challengeTheme.colors.text,
-              headerTitleStyle: {fontWeight: '900'},
-              contentStyle: {backgroundColor: challengeTheme.colors.background},
-            }} />
-          </>
-        )}
-          <Stack.Screen name="QuickHydration" getComponent={getQuickHydrationRoute}
-            options={{
-              presentation: 'modal',
-              title: 'Bebi água',
-              headerStyle: {backgroundColor: challengeTheme.colors.background},
-              headerTintColor: challengeTheme.colors.text,
-              headerTitleStyle: {fontWeight: '900'},
-              contentStyle: {backgroundColor: challengeTheme.colors.background},
-            }} />
+              }} />
+          </Stack.Group>
         </Stack.Navigator>
       </NavigationContainer>
       {showBottomNavigation && activeTab ? (
         <ChallengeBottomNavigation
           activeTab={activeTab}
-          onOpenHome={() => navigationRef.navigate('Home')}
-          onOpenGroup={() => navigationRef.navigate('Groups')}
-          onOpenReminders={() => navigationRef.navigate('Reminders')}
-          onOpenHistory={() => navigationRef.navigate('History')}
-          onOpenProfile={() => navigationRef.navigate('Profile')}
+          onOpenHome={() => replaceTab('Home')}
+          onOpenGroup={() => replaceTab('Groups')}
+          onOpenReminders={() => replaceTab('Reminders')}
+          onOpenHistory={() => replaceTab('History')}
+          onOpenProfile={() => replaceTab('Profile')}
         />
       ) : null}
     </View>
@@ -130,5 +128,9 @@ function tabForRoute(route?: string): ChallengeBottomTab | undefined {
             ? 'profile'
             : undefined;
 }
+
+type TabRouteName = 'Home' | 'Groups' | 'Reminders' | 'History' | 'Profile';
+
+const tabScreenOptions = {headerShown: false, animation: 'none'} as const;
 
 const styles = StyleSheet.create({root: {flex: 1}});

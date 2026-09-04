@@ -11,6 +11,7 @@ interface Props {
   day: HydrationWeekDay;
   index: number;
   scale: number;
+  motionEnabled?: boolean;
   onPress: (day: HydrationWeekDay, index: number) => void;
 }
 
@@ -22,7 +23,7 @@ const stateAssets: Record<HydrationWeekDay['state'], ChallengeAssetName> = {
   missed: 'dayMissed',
 };
 
-export const ChallengeDay = memo(function ChallengeDayView({day, index, scale, onPress}: Props): React.JSX.Element {
+export const ChallengeDay = memo(function ChallengeDayView({day, index, scale, motionEnabled = true, onPress}: Props): React.JSX.Element {
   const content = dayStateLabels[day.state];
   const dayProgress = day.total_ml > 0
     ? `${formatNumber(day.total_ml)} de ${formatNumber(day.goal_ml)} ml`
@@ -38,8 +39,10 @@ export const ChallengeDay = memo(function ChallengeDayView({day, index, scale, o
   return (
     <View pointerEvents="box-none" style={[styles.layer, layout.layer]}>
       <View pointerEvents="none" style={layout.label}>
-        <Text style={[styles.weekday, day.is_today && styles.todayLabel]}>{weekdayLabels[index]}</Text>
-        {day.is_today ? <AqualinoIcon name="play" size={12} color={challengeTheme.colors.cyan} /> : null}
+        <View style={styles.dayLabel}>
+          <Text style={[styles.weekday, day.is_today && styles.todayLabel]}>{weekdayLabels[index]}</Text>
+          {day.is_today ? <AqualinoIcon name="play" size={12} color="#B9F3F5" /> : null}
+        </View>
       </View>
 
       <Pressable
@@ -53,11 +56,11 @@ export const ChallengeDay = memo(function ChallengeDayView({day, index, scale, o
             <ChallengeAsset name="trophySilver" style={layout.trophyImage} />
             <Text numberOfLines={1} style={styles.projected}>Prata projetada</Text>
           </>
-        ) : day.is_today ? (
+        ) : day.is_today && motionEnabled ? (
           <CurrentWaterDrop scale={scale} />
-        ) : (
+        ) : !day.is_today ? (
           <ChallengeAsset name={stateAssets[day.state]} style={layout.markerImage} />
-        )}
+        ) : null}
       </Pressable>
 
       {day.is_today ? (
@@ -127,8 +130,15 @@ function formatNumber(value: number): string {
 const styles = StyleSheet.create({
   layer: {position: 'absolute', top: 0, right: 0, bottom: 0, left: 0},
   pressed: {opacity: 0.82, transform: [{scale: 0.975}]},
-  weekday: {fontSize: 14, lineHeight: 18, textAlign: 'right', fontWeight: '800', color: '#ABC8E2'},
-  todayLabel: {fontSize: 18, lineHeight: 23, color: challengeTheme.colors.cyan, fontWeight: '900'},
+  dayLabel: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 9,
+    backgroundColor: 'rgba(2, 23, 38, 0.42)',
+  },
+  weekday: {
+    fontSize: 14, lineHeight: 18, textAlign: 'right', fontWeight: '800', color: '#E6F5F8',
+    textShadowColor: 'rgba(0, 10, 18, 0.95)', textShadowRadius: 4, textShadowOffset: {width: 0, height: 1},
+  },
+  todayLabel: {fontSize: 18, lineHeight: 23, color: '#D4FEFF', fontWeight: '900'},
   projected: {
     marginTop: -8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, overflow: 'hidden',
     borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: 'rgba(0, 24, 52, 0.94)',

@@ -1,19 +1,55 @@
-import React, {useCallback, useState} from 'react';
-import {Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import React, {useCallback, useRef, useState} from 'react';
+import {Image, Pressable, ScrollView, StyleSheet, Text, TextInput, type GestureResponderEvent, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {mascotImages} from '../../../assets/mascot/mascotImages';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
 import {LanguageSelector} from '../../../shared/components/LanguageSelector';
+import {haptics} from '../../../shared/device/haptics';
 import {appCopy} from '../../../shared/i18n/appLocale';
+import {typography} from '../../../shared/theme/typography';
 import {useRememberedAccountsStore, type RememberedAccount} from '../../auth/application/rememberedAccountsStore';
+import {useSessionStore} from '../../auth/application/sessionStore';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {HydrationWaterGauge} from '../../hydration/presentation/HydrationWaterGauge';
 import {useOnboardingPreferencesStore} from '../application/onboardingPreferencesStore';
 import {AccountAccessStep, type AccountMode} from './AccountAccessStep';
+import {ChallengeAsset} from '../../home/presentation/challenge/ChallengeAsset';
 
 type OnboardingStep = 1 | 2 | 3;
 
 const TOTAL_STEPS = 3;
+const SWIPE_BACK_EDGE_WIDTH = 36;
+const SWIPE_BACK_DISTANCE = 72;
+const SWIPE_BACK_MAX_VERTICAL_DISTANCE = 48;
+
+interface ContinueButtonProps {
+  label: string;
+  disabled: boolean;
+  onPress: () => void;
+}
+
+function OnboardingContinueButton({label, disabled, onPress}: ContinueButtonProps): React.JSX.Element {
+  const handlePress = () => {
+    haptics.lightImpact();
+    onPress();
+  };
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{disabled}}
+      disabled={disabled}
+      onPress={handlePress}
+      style={({pressed}) => [styles.continueButton, disabled && styles.continueButtonDisabled, pressed && !disabled && styles.buttonPressed]}>
+      <ChallengeAsset name="drinkButton" resizeMode="stretch" style={styles.continueButtonBackground} />
+      <View pointerEvents="none" style={styles.continueButtonContent}>
+        <Text style={styles.continueButtonIcon}>→</Text>
+        <Text style={styles.continueButtonLabel}>{label}</Text>
+      </View>
+    </Pressable>
+  );
+}
 
 export function WelcomeScreen(): React.JSX.Element {
   const hasCompletedWelcome = useOnboardingPreferencesStore(state => state.hasCompletedWelcome);
@@ -24,6 +60,9 @@ export function WelcomeScreen(): React.JSX.Element {
   const completeWelcome = useOnboardingPreferencesStore(state => state.completeWelcome);
   const restartWelcome = useOnboardingPreferencesStore(state => state.restartWelcome);
   const rememberedAccounts = useRememberedAccountsStore(state => state.accounts);
+  const resumeRememberedAccount = useSessionStore(state => state.resumeRememberedAccount);
+  const removeRememberedAccount = useSessionStore(state => state.removeRememberedAccount);
+  const [isReturningAccountFlow, setIsReturningAccountFlow] = useState(hasCompletedWelcome);
   const [step, setStep] = useState<OnboardingStep>(hasCompletedWelcome ? 3 : 1);
   const [accountMode, setAccountMode] = useState<AccountMode>(hasCompletedWelcome ? 'returning' : 'choice');
   const [authBackMode, setAuthBackMode] = useState<AccountMode>('choice');
@@ -47,10 +86,15 @@ export function WelcomeScreen(): React.JSX.Element {
     }
   };
 
-  const goBack = () => {
+  const goBack = useCallback(() => {
     if (step === 3 && (accountMode === 'login' || accountMode === 'register')) {
       setAccountMode(authBackMode);
       setSelectedAccount(undefined);
+      return;
+    }
+
+    if (step === 3 && accountMode === 'manage') {
+      setAccountMode('returning');
       return;
     }
 
@@ -60,7 +104,7 @@ export function WelcomeScreen(): React.JSX.Element {
     }
 
     if (step === 2) setStep(1);
-  };
+  }, [accountMode, authBackMode, step]);
 
   const showAuth = useCallback((mode: 'login' | 'register', backMode: AccountMode, account?: RememberedAccount) => {
     setSelectedAccount(account);
@@ -70,6 +114,7 @@ export function WelcomeScreen(): React.JSX.Element {
 
   const restartForNewAccount = useCallback(() => {
     restartWelcome();
+    setIsReturningAccountFlow(false);
     setGoal('2000');
     setSelectedAccount(undefined);
     setAuthBackMode('choice');
@@ -77,25 +122,91 @@ export function WelcomeScreen(): React.JSX.Element {
     setStep(1);
   }, [restartWelcome]);
 
+  const resumeAccount = useCallback((account: RememberedAccount) => resumeRememberedAccount(account.id), [resumeRememberedAccount]);
+  const removeAccount = useCallback((account: RememberedAccount) => removeRememberedAccount(account.id), [removeRememberedAccount]);
+  const manageAccounts = useCallback(() => setAccountMode('manage'), []);
+  const returnToAccounts = useCallback(() => setAccountMode('returning'), []);
+
   const finishWelcome = useCallback(() => {
     completeWelcome();
   }, [completeWelcome]);
 
   const canGoBack = step > 1 && !(step === 3 && accountMode === 'returning');
+  const swipeStart = useRef<{x: number; y: number} | undefined>(undefined);
+  const beginSwipe = useCallback((event: GestureResponderEvent) => {
+    swipeStart.current = {x: event.nativeEvent.pageX, y: event.nativeEvent.pageY};
+  }, []);
+  const finishSwipe = useCallback((event: GestureResponderEvent) => {
+    const start = swipeStart.current;
+    swipeStart.current = undefined;
+    if (!start || !canGoBack) return;
+
+    const horizontalDistance = event.nativeEvent.pageX - start.x;
+    const verticalDistance = Math.abs(event.nativeEvent.pageY - start.y);
+    if (start.x <= SWIPE_BACK_EDGE_WIDTH && horizontalDistance >= SWIPE_BACK_DISTANCE && verticalDistance <= SWIPE_BACK_MAX_VERTICAL_DISTANCE) {
+      goBack();
+    }
+  }, [canGoBack, goBack]);
   const stepThreeTitle = accountMode === 'login'
     ? authCopy.loginTitle
     : accountMode === 'register'
       ? authCopy.registerTitle
       : accountMode === 'returning'
         ? copy.returningTitle
-        : copy.accountTitle;
+        : accountMode === 'manage'
+          ? copy.manageAccounts
+          : copy.accountTitle;
   const stepThreeSubtitle = accountMode === 'login'
     ? authCopy.loginSubtitle
     : accountMode === 'register'
       ? authCopy.registerSubtitle
       : accountMode === 'returning'
         ? copy.returningSubtitle
-        : copy.accountSubtitle;
+        : accountMode === 'manage'
+          ? copy.manageAccountsSubtitle
+          : copy.accountSubtitle;
+
+  if (isReturningAccountFlow) {
+    return (
+      <View style={styles.page}>
+        <Image
+          pointerEvents="none"
+          source={require('../../../assets/challenge/static/ocean-background.webp')}
+          resizeMode="cover"
+          style={styles.background}
+        />
+        <View pointerEvents="none" style={styles.backgroundOverlay} />
+        <SafeAreaView style={styles.safeArea}>
+          <ScrollView contentContainerStyle={styles.returningContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <View style={styles.hero}>
+              <View style={styles.mascotOrb}>
+                <Image source={mascotImages.empty} resizeMode="contain" style={styles.mascot} />
+              </View>
+              <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
+              <Text accessibilityRole="header" style={styles.title}>{stepThreeTitle}</Text>
+              <Text style={styles.subtitle}>{stepThreeSubtitle}</Text>
+            </View>
+
+            <AccountAccessStep
+              accounts={rememberedAccounts}
+              authBackMode={authBackMode}
+              goalMl={selectedGoal}
+              locale={locale}
+              mode={accountMode}
+              selectedAccount={selectedAccount}
+              onManageAccounts={manageAccounts}
+              onAuthenticated={finishWelcome}
+              onRemoveAccount={removeAccount}
+              onResumeAccount={resumeAccount}
+              onReturnToAccounts={returnToAccounts}
+              onRestart={restartForNewAccount}
+              onShowAuth={showAuth}
+            />
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.page}>
@@ -107,7 +218,13 @@ export function WelcomeScreen(): React.JSX.Element {
       />
       <View pointerEvents="none" style={styles.backgroundOverlay} />
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView
+          testID="onboarding-scroll"
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          onTouchStart={beginSwipe}
+          onTouchEnd={finishSwipe}>
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
               <Pressable
@@ -195,7 +312,11 @@ export function WelcomeScreen(): React.JSX.Element {
                 locale={locale}
                 mode={accountMode}
                 selectedAccount={selectedAccount}
+                onManageAccounts={manageAccounts}
                 onAuthenticated={finishWelcome}
+                onRemoveAccount={removeAccount}
+                onResumeAccount={resumeAccount}
+                onReturnToAccounts={returnToAccounts}
                 onRestart={restartForNewAccount}
                 onShowAuth={showAuth}
               />
@@ -203,15 +324,11 @@ export function WelcomeScreen(): React.JSX.Element {
           ) : null}
 
           {step < 3 ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={copy.continue}
-              accessibilityState={{disabled: step === 2 && !goalIsValid}}
+            <OnboardingContinueButton
+              label={copy.continue}
               disabled={step === 2 && !goalIsValid}
               onPress={advance}
-              style={({pressed}) => [styles.primaryButton, step === 2 && !goalIsValid && styles.primaryButtonDisabled, pressed && styles.buttonPressed]}>
-              <Text style={styles.primaryLabel}>{copy.continue}</Text>
-            </Pressable>
+            />
           ) : null}
         </ScrollView>
       </SafeAreaView>
@@ -225,14 +342,15 @@ const styles = StyleSheet.create({
   backgroundOverlay: {position: 'absolute', width: '100%', height: '100%', backgroundColor: 'rgba(0, 13, 32, 0.48)'},
   safeArea: {flex: 1},
   content: {flexGrow: 1, paddingHorizontal: 21, paddingTop: 14, paddingBottom: 28, gap: 21},
+  returningContent: {flexGrow: 1, justifyContent: 'center', paddingHorizontal: 21, paddingVertical: 28, gap: 28},
   progressSection: {gap: 8},
   progressHeader: {height: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
   backButton: {width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 17, backgroundColor: 'rgba(2, 38, 71, 0.75)', borderWidth: 1, borderColor: challengeTheme.colors.border},
   backButtonHidden: {opacity: 0},
-  backLabel: {marginTop: -3, color: challengeTheme.colors.cyanStrong, fontSize: 31, lineHeight: 31, fontWeight: '400'},
-  stepLabel: {fontSize: 12, lineHeight: 17, fontWeight: '900', color: '#C7F8FF', letterSpacing: 0.35},
+  backLabel: {fontFamily: typography.family, marginTop: -3, color: challengeTheme.colors.cyanStrong, fontSize: 31, lineHeight: 31, fontWeight: '400'},
+  stepLabel: {fontFamily: typography.family, fontSize: 12, lineHeight: 17, fontWeight: '900', color: '#D1E4E4', letterSpacing: 0.35},
   progressSpacer: {width: 34},
-  progressTrack: {height: 8, overflow: 'hidden', borderRadius: 99, backgroundColor: 'rgba(161, 236, 255, 0.22)', borderWidth: 1, borderColor: 'rgba(161, 236, 255, 0.2)'},
+  progressTrack: {height: 8, overflow: 'hidden', borderRadius: 99, backgroundColor: 'rgba(145, 200, 209, 0.2)', borderWidth: 1, borderColor: 'rgba(145, 200, 209, 0.18)'},
   progressFill: {height: '100%', borderRadius: 99, backgroundColor: challengeTheme.colors.cyanStrong},
   hero: {alignItems: 'center', gap: 8, paddingHorizontal: 10},
   authHero: {gap: 6},
@@ -240,24 +358,27 @@ const styles = StyleSheet.create({
   goalCopy: {flex: 1, gap: 8},
   mascotOrb: {
     width: 148, height: 148, alignItems: 'center', justifyContent: 'center', borderRadius: 74,
-    borderWidth: 1, borderColor: 'rgba(126, 246, 255, 0.76)', backgroundColor: 'rgba(4, 99, 143, 0.56)',
-    shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.68, shadowRadius: 25, shadowOffset: {width: 0, height: 5}, elevation: 12,
+    borderWidth: 1, borderColor: 'rgba(145, 200, 209, 0.62)', backgroundColor: 'rgba(26, 78, 95, 0.56)',
+    shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.34, shadowRadius: 20, shadowOffset: {width: 0, height: 5}, elevation: 10,
   },
   mascot: {width: 146, height: 132},
   goalMascot: {width: 142, height: 142, marginRight: -18},
-  eyebrow: {marginTop: 4, fontSize: 10, lineHeight: 14, letterSpacing: 1.2, fontWeight: '900', color: challengeTheme.colors.cyanStrong, textAlign: 'center'},
-  title: {fontSize: 29, lineHeight: 35, fontWeight: '900', color: challengeTheme.colors.text, textAlign: 'center'},
-  subtitle: {maxWidth: 320, fontSize: 15, lineHeight: 21, color: '#C1E5F8', textAlign: 'center'},
+  eyebrow: {fontFamily: typography.family, marginTop: 4, fontSize: 10, lineHeight: 14, letterSpacing: 1.2, fontWeight: '900', color: challengeTheme.colors.cyanStrong, textAlign: 'center'},
+  title: {fontFamily: typography.family, fontSize: 29, lineHeight: 35, fontWeight: '900', color: challengeTheme.colors.text, textAlign: 'center'},
+  subtitle: {fontFamily: typography.family, maxWidth: 320, fontSize: 15, lineHeight: 21, color: '#C9DEDF', textAlign: 'center'},
   panel: {gap: 9, padding: 18, borderRadius: challengeTheme.radius.panel, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panel},
-  panelTitle: {fontSize: 18, lineHeight: 24, fontWeight: '900', color: challengeTheme.colors.text},
-  panelSubtitle: {fontSize: 13, lineHeight: 18, color: challengeTheme.colors.muted, marginBottom: 2},
-  inputLabel: {fontSize: 14, lineHeight: 19, fontWeight: '900', color: '#D4F7FF'},
+  panelTitle: {fontFamily: typography.family, fontSize: 18, lineHeight: 24, fontWeight: '900', color: challengeTheme.colors.text},
+  panelSubtitle: {fontFamily: typography.family, fontSize: 13, lineHeight: 18, color: challengeTheme.colors.muted, marginBottom: 2},
+  inputLabel: {fontFamily: typography.family, fontSize: 14, lineHeight: 19, fontWeight: '900', color: '#D6EAEB'},
   goalInput: {height: 62, marginTop: 2, flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 17, borderRadius: 17, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panelSoft},
   goalInputInvalid: {borderColor: challengeTheme.colors.danger},
-  goalValue: {flex: 1, padding: 0, color: challengeTheme.colors.text, fontSize: 23, fontWeight: '900'},
-  goalUnit: {fontSize: 15, fontWeight: '800', color: challengeTheme.colors.muted},
-  primaryButton: {height: 57, alignItems: 'center', justifyContent: 'center', borderRadius: challengeTheme.radius.pill, backgroundColor: challengeTheme.colors.cyanStrong, shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.52, shadowRadius: 12, shadowOffset: {width: 0, height: 5}, elevation: 8},
-  primaryButtonDisabled: {opacity: 0.42, shadowOpacity: 0},
-  primaryLabel: {fontSize: 17, lineHeight: 22, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
-  buttonPressed: {opacity: 0.86, transform: [{scale: 0.985}]},
+  goalValue: {fontFamily: typography.family, flex: 1, padding: 0, color: challengeTheme.colors.text, fontSize: 23, fontWeight: '900'},
+  goalUnit: {fontFamily: typography.family, fontSize: 15, fontWeight: '800', color: challengeTheme.colors.muted},
+  continueButton: {alignSelf: 'center', width: '100%', maxWidth: 340, height: 70, justifyContent: 'center', shadowColor: '#4A99A8', shadowOpacity: 0.48, shadowRadius: 14, shadowOffset: {width: 0, height: 0}, elevation: 10},
+  continueButtonDisabled: {opacity: 0.45, shadowOpacity: 0},
+  continueButtonBackground: {position: 'absolute', width: '100%', height: '100%'},
+  continueButtonContent: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingBottom: 4},
+  continueButtonIcon: {fontFamily: typography.family, marginTop: -2, fontSize: 30, lineHeight: 32, fontWeight: '900', color: '#FFFFFF', textShadowColor: '#2C6B79', textShadowRadius: 4},
+  continueButtonLabel: {fontFamily: typography.family, fontSize: 22, lineHeight: 29, fontWeight: '900', color: '#FFFFFF', textShadowColor: '#2C6B79', textShadowRadius: 4},
+  buttonPressed: {opacity: 0.88, transform: [{scale: 0.985}, {translateY: 2}]},
 });

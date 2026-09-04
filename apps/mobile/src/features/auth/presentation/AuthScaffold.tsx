@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import {mascotImages} from '../../../assets/mascot/mascotImages';
+import {typography} from '../../../shared/theme/typography';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 
 interface AuthScaffoldProps {
@@ -99,31 +100,31 @@ const styles = StyleSheet.create({
   hero: {alignItems: 'center', gap: 7, paddingHorizontal: 14},
   mascotOrb: {
     width: 128, height: 128, marginBottom: 4, alignItems: 'center', justifyContent: 'center', borderRadius: 64,
-    borderWidth: 1, borderColor: 'rgba(99, 246, 255, 0.72)', backgroundColor: 'rgba(3, 97, 138, 0.52)',
-    shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.62, shadowRadius: 21, shadowOffset: {width: 0, height: 4}, elevation: 10,
+    borderWidth: 1, borderColor: 'rgba(145, 200, 209, 0.58)', backgroundColor: 'rgba(26, 78, 95, 0.52)',
+    shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.32, shadowRadius: 18, shadowOffset: {width: 0, height: 4}, elevation: 8,
   },
   mascot: {width: 123, height: 112},
-  eyebrow: {fontSize: 10, lineHeight: 14, letterSpacing: 1.15, fontWeight: '900', color: challengeTheme.colors.cyanStrong, textAlign: 'center'},
-  title: {fontSize: 31, lineHeight: 38, fontWeight: '900', color: challengeTheme.colors.text, textAlign: 'center'},
-  subtitle: {maxWidth: 315, fontSize: 15, lineHeight: 21, color: challengeTheme.colors.muted, textAlign: 'center'},
+  eyebrow: {fontFamily: typography.family, fontSize: 10, lineHeight: 14, letterSpacing: 1.15, fontWeight: '900', color: challengeTheme.colors.cyanStrong, textAlign: 'center'},
+  title: {fontFamily: typography.family, fontSize: 31, lineHeight: 38, fontWeight: '900', color: challengeTheme.colors.text, textAlign: 'center'},
+  subtitle: {fontFamily: typography.family, maxWidth: 315, fontSize: 15, lineHeight: 21, color: challengeTheme.colors.muted, textAlign: 'center'},
   panel: {
     gap: 14, padding: 19, borderRadius: challengeTheme.radius.panel, borderWidth: 1,
     borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panel,
     shadowColor: '#000000', shadowOpacity: 0.3, shadowRadius: 18, shadowOffset: {width: 0, height: 10}, elevation: 8,
   },
   field: {gap: 7},
-  fieldLabel: {fontSize: 13, lineHeight: 18, fontWeight: '800', color: '#D4F7FF'},
+  fieldLabel: {fontFamily: typography.family, fontSize: 13, lineHeight: 18, fontWeight: '800', color: '#D6EAEB'},
   input: {
     height: 54, paddingHorizontal: 15, borderRadius: 16, borderWidth: 1,
     borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panelSoft,
-    color: challengeTheme.colors.text, fontSize: 16, fontWeight: '700',
+    color: challengeTheme.colors.text, fontFamily: typography.family, fontSize: 16, fontWeight: '700',
   },
   button: {
     height: 56, marginTop: 4, alignItems: 'center', justifyContent: 'center', borderRadius: challengeTheme.radius.pill,
     backgroundColor: challengeTheme.colors.cyanStrong, shadowColor: challengeTheme.colors.cyan,
     shadowOpacity: 0.5, shadowRadius: 12, shadowOffset: {width: 0, height: 5}, elevation: 8,
   },
-  buttonLabel: {fontSize: 17, lineHeight: 22, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
+  buttonLabel: {fontFamily: typography.family, fontSize: 17, lineHeight: 22, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
   buttonDisabled: {opacity: 0.44, shadowOpacity: 0},
   buttonPressed: {transform: [{scale: 0.985}, {translateY: 2}]},
 });

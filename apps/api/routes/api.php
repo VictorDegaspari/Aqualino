@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
     Route::get('/health', fn () => ['data' => ['status' => 'ok']]);
+    Route::get('/auth/username-availability', [AuthController::class, 'usernameAvailability'])
+        ->middleware('throttle:30,1');
 
     Route::prefix('auth')->middleware('throttle:10,1')->group(function (): void {
         Route::post('/register', [AuthController::class, 'register']);

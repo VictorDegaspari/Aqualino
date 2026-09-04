@@ -19,6 +19,10 @@
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>Aqualino</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Nunito.ttf</string>
+	</array>
 	<key>CFBundleIcons</key>
 	<dict>
 		<key>CFBundlePrimaryIcon</key>

@@ -4,6 +4,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {avatarIds, defaultAvatarId, getAvatarSource, type AvatarId} from '../../../shared/avatars/avatarOptions';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
 import {PencilIcon} from '../../../shared/components/PencilIcon';
+import {TabScreenHeader} from '../../../shared/components/TabScreenHeader';
 import {haptics} from '../../../shared/device/haptics';
 import {useSessionStore} from '../../auth/application/sessionStore';
 import {authRepository} from '../../auth/data/authRepository';
@@ -61,8 +62,13 @@ export function ProfileScreen(): React.JSX.Element {
         style={styles.background}
       />
       <View pointerEvents="none" style={styles.backgroundOverlay} />
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <TabScreenHeader
+            title="Perfil"
+            subtitle="Sua jornada de hidratação em um só lugar."
+            icon={<AqualinoIcon name="profile" size={34} color={challengeTheme.colors.cyanStrong} />}
+          />
           <View style={styles.profileHeader}>
             <Pressable
               accessibilityRole="button"

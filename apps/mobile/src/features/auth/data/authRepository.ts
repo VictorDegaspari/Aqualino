@@ -16,12 +16,26 @@ export interface RegistrationInput {
   username: string;
   timezone: string;
   locale: AppLocale;
+  daily_goal_ml: number;
+  onboarding_completed: true;
   terms_accepted: true;
   terms_version: string;
   device_name: string;
 }
 
+export interface UsernameAvailability {
+  valid: boolean;
+  available: boolean;
+}
+
 export const authRepository = {
+  usernameAvailability(username: string): Promise<UsernameAvailability> {
+    return apiRequest<UsernameAvailability>(`/auth/username-availability?username=${encodeURIComponent(username)}`, {
+      authenticated: false,
+      timeoutMs: 5_000,
+    });
+  },
+
   register(input: RegistrationInput): Promise<AuthResult> {
     return apiRequest<AuthResult>('/auth/register', {method: 'POST', body: input, authenticated: false});
   },

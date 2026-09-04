@@ -25,12 +25,13 @@ interface Props {
   streak: number;
   xp: number;
   hasActiveGroup?: boolean;
+  motionEnabled?: boolean;
   onRetry: () => void;
   onOpenHydration: () => void;
   onOpenInventory: () => void;
 }
 
-export function HomeView(props: Props): React.JSX.Element {
+export function HomeView({motionEnabled = true, ...props}: Props): React.JSX.Element {
   const [challengeMode, setChallengeMode] = useState<ChallengeMode>('solo');
 
   if (props.loading && !props.data) {
@@ -56,7 +57,7 @@ export function HomeView(props: Props): React.JSX.Element {
   return (
     <View style={styles.page}>
       <ChallengeBackground />
-      <ChallengeSceneDecoration />
+      {motionEnabled ? <ChallengeSceneDecoration /> : null}
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.header}>
           <ChallengeHeader
@@ -68,7 +69,7 @@ export function HomeView(props: Props): React.JSX.Element {
           />
 
           {props.offline || props.pending > 0 || props.syncing ? (
-            <Text accessibilityRole="status" style={styles.offline}>
+            <Text accessibilityLiveRegion="polite" style={styles.offline}>
               {props.syncing
                 ? 'Sincronizando…'
                 : props.pending > 0
@@ -83,6 +84,7 @@ export function HomeView(props: Props): React.JSX.Element {
             week={props.data.week}
             mode={challengeMode}
             groupAvailable={Boolean(props.hasActiveGroup)}
+            motionEnabled={motionEnabled}
             refreshing={props.refreshing}
             onModeChange={setChallengeMode}
             onRefresh={props.onRetry}

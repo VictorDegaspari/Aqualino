@@ -1,6 +1,7 @@
 import React, {memo} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {haptics} from '../../../../shared/device/haptics';
+import {typography} from '../../../../shared/theme/typography';
 import {ChallengeAsset} from './ChallengeAsset';
 
 interface Props {
@@ -31,12 +32,12 @@ export const DrinkWaterButton = memo(function DrinkWaterButtonView({onPress}: Pr
 const styles = StyleSheet.create({
   button: {
     alignSelf: 'center', width: '70%', minWidth: 238, maxWidth: 270, height: 70, justifyContent: 'center',
-    shadowColor: '#00EAF4', shadowOpacity: 0.75, shadowRadius: 17,
+    shadowColor: '#4A99A8', shadowOpacity: 0.48, shadowRadius: 14,
     shadowOffset: {width: 0, height: 0}, elevation: 12,
   },
   pressed: {opacity: 0.88, transform: [{scale: 0.985}, {translateY: 2}]},
   background: {position: 'absolute', width: '100%', height: '100%'},
   content: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 4},
   icon: {width: 44, height: 44},
-  label: {fontSize: 26, lineHeight: 32, fontWeight: '900', color: '#FFFFFF', textShadowColor: '#07869A', textShadowRadius: 5},
+  label: {fontFamily: typography.family, fontSize: 26, lineHeight: 32, fontWeight: typography.weights.black, color: '#FFFFFF', textShadowColor: '#2C6B79', textShadowRadius: 4},
 });

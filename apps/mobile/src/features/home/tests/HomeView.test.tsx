@@ -104,6 +104,14 @@ test('renders successful progress and mascot state', async () => {
   expect(view.getByLabelText(/DOM, 06\/09: Futuro/)).toBeTruthy();
 });
 
+test('removes animated home decorations while its tab is inactive', async () => {
+  const view = await renderHome(<HomeView {...props} motionEnabled={false} />);
+
+  expect(view.queryByTestId('challenge-scene-decoration')).toBeNull();
+  expect(view.queryAllByTestId('challenge-bubble')).toHaveLength(0);
+  expect(view.queryByTestId('current-water-drop')).toBeNull();
+});
+
 test('opens the inventory from the XP status', async () => {
   const onOpenInventory = jest.fn();
   const view = await renderHome(<HomeView {...props} onOpenInventory={onOpenInventory} />);

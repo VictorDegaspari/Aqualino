@@ -1,7 +1,9 @@
 import React, {useMemo, useState} from 'react';
 import {ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useIsFocused} from '@react-navigation/native';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
+import {TabScreenHeader} from '../../../shared/components/TabScreenHeader';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {useSessionStore} from '../../auth/application/sessionStore';
 import {useHydrationLogs} from './useHydrationLogs';
@@ -11,6 +13,7 @@ const dateFormatter = new Intl.DateTimeFormat('pt-BR', {weekday: 'short', day: '
 const timeFormatter = new Intl.DateTimeFormat('pt-BR', {hour: '2-digit', minute: '2-digit'});
 
 export function HydrationHistoryScreen(): React.JSX.Element {
+  const isFocused = useIsFocused();
   const timezone = useSessionStore(state => state.user?.profile.timezone ?? 'America/Sao_Paulo');
   const dates = useMemo(() => recentDates(timezone), [timezone]);
   const [selectedDate, setSelectedDate] = useState(() => dates[0]?.value ?? formatDate(new Date(), timezone));
@@ -28,19 +31,19 @@ export function HydrationHistoryScreen(): React.JSX.Element {
         style={styles.background}
       />
       <View pointerEvents="none" style={styles.backgroundOverlay} />
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.content}
           refreshControl={<RefreshControl refreshing={query.isFetching} onRefresh={refresh} tintColor={challengeTheme.colors.cyan} />}
           showsVerticalScrollIndicator={false}>
-          <View style={styles.hero}>
-            <View style={styles.iconOrb}><AqualinoIcon name="history" size={38} color={challengeTheme.colors.cyanStrong} /></View>
-            <Text accessibilityRole="header" style={styles.title}>Histórico</Text>
-            <Text style={styles.subtitle}>Acompanhe cada gota dos últimos sete dias.</Text>
-          </View>
+          <TabScreenHeader
+            title="Histórico"
+            subtitle="Acompanhe cada gota dos últimos sete dias."
+            icon={<AqualinoIcon name="history" size={34} color={challengeTheme.colors.cyanStrong} />}
+          />
 
-          <HydrationWaterGauge totalMl={total} />
+          {isFocused ? <HydrationWaterGauge totalMl={total} /> : null}
 
           <View style={styles.daySelector} accessibilityRole="tablist">
             {dates.map(date => {
@@ -137,10 +140,6 @@ const styles = StyleSheet.create({
   safeArea: {flex: 1},
   scroll: {flex: 1},
   content: {paddingHorizontal: 18, paddingVertical: 26, gap: 20},
-  hero: {alignItems: 'center', gap: 7},
-  iconOrb: {width: 70, height: 70, borderRadius: 35, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(11, 225, 236, 0.14)', borderWidth: 1, borderColor: 'rgba(51, 243, 250, 0.56)'},
-  title: {fontSize: 29, lineHeight: 36, fontWeight: '900', color: challengeTheme.colors.text},
-  subtitle: {fontSize: 15, lineHeight: 21, color: challengeTheme.colors.muted},
   daySelector: {flexDirection: 'row', justifyContent: 'space-between', gap: 5},
   day: {width: 42, height: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: challengeTheme.colors.panelSoft, borderWidth: 1, borderColor: challengeTheme.colors.border},
   daySelected: {backgroundColor: challengeTheme.colors.cyanStrong, borderColor: challengeTheme.colors.cyanStrong},

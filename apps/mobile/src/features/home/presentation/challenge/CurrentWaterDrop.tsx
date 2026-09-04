@@ -41,7 +41,7 @@ export function CurrentWaterDrop({scale}: Props): React.JSX.Element {
   }));
 
   return (
-    <Animated.View style={[styles.glow, animatedStyle]}>
+    <Animated.View testID="current-water-drop" style={[styles.glow, animatedStyle]}>
       <ChallengeAsset name="currentDrop" style={size} />
     </Animated.View>
   );

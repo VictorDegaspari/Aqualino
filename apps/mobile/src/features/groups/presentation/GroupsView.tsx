@@ -3,6 +3,7 @@ import {Image, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {getAvatarSource} from '../../../shared/avatars/avatarOptions';
 import {AqualinoIcon, type AqualinoIconName} from '../../../shared/components/AqualinoIcon';
+import {TabScreenHeader} from '../../../shared/components/TabScreenHeader';
 import {haptics} from '../../../shared/device/haptics';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 
@@ -31,13 +32,11 @@ export function GroupsView({displayName, avatarId, onCreateGroup, onJoinGroup}: 
 
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.hero}>
-            <View style={styles.heroIcon}>
-              <AqualinoIcon name="group" size={38} color={challengeTheme.colors.cyanStrong} />
-            </View>
-            <Text accessibilityRole="header" style={styles.title}>Grupos</Text>
-            <Text style={styles.subtitle}>Crie uma maré de constância com quem você gosta.</Text>
-          </View>
+          <TabScreenHeader
+            title="Grupos"
+            subtitle="Crie uma maré de constância com quem você gosta."
+            icon={<AqualinoIcon name="group" size={34} color={challengeTheme.colors.cyanStrong} />}
+          />
 
           <View style={styles.invitationCard}>
             <View style={styles.statusPill}>
@@ -143,14 +142,6 @@ const styles = StyleSheet.create({
   backgroundOverlay: {position: 'absolute', width: '100%', height: '100%', backgroundColor: 'rgba(0, 13, 32, 0.64)'},
   safeArea: {flex: 1},
   content: {paddingHorizontal: 20, paddingTop: 18, paddingBottom: 30, gap: 18},
-  hero: {alignItems: 'center', gap: 7, paddingBottom: 3},
-  heroIcon: {
-    width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(11, 225, 236, 0.14)', borderWidth: 1, borderColor: 'rgba(51, 243, 250, 0.54)',
-    shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.4, shadowRadius: 15, shadowOffset: {width: 0, height: 2}, elevation: 8,
-  },
-  title: {fontSize: 30, lineHeight: 37, fontWeight: '900', color: challengeTheme.colors.text},
-  subtitle: {maxWidth: 300, textAlign: 'center', fontSize: 15, lineHeight: 21, color: challengeTheme.colors.muted},
   invitationCard: {
     alignItems: 'center', padding: 20, borderRadius: challengeTheme.radius.panel,
     borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panel,
