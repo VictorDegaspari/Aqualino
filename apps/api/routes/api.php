@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Gamification\Http\Controllers\GamificationController;
+use App\Modules\Group\Http\Controllers\GroupController;
 use App\Modules\Hydration\Http\Controllers\HydrationController;
 use App\Modules\Hydration\Http\Controllers\HydrationGoalController;
 use App\Modules\Identity\Http\Controllers\AuthController;
@@ -27,6 +28,15 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/me', [MeController::class, 'show']);
         Route::patch('/me/profile', [MeController::class, 'update']);
         Route::delete('/me', [MeController::class, 'destroy']);
+
+        Route::get('/groups/current', [GroupController::class, 'show']);
+        Route::prefix('groups')->middleware('throttle:20,1')->group(function (): void {
+            Route::post('/', [GroupController::class, 'store']);
+            Route::post('/invites/preview', [GroupController::class, 'preview']);
+            Route::post('/invites/accept', [GroupController::class, 'accept'])->name('groups.accept');
+            Route::post('/current/invite', [GroupController::class, 'renewInvite']);
+            Route::delete('/current/membership', [GroupController::class, 'leave']);
+        });
 
         Route::get('/hydration/today', [HydrationController::class, 'today']);
         Route::get('/hydration/logs', [HydrationController::class, 'index']);

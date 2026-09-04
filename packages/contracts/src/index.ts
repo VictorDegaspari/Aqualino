@@ -171,6 +171,36 @@ export interface PotionActionResult {
   idempotent_replay: boolean;
 }
 
+export interface GroupMember {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  role: 'owner' | 'member';
+}
+
+export interface GroupInvite {
+  code: string;
+  expires_at: string;
+}
+
+export interface PrivateGroup {
+  id: string;
+  name: string;
+  timezone: string;
+  owner_id: string;
+  max_members: number;
+  members: GroupMember[];
+  invite: GroupInvite | null;
+}
+
+export interface GroupInvitePreview {
+  name: string;
+  timezone: string;
+  member_count: number;
+  max_members: number;
+  expires_at: string;
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Group\Domain\GroupException;
 use App\Modules\Inventory\Domain\PotionUseException;
 use App\Shared\Http\ApiResponse;
 use App\Shared\Http\Middleware\AssignRequestId;
@@ -43,6 +44,12 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $exceptions->render(fn (PotionUseException $exception, Request $request) => ApiResponse::error(
+            $request,
+            $exception->errorCode,
+            $exception->getMessage(),
+            $exception->status,
+        ));
+        $exceptions->render(fn (GroupException $exception, Request $request) => ApiResponse::error(
             $request,
             $exception->errorCode,
             $exception->getMessage(),

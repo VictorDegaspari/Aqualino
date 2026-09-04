@@ -1,20 +1,45 @@
-import React from 'react';
-import {Image, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import React, {useState} from 'react';
+import type {GroupInvitePreview, PrivateGroup} from '@aqualino/contracts';
+import {ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {getAvatarSource} from '../../../shared/avatars/avatarOptions';
 import {AqualinoIcon, type AqualinoIconName} from '../../../shared/components/AqualinoIcon';
 import {TabScreenHeader} from '../../../shared/components/TabScreenHeader';
 import {haptics} from '../../../shared/device/haptics';
+import type {AppLocale} from '../../../shared/i18n/appLocale';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
+import {GroupButton} from './GroupButton';
+import {GroupForm} from './GroupForm';
+import {GroupTeam} from './GroupTeam';
+import {groupsCopy} from './groupsCopy';
 
 interface Props {
   displayName: string;
   avatarId?: string | null;
-  onCreateGroup: () => void;
-  onJoinGroup: () => void;
+  userId?: string;
+  locale?: AppLocale;
+  group?: PrivateGroup | null;
+  loading?: boolean;
+  refreshing?: boolean;
+  busy?: boolean;
+  loadError?: string;
+  error?: string;
+  onRefresh: () => void;
+  onClearError: () => void;
+  onCreateGroup: (name: string) => Promise<boolean>;
+  onPreviewInvite: (code: string) => Promise<GroupInvitePreview | null>;
+  onJoinGroup: (code: string) => Promise<boolean>;
+  onShare: () => void;
+  onRenewInvite: () => void;
+  onLeave: () => void;
 }
 
-export function GroupsView({displayName, avatarId, onCreateGroup, onJoinGroup}: Props): React.JSX.Element {
+export function GroupsView({displayName, avatarId, userId, locale = 'pt-BR', group, loading = false,
+  refreshing = false, busy = false, loadError, error, onRefresh, onClearError, onCreateGroup,
+  onPreviewInvite, onJoinGroup, onShare, onRenewInvite, onLeave}: Props): React.JSX.Element {
+  const copy = groupsCopy[locale];
+  const [form, setForm] = useState<'create' | 'join' | null>(null);
+  const openForm = (mode: 'create' | 'join') => {onClearError(); setForm(mode);};
   const runAction = (action: () => void) => {
     haptics.selection();
     action();
@@ -30,26 +55,38 @@ export function GroupsView({displayName, avatarId, onCreateGroup, onJoinGroup}: 
       />
       <View pointerEvents="none" style={styles.backgroundOverlay} />
 
-      <SafeAreaView edges={['top']} style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <SafeAreaView edges={['top']} style={styles.safeArea} accessibilityElementsHidden={Boolean(form)} importantForAccessibility={form ? 'no-hide-descendants' : 'auto'}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={challengeTheme.colors.cyanStrong} />}>
+
           <TabScreenHeader
-            title="Grupos"
-            subtitle="Crie uma maré de constância com quem você gosta."
+            title={copy.title}
+            subtitle={copy.subtitle}
             icon={<AqualinoIcon name="group" size={34} color={challengeTheme.colors.cyanStrong} />}
           />
 
+          {loadError ? <View style={styles.section}>
+            <Text accessibilityRole="alert" style={styles.error}>{loadError}</Text>
+            <GroupButton label={copy.retry} onPress={onRefresh} busy={refreshing} />
+          </View> : null}
+          {error && !form ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+          {loading && !loadError ? <View style={styles.section}>
+            <ActivityIndicator color={challengeTheme.colors.cyanStrong} />
+            <Text style={styles.cardDescription}>{copy.loading}</Text>
+          </View> : group ? <GroupTeam group={group} userId={userId} copy={copy} locale={locale} busy={busy}
+            onShare={onShare} onRenew={onRenewInvite} onLeave={onLeave} /> : !loadError ? <>
           <View style={styles.invitationCard}>
             <View style={styles.statusPill}>
               <View style={styles.statusDot} />
-              <Text style={styles.statusLabel}>NENHUM GRUPO ATIVO</Text>
+              <Text style={styles.statusLabel}>{copy.empty}</Text>
             </View>
 
-            <Text style={styles.cardTitle}>Sua equipe começa aqui</Text>
+            <Text style={styles.cardTitle}>{copy.emptyTitle}</Text>
             <Text style={styles.cardDescription}>
-              Convide até quatro amigos e acompanhem juntos um desafio privado de sete dias.
+              {copy.emptyDescription}
             </Text>
 
-            <View accessibilityLabel={`${displayName} e quatro vagas disponíveis`} style={styles.membersPreview}>
+            <View accessibilityLabel={copy.openSlots(displayName)} style={styles.membersPreview}>
               <View style={styles.memberPreview}>
                 <View style={styles.avatarRing}>
                   <Image source={getAvatarSource(avatarId)} resizeMethod="resize" resizeMode="cover" style={styles.avatar} />
@@ -61,52 +98,57 @@ export function GroupsView({displayName, avatarId, onCreateGroup, onJoinGroup}: 
                   <View style={styles.openSlot}>
                     <AqualinoIcon name="plus" size={17} color={challengeTheme.colors.cyanStrong} />
                   </View>
-                  <Text style={styles.openSlotLabel}>Vaga</Text>
+                  <Text style={styles.openSlotLabel}>{copy.slot}</Text>
                 </View>
               ))}
             </View>
 
             <Pressable
               accessibilityRole="button"
-              onPress={() => runAction(onCreateGroup)}
+              onPress={() => runAction(() => openForm('create'))}
               style={({pressed}) => [styles.primaryButton, pressed && styles.buttonPressed]}>
               <AqualinoIcon name="plus" size={20} color={challengeTheme.colors.backgroundDeep} />
-              <Text style={styles.primaryButtonLabel}>Criar grupo</Text>
+              <Text style={styles.primaryButtonLabel}>{copy.create}</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              onPress={() => runAction(onJoinGroup)}
+              onPress={() => runAction(() => openForm('join'))}
               style={({pressed}) => [styles.secondaryButton, pressed && styles.buttonPressed]}>
               <AqualinoIcon name="group" size={20} color={challengeTheme.colors.cyanStrong} />
-              <Text style={styles.secondaryButtonLabel}>Entrar com código</Text>
+              <Text style={styles.secondaryButtonLabel}>{copy.join}</Text>
             </Pressable>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Como funciona</Text>
+            <Text style={styles.sectionTitle}>{copy.how}</Text>
             <View style={styles.facts}>
-              <Fact icon="group" value="2–5" label="pessoas" />
-              <Fact icon="history" value="7" label="dias" />
-              <Fact icon="star" value="700" label="pontos" />
+              <Fact icon="group" value="2–5" label={copy.people} />
+              <Fact icon="history" value="7" label={copy.days} />
+              <Fact icon="star" value="700" label={copy.points} />
             </View>
             <View style={styles.steps}>
-              <Step number="1" title="Forme sua equipe" description="Crie um grupo ou aceite um convite privado." />
-              <Step number="2" title="Bebam no próprio ritmo" description="Cada pessoa mantém sua meta diária individual." />
-              <Step number="3" title="Subam no placar" description="Cada dia vale até 100 pontos durante o desafio." last />
+              <Step number="1" title={copy.step1} description={copy.step1Description} />
+              <Step number="2" title={copy.step2} description={copy.step2Description} />
+              <Step number="3" title={copy.step3} description={copy.step3Description} last />
             </View>
           </View>
+
+          </> : null}
 
           <View style={styles.privacyCard}>
             <View style={styles.privacyIcon}>
               <AqualinoIcon name="lock" size={21} color={challengeTheme.colors.cyanStrong} />
             </View>
             <View style={styles.privacyContent}>
-              <Text style={styles.privacyTitle}>Privado por padrão</Text>
-              <Text style={styles.privacyText}>Somente integrantes aceitos podem ver o progresso e o placar do grupo.</Text>
+              <Text style={styles.privacyTitle}>{copy.privacy}</Text>
+              <Text style={styles.privacyText}>{copy.privacyDescription}</Text>
             </View>
           </View>
         </ScrollView>
       </SafeAreaView>
+      {form ? <GroupForm mode={form} copy={copy} busy={busy} error={error}
+        onClose={() => {setForm(null); onClearError();}} onClearError={onClearError}
+        onCreate={onCreateGroup} onPreview={onPreviewInvite} onAccept={onJoinGroup} /> : null}
     </View>
   );
 }
@@ -137,6 +179,7 @@ function Step({number, title, description, last = false}: {number: string; title
 }
 
 const styles = StyleSheet.create({
+  error: {fontSize: 14, lineHeight: 20, color: challengeTheme.colors.danger, marginBottom: 12},
   page: {flex: 1, backgroundColor: challengeTheme.colors.background},
   background: {position: 'absolute', width: '100%', height: '100%', opacity: 0.62},
   backgroundOverlay: {position: 'absolute', width: '100%', height: '100%', backgroundColor: 'rgba(0, 13, 32, 0.64)'},

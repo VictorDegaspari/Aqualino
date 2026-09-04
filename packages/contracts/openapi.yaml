@@ -22,6 +22,8 @@ tags:
     description: Progresso saudável calculado no servidor.
   - name: Inventory
     description: Saldos pessoais de consumíveis controlados pelo servidor.
+  - name: Groups
+    description: Equipes privadas de até cinco integrantes e convites com aceite explícito.
   - name: Widget
     description: Snapshot versionado compartilhado com os widgets nativos.
 security:
@@ -464,6 +466,134 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /v1/groups/current:
+    get:
+      operationId: getCurrentGroup
+      summary: Consulta o grupo da conta autenticada ou null
+      tags: [Groups]
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentGroupEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/groups:
+    post:
+      operationId: createGroup
+      summary: Cria um grupo com o fuso do perfil e o criador como responsável
+      tags: [Groups]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGroupInput'
+      responses:
+        '201':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/groups/invites/preview:
+    post:
+      operationId: previewGroupInvite
+      summary: Confere nome e lotação sem revelar integrantes nem aceitar o convite
+      tags: [Groups]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupInviteInput'
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupInvitePreviewEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/groups/invites/accept:
+    post:
+      operationId: acceptGroupInvite
+      summary: Aceita explicitamente um convite válido com limite transacional de cinco integrantes
+      tags: [Groups]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptGroupInviteInput'
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/groups/current/invite:
+    post:
+      operationId: renewGroupInvite
+      summary: Responsável substitui o código por um convite válido por sete dias
+      tags: [Groups]
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/groups/current/membership:
+    delete:
+      operationId: leaveGroup
+      summary: Sai do grupo e transfere a responsabilidade ao integrante mais antigo ou encerra o grupo vazio
+      tags: [Groups]
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyGroupEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /v1/widget/snapshot:
     get:
       operationId: getWidgetSnapshot
@@ -489,6 +619,12 @@ components:
       scheme: bearer
       bearerFormat: Sanctum token
   responses:
+    Forbidden:
+      description: Ação restrita ao responsável do grupo.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
     BadRequest:
       description: Requisição inválida.
       content:
@@ -526,6 +662,122 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    CreateGroupInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 60
+    GroupInviteInput:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          description: Código normalizado para maiúsculas, sem espaços nas extremidades.
+          pattern: '^[a-zA-Z0-9]{12}$'
+    AcceptGroupInviteInput:
+      allOf:
+        - $ref: '#/components/schemas/GroupInviteInput'
+        - type: object
+          required: [accept]
+          properties:
+            accept:
+              type: boolean
+              const: true
+    GroupMember:
+      type: object
+      required: [user_id, display_name, avatar_url, role]
+      properties:
+        user_id:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: [string, 'null']
+        role:
+          type: string
+          enum: [owner, member]
+    GroupInvite:
+      type: object
+      required: [code, expires_at]
+      properties:
+        code:
+          type: string
+          pattern: '^[A-Z0-9]{12}$'
+        expires_at:
+          type: string
+          format: date-time
+    PrivateGroup:
+      type: object
+      required: [id, name, timezone, owner_id, max_members, members, invite]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        timezone:
+          type: string
+        owner_id:
+          type: string
+        max_members:
+          type: integer
+          const: 5
+        members:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/GroupMember'
+        invite:
+          description: Apenas o responsável recebe o código. Outros integrantes recebem null.
+          oneOf:
+            - $ref: '#/components/schemas/GroupInvite'
+            - type: 'null'
+    GroupEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PrivateGroup'
+    CurrentGroupEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/PrivateGroup'
+            - type: 'null'
+    EmptyGroupEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: 'null'
+    GroupInvitePreviewEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [name, timezone, member_count, max_members, expires_at]
+          properties:
+            name:
+              type: string
+            timezone:
+              type: string
+            member_count:
+              type: integer
+              minimum: 1
+              maximum: 5
+            max_members:
+              type: integer
+              const: 5
+            expires_at:
+              type: string
+              format: date-time
     RegisterInput:
       type: object
       additionalProperties: false

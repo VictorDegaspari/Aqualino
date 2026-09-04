@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Group\Application\GroupService;
 use App\Modules\Hydration\Application\HydrationGoalService;
 use App\Modules\Identity\Http\Requests\UpdateProfileRequest;
 use Illuminate\Http\JsonResponse;
@@ -46,13 +47,14 @@ class MeController extends Controller
         return response()->json(['data' => $profile->fresh()]);
     }
 
-    public function destroy(Request $request): Response
+    public function destroy(Request $request, GroupService $groups): Response
     {
-        DB::transaction(function () use ($request): void {
+        DB::transaction(function () use ($request, $groups): void {
             $user = $request->user();
+            $groups->leave($user);
             $user->tokens()->delete();
             $user->delete();
-        });
+        }, 3);
 
         return response()->noContent();
     }
