@@ -1,13 +1,13 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import type {HydrationHomeData} from '../../hydration/data/hydrationRemoteRepository';
 import {PrimaryButton} from '../../../shared/components/PrimaryButton';
 import {ChallengeBackground} from './challenge/ChallengeBackground';
-import {ChallengeBottomNavigation} from './challenge/ChallengeBottomNavigation';
 import {ChallengeHeader} from './challenge/ChallengeHeader';
 import {ChallengeSceneDecoration} from './challenge/ChallengeSceneDecoration';
 import {ChallengeTimeline} from './challenge/ChallengeTimeline';
+import {type ChallengeMode} from './challenge/ChallengeModeToggle';
 import {DrinkWaterButton} from './challenge/DrinkWaterButton';
 import {GroupLeaderboard} from './challenge/GroupLeaderboard';
 import {challengeTheme} from './challenge/challengeTheme';
@@ -21,15 +21,18 @@ interface Props {
   syncing: boolean;
   pending: number;
   displayName: string;
+  avatarId?: string | null;
   streak: number;
   xp: number;
+  hasActiveGroup?: boolean;
   onRetry: () => void;
   onOpenHydration: () => void;
   onOpenInventory: () => void;
-  onSignOut: () => void;
 }
 
 export function HomeView(props: Props): React.JSX.Element {
+  const [challengeMode, setChallengeMode] = useState<ChallengeMode>('solo');
+
   if (props.loading && !props.data) {
     return (
       <View style={styles.center}>
@@ -62,7 +65,6 @@ export function HomeView(props: Props): React.JSX.Element {
             waterMl={today?.total_ml ?? 0}
             xp={props.xp}
             onOpenInventory={props.onOpenInventory}
-            onSignOut={props.onSignOut}
           />
 
           {props.offline || props.pending > 0 || props.syncing ? (
@@ -77,7 +79,14 @@ export function HomeView(props: Props): React.JSX.Element {
         </View>
 
         {props.data?.week ? (
-          <ChallengeTimeline week={props.data.week} refreshing={props.refreshing} onRefresh={props.onRetry} />
+          <ChallengeTimeline
+            week={props.data.week}
+            mode={challengeMode}
+            groupAvailable={Boolean(props.hasActiveGroup)}
+            refreshing={props.refreshing}
+            onModeChange={setChallengeMode}
+            onRefresh={props.onRetry}
+          />
         ) : <View style={styles.timelineFallback} />}
 
         <View style={styles.fixedActions}>
@@ -87,10 +96,9 @@ export function HomeView(props: Props): React.JSX.Element {
             <Text style={styles.empty}>Sua primeira gota de hoje está a um toque.</Text>
           ) : null}
 
-          <GroupLeaderboard displayName={props.displayName} />
+          {challengeMode === 'group' ? <GroupLeaderboard displayName={props.displayName} avatarId={props.avatarId} /> : null}
         </View>
 
-        <ChallengeBottomNavigation onOpenProfile={props.onOpenInventory} />
       </SafeAreaView>
     </View>
   );
@@ -98,7 +106,7 @@ export function HomeView(props: Props): React.JSX.Element {
 
 const styles = StyleSheet.create({
   page: {flex: 1, backgroundColor: challengeTheme.colors.background},
-  safeArea: {flex: 1},
+  safeArea: {flex: 1, zIndex: 1},
   center: {flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, padding: 24, backgroundColor: challengeTheme.colors.background},
   error: {color: challengeTheme.colors.danger, textAlign: 'center'},
   header: {paddingHorizontal: 16, paddingTop: 7},

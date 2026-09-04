@@ -21,12 +21,14 @@ import {haptics} from '../../../../shared/device/haptics';
 
 interface Props {
   week: HydrationWeek;
+  mode: ChallengeMode;
+  groupAvailable: boolean;
   refreshing?: boolean;
+  onModeChange: (mode: ChallengeMode) => void;
   onRefresh: () => void;
 }
 
-export function ChallengeTimeline({week, refreshing = false, onRefresh}: Props): React.JSX.Element {
-  const [mode, setMode] = useState<ChallengeMode>('group');
+export function ChallengeTimeline({week, mode, groupAvailable, refreshing = false, onModeChange, onRefresh}: Props): React.JSX.Element {
   const [viewportHeight, setViewportHeight] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
   const [selected, setSelected] = useState<{day: HydrationWeekDay; index: number}>();
@@ -59,10 +61,15 @@ export function ChallengeTimeline({week, refreshing = false, onRefresh}: Props):
     haptics.selection();
     setSelected({day, index});
   }, []);
+  const handleContentSizeChange = useCallback((_width: number, height: number) => {
+    const nextHeight = Math.round(height);
+    setContentHeight(previous => previous === nextHeight ? previous : nextHeight);
+  }, []);
+  const closeDetails = useCallback(() => setSelected(undefined), []);
 
   return (
     <View style={styles.section}>
-      <ChallengeModeToggle mode={mode} onChange={setMode} />
+      <ChallengeModeToggle mode={mode} groupAvailable={groupAvailable} onChange={onModeChange} />
       <Text style={styles.range}>
         <Text style={styles.rangeStrong}>{formatShortRange(week.starts_on, week.ends_on)}</Text>
         {'  ·  '}Dia {currentIndex + 1} de 7
@@ -74,7 +81,7 @@ export function ChallengeTimeline({week, refreshing = false, onRefresh}: Props):
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          onContentSizeChange={(_width, height) => setContentHeight(Math.round(height))}
+          onContentSizeChange={handleContentSizeChange}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={challengeTheme.colors.cyan} />}>
           <View style={layout.scene}>
             <ChallengePath scale={scale} />
@@ -88,7 +95,7 @@ export function ChallengeTimeline({week, refreshing = false, onRefresh}: Props):
         <View pointerEvents="none" style={styles.bottomFade} />
       </View>
 
-      <DayDetailsModal day={selected?.day} index={selected?.index ?? 0} onClose={() => setSelected(undefined)} />
+      <DayDetailsModal day={selected?.day} index={selected?.index ?? 0} onClose={closeDetails} />
     </View>
   );
 }

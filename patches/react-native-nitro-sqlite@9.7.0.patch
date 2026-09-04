@@ -1,0 +1,31 @@
+diff --git a/android/build.gradle b/android/build.gradle
+index 63a11239e51e3eb3b5725bb10b583bd663c8b31e..6a5458c7dbf815d4e0cf46b4ffbea2ad55b9c0a9 100644
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -88,7 +88,6 @@ if (NITRO_SQLITE_VEC_ENABLED) {
+ }
+ 
+ apply plugin: "com.android.library"
+-apply plugin: "kotlin-android"
+ 
+ if (isNewArchitectureEnabled()) {
+   apply plugin: "com.facebook.react"
+@@ -160,14 +159,15 @@ android {
+ 
+   sourceSets {
+     main {
+-      java.srcDirs += [
++      kotlin.srcDirs += ["${project.projectDir}/../nitrogen/generated/android/kotlin"]
++      kotlin.srcDirs += [
+         "src/main/kotlin"
+       ]
+ 
+       if (isNewArchitectureEnabled()) {
+-        java.srcDirs += ["src/newarch"]
++        kotlin.srcDirs += ["src/newarch"]
+       } else {
+-        java.srcDirs += ["src/oldarch"]
++        kotlin.srcDirs += ["src/oldarch"]
+       }
+     }
+   }

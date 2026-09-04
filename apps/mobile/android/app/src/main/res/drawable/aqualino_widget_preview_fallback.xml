@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/aqualino_widget_preview_surface" />
+    <item
+        android:width="116dp"
+        android:height="98dp"
+        android:gravity="end|center_vertical"
+        android:right="8dp">
+        <bitmap android:gravity="fill" android:src="@drawable/aqualino_happy_active" />
+    </item>
+    <item
+        android:width="24dp"
+        android:height="24dp"
+        android:gravity="start|top"
+        android:left="16dp"
+        android:top="16dp"
+        android:drawable="@drawable/aqualino_widget_preview_completed" />
+</layer-list>

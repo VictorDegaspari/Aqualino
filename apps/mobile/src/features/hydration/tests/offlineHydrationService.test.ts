@@ -13,12 +13,12 @@ const result: RecordWaterResult = {
     local_date: '2026-09-02', timezone: 'America/Sao_Paulo', total_ml: 300, goal_ml: 2000,
     percentage: 15, goal_achieved: false, log_count: 1,
   },
-  gamification: {xp_awarded: 10, xp_total: 10, level: 1, streak: 0, new_achievements: []},
+  gamification: {xp_awarded: 10, xp_total: 10, level: 1, streak: 1, new_achievements: []},
   mascot: {condition: 'happy', decoration: null, animation: 'idle_happy', static_asset: 'aqualino_happy'},
   widget: {
-    schema_version: 1, generated_at: '2026-09-02T12:00:00Z', user_timezone: 'America/Sao_Paulo',
+    schema_version: 2, generated_at: '2026-09-02T12:00:00Z', user_timezone: 'America/Sao_Paulo',
     last_log_at: '2026-09-02T12:00:00Z', days_since_last_log: 0, last_log_semantic_key: 'today',
-    today_total_ml: 300, daily_goal_ml: 2000, condition: 'happy', decoration: null,
+    current_streak: 1, today_total_ml: 300, daily_goal_ml: 2000, condition: 'happy', decoration: null,
     animation: 'idle_happy', static_asset: 'aqualino_happy',
   },
 };
@@ -45,7 +45,7 @@ test('keeps the same client event id from offline enqueue through retry', async 
   const store = new InMemoryOutboxStore();
   const record = jest.fn().mockResolvedValue(result);
   const remote: HydrationRemoteRepository = {
-    getHome: jest.fn(), record, updateGoal: jest.fn(),
+    getHome: jest.fn(), getLogs: jest.fn(), record, updateGoal: jest.fn(),
   };
   const widget = {write: jest.fn().mockResolvedValue(undefined)};
   const service = new OfflineHydrationService(store, remote, widget);
@@ -68,7 +68,7 @@ test('does not duplicate an event when synchronization is retried', async () => 
     .mockResolvedValueOnce({...result, idempotent_replay: true});
   const service = new OfflineHydrationService(
     store,
-    {getHome: jest.fn(), record, updateGoal: jest.fn()},
+    {getHome: jest.fn(), getLogs: jest.fn(), record, updateGoal: jest.fn()},
     {write: jest.fn().mockResolvedValue(undefined)},
   );
 
@@ -86,10 +86,11 @@ test('does not duplicate an event when synchronization is retried', async () => 
 test('updates the current weekly step while a record waits offline', async () => {
   const store = new InMemoryOutboxStore();
   await store.saveHome(homeData);
+  const widget = {write: jest.fn().mockResolvedValue(undefined)};
   const service = new OfflineHydrationService(
     store,
-    {getHome: jest.fn(), record: jest.fn(), updateGoal: jest.fn()},
-    {write: jest.fn()},
+    {getHome: jest.fn(), getLogs: jest.fn(), record: jest.fn(), updateGoal: jest.fn()},
+    widget,
   );
 
   await service.record(300, 'mobile', false);
@@ -98,4 +99,55 @@ test('updates the current weekly step while a record waits offline', async () =>
   expect(store.home?.week.total_ml).toBe(300);
   expect(store.home?.week.days[2].state).toBe('in_progress');
   expect(store.home?.week.days[2].percentage).toBe(15);
+  expect(store.home?.mascot.current_streak).toBe(1);
+  expect(widget.write).toHaveBeenCalledWith(expect.objectContaining({
+    schema_version: 2,
+    current_streak: 1,
+    today_total_ml: 300,
+  }));
+});
+
+test('refreshes the widget snapshot when Home data is loaded', async () => {
+  const store = new InMemoryOutboxStore();
+  const widget = {write: jest.fn().mockResolvedValue(undefined)};
+  const service = new OfflineHydrationService(
+    store,
+    {getHome: jest.fn().mockResolvedValue(homeData), getLogs: jest.fn(), record: jest.fn(), updateGoal: jest.fn()},
+    widget,
+  );
+
+  await expect(service.cachedOrRemote()).resolves.toEqual({data: homeData, offline: false});
+  expect(widget.write).toHaveBeenCalledWith(homeData.mascot);
+});
+
+test('migrates a legacy cached widget snapshot while offline', async () => {
+  const store = new InMemoryOutboxStore();
+  const legacyMascot = {...homeData.mascot} as unknown as Record<string, unknown>;
+  legacyMascot.schema_version = 1;
+  delete legacyMascot.current_streak;
+  await store.saveHome({
+    ...homeData,
+    mascot: legacyMascot as unknown as HydrationHomeData['mascot'],
+  });
+  const widget = {write: jest.fn().mockResolvedValue(undefined)};
+  const service = new OfflineHydrationService(
+    store,
+    {
+      getHome: jest.fn().mockRejectedValue(new Error('offline')),
+      getLogs: jest.fn(),
+      record: jest.fn(),
+      updateGoal: jest.fn(),
+    },
+    widget,
+  );
+
+  const response = await service.cachedOrRemote();
+
+  expect(response.offline).toBe(true);
+  expect(response.data.mascot.schema_version).toBe(2);
+  expect(response.data.mascot.current_streak).toBe(1);
+  expect(widget.write).toHaveBeenCalledWith(expect.objectContaining({
+    schema_version: 2,
+    current_streak: 1,
+  }));
 });

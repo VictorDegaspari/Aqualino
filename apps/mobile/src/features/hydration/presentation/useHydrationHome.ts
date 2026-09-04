@@ -9,12 +9,24 @@ import {updateHydrationWeek} from '../application/updateHydrationWeek';
 export const hydrationHomeKey = ['hydration', 'home'] as const;
 
 export function useHydrationHome() {
+  const query = useQuery({queryKey: hydrationHomeKey, queryFn: () => hydrationService.cachedOrRemote()});
+  const mutation = useRecordHydration();
+
+  return {query, record: mutation.mutateAsync, isRecording: mutation.isPending};
+}
+
+export function useQuickHydration() {
+  const mutation = useRecordHydration();
+
+  return {record: mutation.mutateAsync, isRecording: mutation.isPending};
+}
+
+function useRecordHydration() {
   const queryClient = useQueryClient();
   const network = useNetInfo();
   const setPending = useSyncStatusStore(state => state.setPending);
-  const query = useQuery({queryKey: hydrationHomeKey, queryFn: () => hydrationService.cachedOrRemote()});
 
-  const mutation = useMutation({
+  return useMutation({
     mutationFn: ({amountMl, source}: {amountMl: number; source: PendingHydration['source']}) =>
       hydrationService.record(amountMl, source, network.isConnected !== false),
     onMutate: async ({amountMl}) => {
@@ -67,6 +79,4 @@ export function useHydrationHome() {
       setPending(await hydrationService.pendingCount());
     },
   });
-
-  return {query, record: mutation.mutateAsync, isRecording: mutation.isPending};
 }

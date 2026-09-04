@@ -5,8 +5,8 @@
     <application
       android:name=".MainApplication"
       android:label="@string/app_name"
-      android:icon="@mipmap/ic_launcher"
-      android:roundIcon="@mipmap/ic_launcher_round"
+      android:icon="@mipmap/ic_launcher_happy"
+      android:roundIcon="@mipmap/ic_launcher_happy"
       android:allowBackup="false"
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="${usesCleartextTraffic}"
@@ -19,18 +19,41 @@
         android:windowSoftInputMode="adjustResize"
         android:exported="true">
         <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-        <intent-filter>
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="aqualino" />
         </intent-filter>
       </activity>
+      <activity-alias
+        android:name=".MainActivityHappy"
+        android:enabled="true"
+        android:exported="true"
+        android:icon="@mipmap/ic_launcher_happy"
+        android:roundIcon="@mipmap/ic_launcher_happy"
+        android:label="@string/app_name"
+        android:targetActivity=".MainActivity">
+        <intent-filter>
+          <action android:name="android.intent.action.MAIN" />
+          <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity-alias>
+      <activity-alias
+        android:name=".MainActivitySad"
+        android:enabled="false"
+        android:exported="true"
+        android:icon="@mipmap/ic_launcher_sad"
+        android:roundIcon="@mipmap/ic_launcher_sad"
+        android:label="@string/app_name"
+        android:targetActivity=".MainActivity">
+        <intent-filter>
+          <action android:name="android.intent.action.MAIN" />
+          <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity-alias>
       <receiver
         android:name=".widget.AqualinoWidgetReceiver"
+        android:label="@string/widget_large_name"
         android:exported="false">
         <intent-filter>
           <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -38,6 +61,17 @@
         <meta-data
           android:name="android.appwidget.provider"
           android:resource="@xml/aqualino_widget_info" />
+      </receiver>
+      <receiver
+        android:name=".widget.AqualinoSmallWidgetReceiver"
+        android:label="@string/widget_small_name"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        </intent-filter>
+        <meta-data
+          android:name="android.appwidget.provider"
+          android:resource="@xml/aqualino_widget_small_info" />
       </receiver>
     </application>
 </manifest>

@@ -1,0 +1,31 @@
+diff --git a/android/build.gradle b/android/build.gradle
+index f324b9a9f3c3b3cf28eaac7fa09471592212bf3f..e771a39679e3e73f2a0a0161bfcb2e59822e138c 100644
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -32,7 +32,6 @@ def isNewArchitectureEnabled() {
+ }
+ 
+ apply plugin: 'com.android.library'
+-apply plugin: 'kotlin-android'
+ 
+ if (isNewArchitectureEnabled()) {
+     apply plugin: "com.facebook.react"
+@@ -94,6 +93,18 @@ android {
+                 ]
+             }
+         }
++        kotlin {
++            if (isNewArchitectureEnabled()) {
++                srcDirs += [
++                    "src/fabric/java",
++                    "${project.buildDir}/generated/source/codegen/java"
++                ]
++            } else {
++                srcDirs += [
++                    "src/paper/java"
++                ]
++            }
++        }
+     }
+ }
+ 

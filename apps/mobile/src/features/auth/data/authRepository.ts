@@ -1,5 +1,6 @@
 import type {User} from '@aqualino/contracts';
 import {apiRequest} from '../../../shared/api/apiClient';
+import type {AppLocale} from '../../../shared/i18n/appLocale';
 
 export interface AuthResult {
   token: string;
@@ -14,6 +15,7 @@ export interface RegistrationInput {
   display_name: string;
   username: string;
   timezone: string;
+  locale: AppLocale;
   terms_accepted: true;
   terms_version: string;
   device_name: string;
@@ -33,14 +35,16 @@ export const authRepository = {
   },
 
   me(): Promise<User> {
-    return apiRequest<User>('/me');
+    return apiRequest<User>('/me', {timeoutMs: 5_000});
   },
 
-  updateProfile(input: {
+  updateProfile(input: Partial<{
     timezone: string;
+    locale: AppLocale;
     favorite_volumes_ml: number[];
     onboarding_completed: boolean;
-  }): Promise<User['profile']> {
+    avatar_url: string;
+  }>): Promise<User['profile']> {
     return apiRequest<User['profile']>('/me/profile', {method: 'PATCH', body: input});
   },
 
@@ -48,4 +52,3 @@ export const authRepository = {
     return apiRequest('/auth/logout', {method: 'POST'}).then(() => undefined);
   },
 };
-

@@ -1,15 +1,17 @@
-import React from 'react';
-import {useState} from 'react';
-import {InventoryView} from './InventoryView';
+import React, {useCallback, useState} from 'react';
 import {useInventory} from './useInventory';
 import {useInventoryActions} from './useInventoryActions';
+import {InventoryView} from './InventoryView';
 
 export function InventoryScreen(): React.JSX.Element {
   const query = useInventory();
   const actions = useInventoryActions();
+  const activateFreezeMutation = actions.activateFreeze.mutateAsync;
+  const releaseFreezeMutation = actions.releaseFreeze.mutateAsync;
+  const reviveStreakMutation = actions.reviveStreak.mutateAsync;
   const [feedback, setFeedback] = useState<{kind: 'success' | 'error'; message: string}>();
 
-  const perform = async (action: () => Promise<unknown>, successMessage: string) => {
+  const perform = useCallback(async (action: () => Promise<unknown>, successMessage: string) => {
     setFeedback(undefined);
 
     try {
@@ -21,7 +23,19 @@ export function InventoryScreen(): React.JSX.Element {
         message: error instanceof Error ? error.message : 'Não foi possível concluir a ação.',
       });
     }
-  };
+  }, []);
+  const activateFreeze = useCallback(() => perform(
+    () => activateFreezeMutation(),
+    'Congelamento ativado para sua sequência de hidratação.',
+  ), [activateFreezeMutation, perform]);
+  const releaseFreeze = useCallback((effectId: string) => perform(
+    () => releaseFreezeMutation(effectId),
+    'Congelamento devolvido ao inventário.',
+  ), [perform, releaseFreezeMutation]);
+  const reviveStreak = useCallback(() => perform(
+    () => reviveStreakMutation(),
+    'Sua quebra mais recente foi recuperada.',
+  ), [perform, reviveStreakMutation]);
 
   return (
     <InventoryView
@@ -32,18 +46,9 @@ export function InventoryScreen(): React.JSX.Element {
       actionFeedback={feedback}
       actionInProgress={actions.actionInProgress}
       onRetry={query.refetch}
-      onActivateFreeze={() => perform(
-        () => actions.activateFreeze.mutateAsync(),
-        'Congelamento ativado para sua sequência de hidratação.',
-      )}
-      onReleaseFreeze={effectId => perform(
-        () => actions.releaseFreeze.mutateAsync(effectId),
-        'Congelamento devolvido ao inventário.',
-      )}
-      onReviveStreak={() => perform(
-        () => actions.reviveStreak.mutateAsync(),
-        'Sua quebra mais recente foi recuperada.',
-      )}
+      onActivateFreeze={activateFreeze}
+      onReleaseFreeze={releaseFreeze}
+      onReviveStreak={reviveStreak}
     />
   );
 }

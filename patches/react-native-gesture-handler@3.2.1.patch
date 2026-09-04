@@ -1,0 +1,117 @@
+diff --git a/lib/module/components/GestureComponents.js b/lib/module/components/GestureComponents.js
+index 6b5cb6f55dbf4aaa2bf75b47ffc6f23e43cbef83..816efd7ce38a27891712edf13bd2af77071ca316 100644
+--- a/lib/module/components/GestureComponents.js
++++ b/lib/module/components/GestureComponents.js
+@@ -1,7 +1,7 @@
+ "use strict";
+ 
+ import * as React from 'react';
+-import { DrawerLayoutAndroid as RNDrawerLayoutAndroid, FlatList as RNFlatList, RefreshControl as RNRefreshControl, ScrollView as RNScrollView, Switch as RNSwitch, TextInput as RNTextInput } from 'react-native';
++import { FlatList as RNFlatList, RefreshControl as RNRefreshControl, ScrollView as RNScrollView, Switch as RNSwitch, TextInput as RNTextInput } from 'react-native';
+ import createNativeWrapper from '../handlers/createNativeWrapper';
+ import { nativeViewProps } from '../handlers/NativeViewGestureHandler';
+ import { toArray } from '../utils';
+@@ -66,12 +66,30 @@ export const LegacySwitch = createNativeWrapper(RNSwitch, {
+ export const LegacyTextInput = createNativeWrapper(RNTextInput);
+ // eslint-disable-next-line @typescript-eslint/no-redeclare
+ 
++let GHDrawerLayoutAndroid;
++function getGHDrawerLayoutAndroid() {
++  if (!GHDrawerLayoutAndroid) {
++    // React Native 0.87 warns as soon as this legacy export is read. Resolve it
++    // only if an application actually renders Gesture Handler's legacy drawer.
++    const {
++      DrawerLayoutAndroid
++    } = require('react-native');
++    GHDrawerLayoutAndroid = createNativeWrapper(DrawerLayoutAndroid, {
++      disallowInterruption: true
++    });
++  }
++  return GHDrawerLayoutAndroid;
++}
++
+ /**
+  * @deprecated use `DrawerLayoutAndroid` instead
+  */
+-export const LegacyDrawerLayoutAndroid = createNativeWrapper(RNDrawerLayoutAndroid, {
+-  disallowInterruption: true
+-});
++export const LegacyDrawerLayoutAndroid = props => {
++  const DrawerLayoutAndroid = getGHDrawerLayoutAndroid();
++  return /*#__PURE__*/_jsx(DrawerLayoutAndroid, {
++    ...props
++  });
++};
+ // eslint-disable-next-line @typescript-eslint/no-redeclare
+ 
+ /**
+diff --git a/src/components/GestureComponents.tsx b/src/components/GestureComponents.tsx
+index c0dde9f4f51eed6631dace80204571f6c6c54d2a..7ad23d3e9590e7f3f586c76a0fc4de0bf8b34b1c 100644
+--- a/src/components/GestureComponents.tsx
++++ b/src/components/GestureComponents.tsx
+@@ -1,6 +1,7 @@
+ import type { PropsWithChildren, ReactElement } from 'react';
+ import * as React from 'react';
+ import type {
++  DrawerLayoutAndroid as RNDrawerLayoutAndroid,
+   DrawerLayoutAndroidProps as RNDrawerLayoutAndroidProps,
+   FlatListProps as RNFlatListProps,
+   ScrollViewProps as RNScrollViewProps,
+@@ -8,7 +9,6 @@ import type {
+   TextInputProps as RNTextInputProps,
+ } from 'react-native';
+ import {
+-  DrawerLayoutAndroid as RNDrawerLayoutAndroid,
+   FlatList as RNFlatList,
+   RefreshControl as RNRefreshControl,
+   ScrollView as RNScrollView,
+@@ -96,15 +96,43 @@ export const LegacyTextInput =
+ // eslint-disable-next-line @typescript-eslint/no-redeclare
+ export type LegacyTextInput = typeof LegacyTextInput & RNTextInput;
+ 
++type LegacyDrawerLayoutAndroidProps = PropsWithChildren<
++  RNDrawerLayoutAndroidProps
++> &
++  NativeViewGestureHandlerProps;
++
++let GHDrawerLayoutAndroid:
++  | React.ComponentType<LegacyDrawerLayoutAndroidProps>
++  | undefined;
++
++function getGHDrawerLayoutAndroid(): React.ComponentType<
++  LegacyDrawerLayoutAndroidProps
++> {
++  if (!GHDrawerLayoutAndroid) {
++    // React Native 0.87 warns as soon as this legacy export is read. Resolve it
++    // only if an application actually renders Gesture Handler's legacy drawer.
++    // eslint-disable-next-line @typescript-eslint/no-var-requires
++    const { DrawerLayoutAndroid } = require('react-native') as typeof import(
++      'react-native'
++    );
++    GHDrawerLayoutAndroid = createNativeWrapper<LegacyDrawerLayoutAndroidProps>(
++      DrawerLayoutAndroid,
++      { disallowInterruption: true }
++    );
++  }
++
++  return GHDrawerLayoutAndroid;
++}
++
+ /**
+  * @deprecated use `DrawerLayoutAndroid` instead
+  */
+-export const LegacyDrawerLayoutAndroid: React.ComponentType<
+-  PropsWithChildren<RNDrawerLayoutAndroidProps> & NativeViewGestureHandlerProps
+-> = createNativeWrapper<PropsWithChildren<RNDrawerLayoutAndroidProps>>(
+-  RNDrawerLayoutAndroid,
+-  { disallowInterruption: true }
+-);
++export const LegacyDrawerLayoutAndroid = (
++  props: LegacyDrawerLayoutAndroidProps
++) => {
++  const DrawerLayoutAndroid = getGHDrawerLayoutAndroid();
++  return <DrawerLayoutAndroid {...props} />;
++};
+ // eslint-disable-next-line @typescript-eslint/no-redeclare
+ export type LegacyDrawerLayoutAndroid = typeof LegacyDrawerLayoutAndroid &
+   RNDrawerLayoutAndroid;

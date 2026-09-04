@@ -41,6 +41,7 @@ export const ChallengeBubbles = memo(function ChallengeBubblesView({viewportHeig
 
 function Bubble({config, index, viewportHeight}: {config: typeof bubbles[number]; index: number; viewportHeight: number}) {
   const progress = useSharedValue(0);
+  const travelDuration = config.duration * 2.25;
   const baseStyle = useMemo<ViewStyle>(() => ({
     left: config.left,
     width: config.size,
@@ -53,7 +54,7 @@ function Bubble({config, index, viewportHeight}: {config: typeof bubbles[number]
     progress.value = config.phase;
     progress.value = withSequence(
       withTiming(1, {
-        duration: config.duration * (1 - config.phase),
+        duration: travelDuration * (1 - config.phase),
         easing: Easing.linear,
         reduceMotion: ReduceMotion.System,
       }),
@@ -61,7 +62,7 @@ function Bubble({config, index, viewportHeight}: {config: typeof bubbles[number]
         withSequence(
           withTiming(0, {duration: 0}),
           withTiming(1, {
-            duration: config.duration,
+            duration: travelDuration,
             easing: Easing.linear,
             reduceMotion: ReduceMotion.System,
           }),
@@ -73,7 +74,7 @@ function Bubble({config, index, viewportHeight}: {config: typeof bubbles[number]
       ),
     );
     return () => cancelAnimation(progress);
-  }, [config.duration, config.phase, progress]);
+  }, [config.phase, progress, travelDuration]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -81,14 +82,14 @@ function Bubble({config, index, viewportHeight}: {config: typeof bubbles[number]
         translateY: interpolate(
           progress.value,
           [0, 1],
-          [viewportHeight + config.size + index * 11, -config.size - 12],
+          [viewportHeight + config.size + index * 11, -config.size - 96],
         ),
       },
       {
         translateX: interpolate(
           progress.value,
-          [0, 0.5, 1],
-          [0, config.sway, 0],
+          [0, 0.22, 0.48, 0.74, 1],
+          [0, config.sway, -config.sway * 0.72, config.sway * 0.48, -config.sway * 0.2],
         ),
       },
     ],

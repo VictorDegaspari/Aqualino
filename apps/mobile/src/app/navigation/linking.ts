@@ -1,4 +1,4 @@
 export const linking = {
   prefixes: ['aqualino://'],
-  config: {screens: {Home: 'home', QuickHydration: 'hydrate/quick'}},
+  config: {screens: {Home: 'home', Groups: 'groups', Reminders: 'reminders', QuickHydration: 'hydrate/quick'}},
 };

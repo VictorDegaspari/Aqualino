@@ -1,34 +1,56 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {AqualinoIcon} from '../../../../shared/components/AqualinoIcon';
+import {haptics} from '../../../../shared/device/haptics';
 import {challengeTheme} from './challengeTheme';
 
 export type ChallengeMode = 'group' | 'solo';
 
 interface Props {
   mode: ChallengeMode;
+  groupAvailable?: boolean;
   onChange: (mode: ChallengeMode) => void;
 }
 
-export function ChallengeModeToggle({mode, onChange}: Props): React.JSX.Element {
+export const ChallengeModeToggle = memo(function ChallengeModeToggleView({mode, groupAvailable = true, onChange}: Props): React.JSX.Element {
   return (
     <View accessibilityRole="tablist" style={styles.container}>
-      <Mode active={mode === 'group'} icon="group" label="Grupo" onPress={() => onChange('group')} />
+      <Mode active={mode === 'group'} icon="group" label="Grupo" locked={!groupAvailable} onPress={() => onChange('group')} />
       <Mode active={mode === 'solo'} icon="person" label="Solo" onPress={() => onChange('solo')} />
     </View>
   );
+});
+
+interface ModeProps {
+  active: boolean;
+  icon: 'group' | 'person';
+  label: string;
+  locked?: boolean;
+  onPress: () => void;
 }
 
-function Mode({active, icon, label, onPress}: {active: boolean; icon: 'group' | 'person'; label: string; onPress: () => void}) {
+function Mode({active, icon, label, locked = false, onPress}: ModeProps) {
+  const handlePress = () => {
+    if (active || locked) {
+      return;
+    }
+
+    haptics.selection();
+    onPress();
+  };
+
   return (
     <Pressable
       accessibilityRole="tab"
       accessibilityLabel={label}
-      accessibilityState={{selected: active}}
-      onPress={onPress}
-      style={({pressed}) => [styles.mode, active && styles.active, pressed && styles.pressed]}>
-      <AqualinoIcon name={icon} size={20} color={active ? '#E9FFFF' : challengeTheme.colors.muted} />
-      <Text style={[styles.label, active && styles.activeLabel]}>{label}</Text>
+      accessibilityHint={locked ? 'Entre em um grupo para desbloquear este modo' : undefined}
+      accessibilityState={{selected: active, disabled: active || locked}}
+      disabled={active || locked}
+      onPress={handlePress}
+      style={({pressed}) => [styles.mode, active && styles.active, locked && styles.locked, pressed && styles.pressed]}>
+      <AqualinoIcon name={icon} size={20} color={active ? '#E9FFFF' : locked ? styles.lockedIcon.color : challengeTheme.colors.muted} />
+      <Text style={[styles.label, active && styles.activeLabel, locked && styles.lockedLabel]}>{label}</Text>
+      {locked ? <AqualinoIcon name="lock" size={12} color={styles.lockedIcon.color} /> : null}
     </Pressable>
   );
 }
@@ -45,7 +67,10 @@ const styles = StyleSheet.create({
     shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.9, shadowRadius: 12,
     shadowOffset: {width: 0, height: 0}, elevation: 7,
   },
+  locked: {opacity: 0.58, backgroundColor: 'rgba(3, 24, 49, 0.72)'},
+  lockedIcon: {color: '#65829B'},
   label: {fontSize: 16, lineHeight: 20, color: challengeTheme.colors.muted, fontWeight: '700'},
   activeLabel: {color: challengeTheme.colors.text, fontWeight: '900'},
+  lockedLabel: {color: '#65829B'},
   pressed: {opacity: 0.75},
 });

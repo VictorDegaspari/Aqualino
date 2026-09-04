@@ -1,0 +1,129 @@
+import React from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  type TextInputProps,
+  View,
+} from 'react-native';
+import {mascotImages} from '../../../assets/mascot/mascotImages';
+import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
+
+interface AuthScaffoldProps {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
+}
+
+export function AuthScaffold({eyebrow, title, subtitle, children}: AuthScaffoldProps): React.JSX.Element {
+  return (
+    <View style={styles.page}>
+      <Image
+        pointerEvents="none"
+        source={require('../../../assets/challenge/static/ocean-background.webp')}
+        resizeMode="cover"
+        style={styles.background}
+      />
+      <View pointerEvents="none" style={styles.backgroundOverlay} />
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.hero}>
+            <View style={styles.mascotOrb}>
+              <Image source={mascotImages.empty} resizeMode="contain" style={styles.mascot} />
+            </View>
+            <Text style={styles.eyebrow}>{eyebrow}</Text>
+            <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
+          </View>
+          <View style={styles.panel}>{children}</View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+interface AuthFieldProps extends TextInputProps {
+  label: string;
+}
+
+export function AuthField({label, ...props}: AuthFieldProps): React.JSX.Element {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput
+        accessibilityLabel={label}
+        placeholderTextColor={challengeTheme.colors.muted}
+        style={styles.input}
+        {...props}
+      />
+    </View>
+  );
+}
+
+interface AuthButtonProps {
+  label: string;
+  onPress: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+}
+
+export function AuthButton({label, onPress, loading, disabled}: AuthButtonProps): React.JSX.Element {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{disabled: Boolean(disabled), busy: Boolean(loading)}}
+      disabled={disabled || loading}
+      onPress={onPress}
+      style={({pressed}) => [styles.button, (disabled || loading) && styles.buttonDisabled, pressed && !loading && styles.buttonPressed]}>
+      {loading ? <ActivityIndicator color={challengeTheme.colors.backgroundDeep} /> : <Text style={styles.buttonLabel}>{label}</Text>}
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  page: {flex: 1, backgroundColor: challengeTheme.colors.background},
+  background: {position: 'absolute', width: '100%', height: '100%', opacity: 0.68},
+  backgroundOverlay: {position: 'absolute', width: '100%', height: '100%', backgroundColor: 'rgba(0, 13, 32, 0.57)'},
+  safeArea: {flex: 1},
+  content: {flexGrow: 1, paddingHorizontal: 20, paddingVertical: 26, gap: 23, justifyContent: 'center'},
+  hero: {alignItems: 'center', gap: 7, paddingHorizontal: 14},
+  mascotOrb: {
+    width: 128, height: 128, marginBottom: 4, alignItems: 'center', justifyContent: 'center', borderRadius: 64,
+    borderWidth: 1, borderColor: 'rgba(99, 246, 255, 0.72)', backgroundColor: 'rgba(3, 97, 138, 0.52)',
+    shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.62, shadowRadius: 21, shadowOffset: {width: 0, height: 4}, elevation: 10,
+  },
+  mascot: {width: 123, height: 112},
+  eyebrow: {fontSize: 10, lineHeight: 14, letterSpacing: 1.15, fontWeight: '900', color: challengeTheme.colors.cyanStrong, textAlign: 'center'},
+  title: {fontSize: 31, lineHeight: 38, fontWeight: '900', color: challengeTheme.colors.text, textAlign: 'center'},
+  subtitle: {maxWidth: 315, fontSize: 15, lineHeight: 21, color: challengeTheme.colors.muted, textAlign: 'center'},
+  panel: {
+    gap: 14, padding: 19, borderRadius: challengeTheme.radius.panel, borderWidth: 1,
+    borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panel,
+    shadowColor: '#000000', shadowOpacity: 0.3, shadowRadius: 18, shadowOffset: {width: 0, height: 10}, elevation: 8,
+  },
+  field: {gap: 7},
+  fieldLabel: {fontSize: 13, lineHeight: 18, fontWeight: '800', color: '#D4F7FF'},
+  input: {
+    height: 54, paddingHorizontal: 15, borderRadius: 16, borderWidth: 1,
+    borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panelSoft,
+    color: challengeTheme.colors.text, fontSize: 16, fontWeight: '700',
+  },
+  button: {
+    height: 56, marginTop: 4, alignItems: 'center', justifyContent: 'center', borderRadius: challengeTheme.radius.pill,
+    backgroundColor: challengeTheme.colors.cyanStrong, shadowColor: challengeTheme.colors.cyan,
+    shadowOpacity: 0.5, shadowRadius: 12, shadowOffset: {width: 0, height: 5}, elevation: 8,
+  },
+  buttonLabel: {fontSize: 17, lineHeight: 22, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
+  buttonDisabled: {opacity: 0.44, shadowOpacity: 0},
+  buttonPressed: {transform: [{scale: 0.985}, {translateY: 2}]},
+});

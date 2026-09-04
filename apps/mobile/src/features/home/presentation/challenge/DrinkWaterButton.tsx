@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {haptics} from '../../../../shared/device/haptics';
 import {ChallengeAsset} from './ChallengeAsset';
@@ -7,7 +7,7 @@ interface Props {
   onPress: () => void;
 }
 
-export function DrinkWaterButton({onPress}: Props): React.JSX.Element {
+export const DrinkWaterButton = memo(function DrinkWaterButtonView({onPress}: Props): React.JSX.Element {
   const handlePress = () => {
     haptics.lightImpact();
     onPress();
@@ -26,7 +26,7 @@ export function DrinkWaterButton({onPress}: Props): React.JSX.Element {
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   button: {

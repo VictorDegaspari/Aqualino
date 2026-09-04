@@ -14,11 +14,11 @@ interface PendingRow {
 interface CacheRow { [key: string]: SQLiteValue; value: string }
 
 export class SQLiteOutboxStore implements OutboxStore {
-  private readonly database: NitroSQLiteConnection = open({name: 'aqualino.sqlite'});
+  private database?: NitroSQLiteConnection;
   private initialization?: Promise<void>;
 
   initialize(): Promise<void> {
-    this.initialization ??= this.database.executeBatchAsync([
+    this.initialization ??= this.getDatabase().executeBatchAsync([
       {query: `CREATE TABLE IF NOT EXISTS hydration_outbox (
         client_event_id TEXT PRIMARY KEY NOT NULL,
         amount_ml INTEGER NOT NULL,
@@ -40,7 +40,7 @@ export class SQLiteOutboxStore implements OutboxStore {
 
   async enqueue(event: PendingHydration): Promise<void> {
     await this.initialize();
-    await this.database.executeAsync(
+    await this.getDatabase().executeAsync(
       `INSERT OR IGNORE INTO hydration_outbox
        (client_event_id, amount_ml, occurred_at, source, attempts, created_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -50,7 +50,7 @@ export class SQLiteOutboxStore implements OutboxStore {
 
   async pending(): Promise<PendingHydration[]> {
     await this.initialize();
-    const {rows} = await this.database.executeAsync<PendingRow>(
+    const {rows} = await this.getDatabase().executeAsync<PendingRow>(
       `SELECT client_event_id, amount_ml, occurred_at, source, attempts
        FROM hydration_outbox ORDER BY created_at ASC LIMIT 100`,
     );
@@ -66,12 +66,12 @@ export class SQLiteOutboxStore implements OutboxStore {
 
   async remove(clientEventId: string): Promise<void> {
     await this.initialize();
-    await this.database.executeAsync('DELETE FROM hydration_outbox WHERE client_event_id = ?', [clientEventId]);
+    await this.getDatabase().executeAsync('DELETE FROM hydration_outbox WHERE client_event_id = ?', [clientEventId]);
   }
 
   async recordFailure(clientEventId: string, message: string): Promise<void> {
     await this.initialize();
-    await this.database.executeAsync(
+    await this.getDatabase().executeAsync(
       'UPDATE hydration_outbox SET attempts = attempts + 1, last_error = ? WHERE client_event_id = ?',
       [message.slice(0, 500), clientEventId],
     );
@@ -79,7 +79,7 @@ export class SQLiteOutboxStore implements OutboxStore {
 
   async saveHome(data: HydrationHomeData): Promise<void> {
     await this.initialize();
-    await this.database.executeAsync(
+    await this.getDatabase().executeAsync(
       `INSERT INTO app_cache (cache_key, value, updated_at) VALUES ('hydration_home', ?, ?)
        ON CONFLICT(cache_key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
       [JSON.stringify(data), new Date().toISOString()],
@@ -88,7 +88,7 @@ export class SQLiteOutboxStore implements OutboxStore {
 
   async loadHome(): Promise<HydrationHomeData | null> {
     await this.initialize();
-    const {rows} = await this.database.executeAsync<CacheRow>(
+    const {rows} = await this.getDatabase().executeAsync<CacheRow>(
       "SELECT value FROM app_cache WHERE cache_key = 'hydration_home' LIMIT 1",
     );
     const value = rows.item(0)?.value;
@@ -101,5 +101,10 @@ export class SQLiteOutboxStore implements OutboxStore {
     return parsed.today && parsed.mascot && parsed.week?.days.length === 7
       ? parsed as HydrationHomeData
       : null;
+  }
+
+  private getDatabase(): NitroSQLiteConnection {
+    this.database ??= open({name: 'aqualino.sqlite'});
+    return this.database;
   }
 }

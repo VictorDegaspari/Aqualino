@@ -552,6 +552,10 @@ components:
         timezone:
           type: string
           example: America/Sao_Paulo
+        locale:
+          type: string
+          enum: [pt-BR, en-US]
+          default: pt-BR
         terms_accepted:
           type: boolean
           const: true
@@ -582,6 +586,9 @@ components:
       type: object
       additionalProperties: false
       properties:
+        avatar_url:
+          type: [string, 'null']
+          enum: [avatar_1, avatar_2, avatar_3, avatar_4, avatar_5, avatar_6, avatar_7, avatar_8, null]
         display_name:
           type: string
           minLength: 2
@@ -662,7 +669,7 @@ components:
           type: string
         avatar_url:
           type: [string, 'null']
-          format: uri
+          enum: [avatar_1, avatar_2, avatar_3, avatar_4, avatar_5, avatar_6, avatar_7, avatar_8, null]
         timezone:
           type: string
         locale:
@@ -1028,11 +1035,11 @@ components:
           $ref: '#/components/schemas/PotionActionResult'
     WidgetSnapshot:
       type: object
-      required: [schema_version, generated_at, user_timezone, last_log_at, days_since_last_log, last_log_semantic_key, today_total_ml, daily_goal_ml, condition, decoration, animation, static_asset]
+      required: [schema_version, generated_at, user_timezone, last_log_at, days_since_last_log, last_log_semantic_key, current_streak, today_total_ml, daily_goal_ml, condition, decoration, animation, static_asset]
       properties:
         schema_version:
           type: integer
-          const: 1
+          const: 2
         generated_at:
           type: string
           format: date-time
@@ -1047,6 +1054,9 @@ components:
         last_log_semantic_key:
           type: string
           enum: [no_history, today, yesterday, days_ago]
+        current_streak:
+          type: integer
+          minimum: 0
         today_total_ml:
           type: integer
           minimum: 0

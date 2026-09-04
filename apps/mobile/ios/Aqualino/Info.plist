@@ -19,6 +19,28 @@
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>Aqualino</string>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconName</key>
+			<string>AppIcon</string>
+		</dict>
+		<key>CFBundleAlternateIcons</key>
+		<dict>
+			<key>AppIconSad</key>
+			<dict>
+				<key>CFBundleIconName</key>
+				<string>AppIconSad</string>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIconSad</string>
+				</array>
+			</dict>
+		</dict>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>O Aqualino usa a câmera para fotografar seu copo ou garrafa antes de registrar a água.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

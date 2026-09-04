@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React, {memo, useMemo} from 'react';
 import {
   StyleSheet,
   useWindowDimensions,
@@ -17,7 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import {ChallengeAsset, type ChallengeAssetName} from './ChallengeAsset';
 
-export function ChallengeSceneDecoration(): React.JSX.Element {
+export const ChallengeSceneDecoration = memo(function ChallengeSceneDecorationView(): React.JSX.Element {
   const {height} = useWindowDimensions();
   const reduceMotion = useReducedMotion();
   const rotation = useAnimatedSensor(SensorType.ROTATION, {
@@ -28,16 +28,16 @@ export function ChallengeSceneDecoration(): React.JSX.Element {
 
   return (
     <View pointerEvents="none" style={styles.scene}>
-      <ParallaxLayer asset="coralLeftBack" containerStyle={styles.leftBack} depth={0.36} imageStyle={imageStyles.strip} reduceMotion={reduceMotion} sensor={rotation.sensor} />
-      <ParallaxLayer asset="coralRightBack" containerStyle={styles.rightBack} depth={0.32} imageStyle={imageStyles.strip} reduceMotion={reduceMotion} sensor={rotation.sensor} />
+      <ParallaxLayer asset="coralLeftBack" containerStyle={[styles.leftBack, styles.coralBack]} depth={0.36} imageStyle={imageStyles.coral} reduceMotion={reduceMotion} sensor={rotation.sensor} />
+      <ParallaxLayer asset="coralRightBack" containerStyle={[styles.rightBack, styles.coralBack]} depth={0.32} imageStyle={imageStyles.coral} reduceMotion={reduceMotion} sensor={rotation.sensor} />
       <ParallaxLayer asset="clownfish" containerStyle={styles.fish} depth={0.5} imageStyle={imageStyles.fish} reduceMotion={reduceMotion} sensor={rotation.sensor} />
-      <ParallaxLayer asset="coralLeftMid" containerStyle={styles.leftMid} depth={0.78} imageStyle={imageStyles.strip} reduceMotion={reduceMotion} sensor={rotation.sensor} />
-      <ParallaxLayer asset="coralRightMid" containerStyle={styles.rightMid} depth={0.72} imageStyle={imageStyles.strip} reduceMotion={reduceMotion} sensor={rotation.sensor} />
-      <ParallaxLayer asset="coralLeftFront" containerStyle={styles.leftFront} depth={1.18} imageStyle={imageStyles.strip} reduceMotion={reduceMotion} sensor={rotation.sensor} />
-      <ParallaxLayer asset="coralRightFront" containerStyle={styles.rightFront} depth={1.12} imageStyle={imageStyles.strip} reduceMotion={reduceMotion} sensor={rotation.sensor} />
+      <ParallaxLayer asset="coralLeftMid" containerStyle={[styles.leftMid, styles.coralMid]} depth={0.78} imageStyle={imageStyles.coral} reduceMotion={reduceMotion} sensor={rotation.sensor} />
+      <ParallaxLayer asset="coralRightMid" containerStyle={[styles.rightMid, styles.coralMid]} depth={0.72} imageStyle={imageStyles.coral} reduceMotion={reduceMotion} sensor={rotation.sensor} />
+      <ParallaxLayer asset="coralLeftFront" containerStyle={[styles.leftFront, styles.coralFront]} depth={1.18} imageStyle={imageStyles.coral} reduceMotion={reduceMotion} sensor={rotation.sensor} />
+      <ParallaxLayer asset="coralRightFront" containerStyle={[styles.rightFront, styles.coralFront]} depth={1.12} imageStyle={imageStyles.coral} reduceMotion={reduceMotion} sensor={rotation.sensor} />
     </View>
   );
-}
+});
 
 interface ParallaxLayerProps {
   asset: ChallengeAssetName;
@@ -66,17 +66,17 @@ function ParallaxLayer({asset, containerStyle, depth, imageStyle, reduceMotion, 
 
   return (
     <Animated.View style={[containerStyle, animatedStyle]}>
-      <ChallengeAsset name={asset} resizeMode="stretch" style={imageStyle} />
+      <ChallengeAsset name={asset} resizeMode="contain" style={imageStyle} />
     </Animated.View>
   );
 }
 
-function createImageStyles(screenHeight: number): {strip: ImageStyle; fish: ImageStyle} {
+function createImageStyles(screenHeight: number): {coral: ImageStyle; fish: ImageStyle} {
   const decorationTop = Math.max(150, Math.min(190, screenHeight * 0.215));
   const decorationHeight = Math.max(560, screenHeight - decorationTop + 90);
 
   return {
-    strip: {width: 145, height: decorationHeight},
+    coral: {aspectRatio: 724 / 2173, height: decorationHeight},
     fish: {width: 74, height: 76},
   };
 }
@@ -94,5 +94,8 @@ const styles = StyleSheet.create({
   rightBack: {position: 'absolute', right: -56, top: '21.5%'},
   rightMid: {position: 'absolute', right: -30, top: '21.5%'},
   rightFront: {position: 'absolute', right: -75, top: '21.5%'},
+  coralBack: {opacity: 0.78},
+  coralMid: {opacity: 0.48},
+  coralFront: {opacity: 0.74},
   fish: {position: 'absolute', left: 2, top: '19%'},
 });

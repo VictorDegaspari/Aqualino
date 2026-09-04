@@ -1,19 +1,21 @@
 import React, {useState} from 'react';
-import {StyleSheet, Switch, Text, View} from 'react-native';
-import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {tokens} from '@aqualino/design-tokens';
-import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
-import {FormField} from '../../../shared/components/FormField';
-import {PrimaryButton} from '../../../shared/components/PrimaryButton';
-import {Screen} from '../../../shared/components/Screen';
+import {Pressable, StyleSheet, Switch, Text, View} from 'react-native';
 import {AppError} from '../../../shared/errors/AppError';
+import {appCopy} from '../../../shared/i18n/appLocale';
+import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
+import {useOnboardingPreferencesStore} from '../../onboarding/application/onboardingPreferencesStore';
 import {useSessionStore} from '../application/sessionStore';
 import {authRepository} from '../data/authRepository';
+import {AuthButton, AuthField} from './AuthScaffold';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
+interface RegisterFormProps {
+  onAuthenticated?: () => void;
+  onLogin?: () => void;
+}
 
-export function RegisterScreen(_: Props): React.JSX.Element {
+export function RegisterForm({onAuthenticated, onLogin}: RegisterFormProps): React.JSX.Element {
   const authenticate = useSessionStore(state => state.authenticate);
+  const locale = useOnboardingPreferencesStore(state => state.locale);
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -21,6 +23,7 @@ export function RegisterScreen(_: Props): React.JSX.Element {
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
+  const copy = appCopy[locale].auth;
 
   const submit = async () => {
     setLoading(true);
@@ -33,44 +36,76 @@ export function RegisterScreen(_: Props): React.JSX.Element {
         display_name: displayName,
         username,
         timezone: 'America/Sao_Paulo',
+        locale,
         terms_accepted: true,
         terms_version: '2026-09-02',
         device_name: 'Aqualino Mobile',
       });
       await authenticate(result);
+      onAuthenticated?.();
     } catch (cause) {
-      setError(cause instanceof AppError ? cause.message : 'Não foi possível criar a conta.');
+      setError(cause instanceof AppError ? cause.message : copy.registerError);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Screen>
-      <Text accessibilityRole="header" style={styles.title}>Vamos começar</Text>
-      <Text style={styles.subtitle}>Leva menos de um minuto.</Text>
-      <FormField label="Como quer ser chamado?" value={displayName} onChangeText={setDisplayName} />
-      <FormField label="Nome de usuário" value={username} onChangeText={setUsername}
-        autoCapitalize="none" placeholder="ana_azul" />
-      <FormField label="E-mail" value={email} onChangeText={setEmail} autoCapitalize="none"
-        keyboardType="email-address" />
-      <FormField label="Senha" value={password} onChangeText={setPassword} secureTextEntry
-        placeholder="8+ caracteres, letras e números" />
+    <>
+      <AuthField label={copy.displayName} value={displayName} onChangeText={setDisplayName} />
+      <AuthField
+        label={copy.username}
+        value={username}
+        onChangeText={setUsername}
+        autoCapitalize="none"
+        placeholder={copy.usernamePlaceholder}
+      />
+      <AuthField
+        label={copy.email}
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+      />
+      <AuthField
+        label={copy.password}
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        placeholder={copy.passwordPlaceholder}
+      />
+
       <View style={styles.terms}>
-        <Switch accessibilityLabel="Aceitar termos e política de privacidade" value={terms} onValueChange={setTerms} />
-        <Text style={styles.termsText}>Li e aceito os Termos e a Política de Privacidade.</Text>
+        <Switch
+          accessibilityLabel={copy.terms}
+          value={terms}
+          onValueChange={setTerms}
+          trackColor={{false: challengeTheme.colors.border, true: challengeTheme.colors.cyanStrong}}
+          thumbColor={terms ? challengeTheme.colors.backgroundDeep : '#D6F6FF'}
+        />
+        <Text style={styles.termsText}>{copy.terms}</Text>
       </View>
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-      <PrimaryButton label="Criar minha conta" onPress={submit} loading={loading}
-        disabled={!displayName || !username || !email || password.length < 8 || !terms} />
-    </Screen>
+      <AuthButton
+        label={copy.createAccount}
+        onPress={submit}
+        loading={loading}
+        disabled={!displayName || !username || !email || password.length < 8 || !terms}
+      />
+      {onLogin ? (
+        <Pressable accessibilityRole="button" onPress={onLogin} style={({pressed}) => [styles.linkButton, pressed && styles.linkPressed]}>
+          <Text style={styles.link}>{copy.signIn}</Text>
+        </Pressable>
+      ) : null}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  title: {fontSize: tokens.fontSize.xl, fontWeight: '800', color: tokens.color.text},
-  subtitle: {fontSize: tokens.fontSize.md, color: tokens.color.textMuted},
-  terms: {flexDirection: 'row', gap: tokens.spacing.sm, alignItems: 'center'},
-  termsText: {flex: 1, color: tokens.color.text, lineHeight: 22},
-  error: {color: tokens.color.danger},
+  terms: {flexDirection: 'row', gap: 8, alignItems: 'center'},
+  termsText: {flex: 1, fontSize: 12, lineHeight: 17, color: challengeTheme.colors.muted},
+  error: {color: challengeTheme.colors.danger, textAlign: 'center', fontWeight: '700'},
+  linkButton: {minHeight: 45, alignItems: 'center', justifyContent: 'center'},
+  link: {fontSize: 14, lineHeight: 19, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
+  linkPressed: {opacity: 0.75},
 });

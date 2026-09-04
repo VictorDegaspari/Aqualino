@@ -1,19 +1,19 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {Image, StyleSheet, Text, View, type TextStyle, type ViewStyle} from 'react-native';
+import {getAvatarSource} from '../../../../shared/avatars/avatarOptions';
 import {AqualinoIcon} from '../../../../shared/components/AqualinoIcon';
 import {ChallengeAsset, type ChallengeAssetName} from './ChallengeAsset';
 import {challengeTheme} from './challengeTheme';
-
-const currentAvatar = require('../../../../assets/avatars/avatar_1.png');
 
 interface Props {
   position: number;
   active?: boolean;
   medal?: ChallengeAssetName;
   barColor: string;
+  avatarId?: string | null;
 }
 
-export function LeaderboardPlayer({position, active = false, medal, barColor}: Props): React.JSX.Element {
+export const LeaderboardPlayer = memo(function LeaderboardPlayerView({position, active = false, medal, barColor, avatarId}: Props): React.JSX.Element {
   const progressStyle: ViewStyle = {backgroundColor: barColor, width: active ? '78%' : position <= 3 ? '58%' : '34%'};
   const rankLabelStyle: TextStyle = {color: barColor};
 
@@ -31,7 +31,7 @@ export function LeaderboardPlayer({position, active = false, medal, barColor}: P
       </View>
       <View style={[styles.avatarRing, active && styles.activeRing]}>
         {active
-          ? <Image source={currentAvatar} resizeMode="cover" style={styles.avatar} />
+          ? <Image source={getAvatarSource(avatarId)} resizeMethod="resize" resizeMode="cover" style={styles.avatar} />
           : <AqualinoIcon name="plus" size={14} color="#E6F8FF" />}
       </View>
       <View style={styles.track}>
@@ -39,7 +39,7 @@ export function LeaderboardPlayer({position, active = false, medal, barColor}: P
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   player: {flex: 1, minWidth: 0, alignItems: 'center'},

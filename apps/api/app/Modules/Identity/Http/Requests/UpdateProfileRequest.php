@@ -24,6 +24,10 @@ class UpdateProfileRequest extends FormRequest
     {
         return [
             'display_name' => ['sometimes', 'string', 'min:2', 'max:80'],
+            'avatar_url' => ['sometimes', 'nullable', 'string', Rule::in([
+                'avatar_1', 'avatar_2', 'avatar_3', 'avatar_4',
+                'avatar_5', 'avatar_6', 'avatar_7', 'avatar_8',
+            ])],
             'username' => [
                 'sometimes',
                 'string',

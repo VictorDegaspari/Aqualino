@@ -1,0 +1,26 @@
+diff --git a/Lists/VirtualizeUtils.js b/Lists/VirtualizeUtils.js
+index 2264507c3a24bd6bcb3b2ef73d85072048a62aaa..634d19bc12cc3fa1e3a4e24e20a0907619e252d3 100644
+--- a/Lists/VirtualizeUtils.js
++++ b/Lists/VirtualizeUtils.js
+@@ -13,7 +13,7 @@
+ import type ListMetricsAggregator from './ListMetricsAggregator';
+ import type {CellMetricProps} from './ListMetricsAggregator';
+ 
+-import * as ReactNativeFeatureFlags from 'react-native/src/private/featureflags/ReactNativeFeatureFlags';
++import * as ReactNativeFeatureFlags from '../../../react-native/src/private/featureflags/ReactNativeFeatureFlags';
+ 
+ /**
+  * Used to find the indices of the frames that overlap the given offsets. Useful for finding the
+diff --git a/Lists/VirtualizedList.js b/Lists/VirtualizedList.js
+index 298331a0b8397886e7964804dd1bb764411f5f0b..1f03571a61b3f1784af26d1ea11f28252dd76666 100644
+--- a/Lists/VirtualizedList.js
++++ b/Lists/VirtualizedList.js
+@@ -64,7 +64,7 @@ import {
+   View,
+   findNodeHandle,
+ } from 'react-native';
+-import * as ReactNativeFeatureFlags from 'react-native/src/private/featureflags/ReactNativeFeatureFlags';
++import * as ReactNativeFeatureFlags from '../../../react-native/src/private/featureflags/ReactNativeFeatureFlags';
+ 
+ export type {ListRenderItemInfo, ListRenderItem, Separators};
+ 

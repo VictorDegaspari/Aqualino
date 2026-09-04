@@ -39,6 +39,8 @@ class HydrationTest extends TestCase
             ->assertJsonPath('data.today.total_ml', 300)
             ->assertJsonPath('data.gamification.xp_awarded', 10)
             ->assertJsonPath('data.gamification.streak', 1)
+            ->assertJsonPath('data.widget.schema_version', 2)
+            ->assertJsonPath('data.widget.current_streak', 1)
             ->assertJsonPath('data.mascot.condition', 'happy')
             ->assertJsonPath('data.idempotent_replay', false);
 

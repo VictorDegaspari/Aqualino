@@ -2,3 +2,12 @@ packages:
   - apps/mobile
   - packages/*
 
+patchedDependencies:
+  '@gorhom/bottom-sheet@5.2.14': patches/@gorhom__bottom-sheet@5.2.14.patch
+  '@react-native/virtualized-lists@0.87.0': patches/@react-native__virtualized-lists@0.87.0.patch
+  react-native-gesture-handler@3.2.1: patches/react-native-gesture-handler@3.2.1.patch
+  react-native-keychain@10.0.0: patches/react-native-keychain@10.0.0.patch
+  react-native-mmkv@4.3.2: patches/react-native-mmkv@4.3.2.patch
+  react-native-nitro-modules@0.37.1: patches/react-native-nitro-modules@0.37.1.patch
+  react-native-nitro-sqlite@9.7.0: patches/react-native-nitro-sqlite@9.7.0.patch
+  react-native-safe-area-context@5.8.1: patches/react-native-safe-area-context@5.8.1.patch

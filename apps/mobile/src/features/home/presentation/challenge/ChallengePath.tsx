@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {StyleSheet} from 'react-native';
 import Svg, {Defs, LinearGradient, Path, Stop} from 'react-native-svg';
 import {dayNodes, timelineLayout} from './challengeTheme';
@@ -17,7 +17,7 @@ const timelinePath = dayNodes.reduce((path, node, index) => {
   return `${path} C ${previous.x} ${previous.y + controlDistance}, ${node.x} ${node.y - controlDistance}, ${node.x} ${node.y}`;
 }, '');
 
-export function ChallengePath({scale}: Props): React.JSX.Element {
+export const ChallengePath = memo(function ChallengePathView({scale}: Props): React.JSX.Element {
   return (
     <Svg
       pointerEvents="none"
@@ -58,7 +58,7 @@ export function ChallengePath({scale}: Props): React.JSX.Element {
       />
     </Svg>
   );
-}
+});
 
 const styles = StyleSheet.create({
   path: {position: 'absolute', left: 0, top: 0},

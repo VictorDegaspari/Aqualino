@@ -1,9 +1,8 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {Image, StyleSheet, Text, View} from 'react-native';
 import type {MascotCondition} from '@aqualino/contracts';
 import {tokens} from '@aqualino/design-tokens';
-
-const mascotImage = require('../../../assets/mascot/static/aqualino_happy.png');
+import {mascotImages} from '../../../assets/mascot/mascotImages';
 
 const labels: Record<MascotCondition, string> = {
   empty: 'Aqualino está pronto para começar',
@@ -18,16 +17,16 @@ interface Props {
   compact?: boolean;
 }
 
-export function AqualinoMascot({condition, compact = false}: Props): React.JSX.Element {
+export const AqualinoMascot = memo(function AqualinoMascotView({condition, compact = false}: Props): React.JSX.Element {
   return (
     <View style={[styles.container, compact && styles.compact]} accessibilityLabel={labels[condition]}>
       <View style={[styles.glow, compact && styles.glowCompact]}>
-        <Image source={mascotImage} resizeMode="contain" style={[styles.mascot, compact && styles.mascotCompact]} />
+        <Image source={mascotImages[condition]} resizeMode="contain" style={[styles.mascot, compact && styles.mascotCompact]} />
       </View>
       {!compact ? <Text style={styles.label}>{labels[condition]}</Text> : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {alignItems: 'center', gap: tokens.spacing.sm},

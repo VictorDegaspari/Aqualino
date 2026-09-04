@@ -1,5 +1,5 @@
 import type {MascotCondition} from '@aqualino/contracts';
-import React from 'react';
+import React, {memo} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {AqualinoIcon, type AqualinoIconName} from '../../../../shared/components/AqualinoIcon';
 import {AqualinoMascot} from '../AqualinoMascot';
@@ -11,10 +11,9 @@ interface Props {
   waterMl: number;
   xp: number;
   onOpenInventory: () => void;
-  onSignOut: () => void;
 }
 
-export function ChallengeHeader({condition, streak, waterMl, xp, onOpenInventory, onSignOut}: Props): React.JSX.Element {
+export const ChallengeHeader = memo(function ChallengeHeaderView({condition, streak, waterMl, xp, onOpenInventory}: Props): React.JSX.Element {
   return (
     <>
       <View style={styles.topRow}>
@@ -34,19 +33,9 @@ export function ChallengeHeader({condition, streak, waterMl, xp, onOpenInventory
           </Pressable>
         </View>
       </View>
-      <View style={styles.titleRow}>
-        <Text accessibilityRole="header" style={styles.title}>Desafio atual</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Sair da conta"
-          onPress={onSignOut}
-          style={({pressed}) => [styles.exit, pressed && styles.pressed]}>
-          <AqualinoIcon name="logout" size={17} color={challengeTheme.colors.muted} />
-        </Pressable>
-      </View>
     </>
   );
-}
+});
 
 function Stat({icon, label}: {icon: AqualinoIconName; label: string}) {
   return (
@@ -70,15 +59,5 @@ const styles = StyleSheet.create({
   stat: {flex: 1, minWidth: 0, height: '100%', alignItems: 'center', justifyContent: 'center', gap: 1},
   statLabel: {fontSize: 11, lineHeight: 14, fontWeight: '900', color: challengeTheme.colors.text},
   divider: {width: 1, height: 31, backgroundColor: '#103A60'},
-  titleRow: {height: 45, marginTop: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
-  title: {
-    color: challengeTheme.colors.text, fontSize: 29, lineHeight: 36, fontWeight: '900', letterSpacing: 0.2,
-    textShadowColor: '#466B91', textShadowRadius: 7,
-  },
-  exit: {
-    width: 34, height: 34, alignItems: 'center', justifyContent: 'center',
-    borderRadius: 17, borderWidth: 1, borderColor: challengeTheme.colors.border,
-    backgroundColor: 'rgba(0, 18, 42, 0.78)',
-  },
   pressed: {opacity: 0.7},
 });

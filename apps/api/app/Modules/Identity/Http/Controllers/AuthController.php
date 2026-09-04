@@ -34,7 +34,7 @@ class AuthController extends Controller
                 'display_name' => $validated['display_name'],
                 'username' => $validated['username'],
                 'timezone' => $validated['timezone'],
-                'locale' => 'pt-BR',
+                'locale' => $validated['locale'] ?? 'pt-BR',
                 'favorite_volumes_ml' => [200, 300, 500],
             ]);
 

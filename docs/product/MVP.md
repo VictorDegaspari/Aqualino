@@ -29,6 +29,10 @@ A troca posterior em Configurações deve atualizar imediatamente, sem reiniciar
 
 Todas as chaves são distribuídas com o aplicativo para os quatro idiomas. Chave ausente usa `pt-BR` como fallback, registra telemetria sem dados pessoais e nunca exibe o identificador técnico na interface. Chinês tradicional poderá ser adicionado futuramente como `zh-Hant`, sem reutilizar incorretamente as traduções simplificadas.
 
+O cadastro e o acesso à conta ficam dentro do fluxo visual de steps. Na implementação atual, o terceiro step oferece cadastro ou login por e-mail e senha sem navegar para uma tela de autenticação separada. Google, Facebook ou Apple poderão ser incorporados nesse mesmo step; para provedores sociais, o aplicativo inicia o fluxo nativo e entrega ao backend o token de identidade para validação.
+
+Depois do logout, a entrada mostra as identificações das contas usadas recentemente e a ação “Adicionar nova conta”. Selecionar uma conta lembrada preenche somente o e-mail e continua exigindo senha; token e senha nunca são mantidos nesse histórico. “Adicionar nova conta” reinicia o fluxo no idioma, depois meta diária e, por fim, autenticação. Só um token de sessão permanece ativo no dispositivo.
+
 Depois da escolha de idioma e da autenticação, o usuário conclui um onboarding curto antes de chegar à Home. O progresso é persistido por etapa para continuar do mesmo ponto após fechar o aplicativo.
 
 Etapas obrigatórias:
@@ -45,7 +49,7 @@ A escolha de personagem é cosmética: não concede XP, vantagem no desafio ou d
 
 Etapas configuráveis:
 
-8. ativar ou desativar lembretes, escolher horários e período silencioso;
+8. ativar ou desativar lembretes, escolher horários, dias da semana e período silencioso;
 9. visualizar o widget e tocar em “Adicionar à tela inicial”.
 
 Idioma, meta diária e personagem precisam ser definidos para concluir o onboarding. Lembretes e widget podem ser adiados. A permissão do sistema para notificações só é solicitada depois que o usuário ativa lembretes. Para o widget, o app abre o fluxo oferecido pela plataforma quando disponível e mostra instruções quando a instalação manual for necessária. Recusar ou pular qualquer permissão não bloqueia o uso do app.

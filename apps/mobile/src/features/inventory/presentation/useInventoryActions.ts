@@ -18,7 +18,6 @@ export function useInventoryActions() {
     mutationFn: () => inventoryRemoteRepository.reviveHydrationStreak({client_action_id: createUuid()}),
     onSuccess: refreshInventory,
   });
-
   return {
     activateFreeze,
     releaseFreeze,

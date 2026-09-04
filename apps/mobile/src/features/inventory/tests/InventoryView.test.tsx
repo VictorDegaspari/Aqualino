@@ -48,9 +48,19 @@ test('renders available and reserved potion balances', async () => {
   const view = await render(<InventoryView {...props} />);
 
   expect(view.getByLabelText('Congelamento de streak: 2 disponível')).toBeTruthy();
-  expect(view.getByText('1 reservada(s)')).toBeTruthy();
+  expect(view.getByText('1 reservada(s) para proteção ativa')).toBeTruthy();
   expect(view.getByLabelText('Poção de reacender: 1 disponível')).toBeTruthy();
   expect(view.getByText('Proteção ativa')).toBeTruthy();
+});
+
+test('renders the potion store while real-money products are being prepared', async () => {
+  const view = await render(<InventoryView {...props} />);
+
+  expect(view.getByText('Loja de poções')).toBeTruthy();
+  expect(view.getByLabelText('Congelamento de streak, indisponível')).toBeTruthy();
+  expect(view.getByLabelText('Poção de reacender, indisponível')).toBeTruthy();
+  expect(view.getAllByText('Em breve')).toHaveLength(2);
+  expect(view.getByText('Compra segura pela App Store ou Google Play.')).toBeTruthy();
 });
 
 test('releases an armed freeze and uses a revival potion', async () => {
@@ -70,6 +80,7 @@ test('releases an armed freeze and uses a revival potion', async () => {
 test('activates a freeze when no protection is armed', async () => {
   const onActivateFreeze = jest.fn();
   const availableInventory: Inventory = {
+    ...inventory,
     items: [
       {code: 'streak_freeze', quantity: 1, reserved_quantity: 0, available_quantity: 1},
       inventory.items[1],
@@ -99,7 +110,7 @@ test('disables potion usage and shows suspended state during a group challenge',
   );
 
   expect(view.getByText('Poções guardadas durante a batalha')).toBeTruthy();
-  expect(view.getByText('Suspensa durante a batalha')).toBeTruthy();
+  expect(view.getByText('Proteção suspensa durante a batalha')).toBeTruthy();
   await fireEvent.press(view.getByRole('button', {name: 'Reacender streak'}));
   expect(onReviveStreak).not.toHaveBeenCalled();
 });

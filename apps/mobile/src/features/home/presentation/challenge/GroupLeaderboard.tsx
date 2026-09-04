@@ -1,10 +1,11 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {LeaderboardPlayer} from './LeaderboardPlayer';
 import {challengeTheme} from './challengeTheme';
 
 interface Props {
   displayName: string;
+  avatarId?: string | null;
 }
 
 const players = [
@@ -15,7 +16,7 @@ const players = [
   {position: 5, color: '#31627E'},
 ];
 
-export function GroupLeaderboard({displayName}: Props): React.JSX.Element {
+export const GroupLeaderboard = memo(function GroupLeaderboardView({displayName, avatarId}: Props): React.JSX.Element {
   return (
     <View style={styles.panel}>
       <View style={styles.heading}>
@@ -30,12 +31,13 @@ export function GroupLeaderboard({displayName}: Props): React.JSX.Element {
             active={index === 0}
             medal={player.medal}
             barColor={player.color}
+            avatarId={index === 0 ? avatarId : undefined}
           />
         ))}
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   panel: {

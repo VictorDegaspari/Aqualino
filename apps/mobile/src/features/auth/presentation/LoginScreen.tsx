@@ -1,59 +1,82 @@
 import React, {useState} from 'react';
 import {Pressable, StyleSheet, Text} from 'react-native';
-import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {tokens} from '@aqualino/design-tokens';
-import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
 import {AppError} from '../../../shared/errors/AppError';
-import {FormField} from '../../../shared/components/FormField';
-import {PrimaryButton} from '../../../shared/components/PrimaryButton';
-import {Screen} from '../../../shared/components/Screen';
+import {appCopy} from '../../../shared/i18n/appLocale';
+import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
+import {useOnboardingPreferencesStore} from '../../onboarding/application/onboardingPreferencesStore';
 import {useSessionStore} from '../application/sessionStore';
 import {authRepository} from '../data/authRepository';
+import {AuthButton, AuthField} from './AuthScaffold';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
+interface LoginFormProps {
+  initialEmail?: string;
+  onAuthenticated?: () => void;
+  onCreateAccount?: () => void;
+}
 
-export function LoginScreen({navigation}: Props): React.JSX.Element {
+export function LoginForm({initialEmail = '', onAuthenticated, onCreateAccount}: LoginFormProps): React.JSX.Element {
   const authenticate = useSessionStore(state => state.authenticate);
-  const [email, setEmail] = useState('');
+  const refreshUser = useSessionStore(state => state.refreshUser);
+  const locale = useOnboardingPreferencesStore(state => state.locale);
+  const clearSelectedDailyGoal = useOnboardingPreferencesStore(state => state.clearSelectedDailyGoal);
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
+  const copy = appCopy[locale].auth;
 
   const submit = async () => {
     setLoading(true);
     setError(undefined);
     try {
-      await authenticate(await authRepository.login(email, password));
+      const result = await authRepository.login(email, password);
+      await authenticate(result);
+      if (result.user.profile.onboarding_completed_at) clearSelectedDailyGoal();
+      if (result.user.profile.locale !== locale) {
+        authRepository.updateProfile({locale})
+          .then(() => refreshUser())
+          .catch(() => undefined);
+      }
+      onAuthenticated?.();
     } catch (cause) {
-      setError(cause instanceof AppError ? cause.message : 'Não foi possível entrar.');
+      setError(cause instanceof AppError ? cause.message : copy.loginError);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Screen contentContainerStyle={styles.content}>
-      <Text accessibilityRole="header" style={styles.title}>Aqualino</Text>
-      <Text style={styles.subtitle}>Seu hábito de hidratação, uma gota por vez.</Text>
-      <FormField label="E-mail" value={email} onChangeText={setEmail} autoCapitalize="none"
-        keyboardType="email-address" autoComplete="email" />
-      <FormField label="Senha" value={password} onChangeText={setPassword} secureTextEntry
-        autoComplete="current-password" />
+    <>
+      <AuthField
+        label={copy.email}
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+      />
+      <AuthField
+        label={copy.password}
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        autoComplete="current-password"
+      />
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-      <PrimaryButton label="Entrar" onPress={submit} loading={loading}
-        disabled={!email || !password} />
-      <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Register')} style={styles.linkButton}>
-        <Text style={styles.link}>Ainda não tenho conta</Text>
-      </Pressable>
-    </Screen>
+      <AuthButton label={copy.signIn} onPress={submit} loading={loading} disabled={!email || !password} />
+
+      {onCreateAccount ? (
+        <Pressable accessibilityRole="button" onPress={onCreateAccount} style={({pressed}) => [styles.linkButton, pressed && styles.linkPressed]}>
+          <Text style={styles.link}>{copy.noAccount}</Text>
+        </Pressable>
+      ) : null}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {flexGrow: 1, justifyContent: 'center', padding: tokens.spacing.lg, gap: tokens.spacing.md},
-  title: {fontSize: 42, fontWeight: '800', color: tokens.color.primaryStrong, textAlign: 'center'},
-  subtitle: {fontSize: tokens.fontSize.md, color: tokens.color.textMuted, textAlign: 'center', marginBottom: 16},
-  error: {color: tokens.color.danger, textAlign: 'center'},
-  linkButton: {minHeight: 48, alignItems: 'center', justifyContent: 'center'},
-  link: {color: tokens.color.primary, fontWeight: '700'},
+  error: {color: challengeTheme.colors.danger, textAlign: 'center', fontWeight: '700'},
+  linkButton: {minHeight: 45, alignItems: 'center', justifyContent: 'center'},
+  link: {fontSize: 14, lineHeight: 19, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
+  linkPressed: {opacity: 0.75},
 });

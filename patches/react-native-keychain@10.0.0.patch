@@ -1,0 +1,12 @@
+diff --git a/android/build.gradle b/android/build.gradle
+index f1e2f0ff9e121d790d574ad2a3effc36a2853585..0cb485f476e48d4852f9d439e72ccdfe28bd0c83 100755
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -20,7 +20,6 @@ def isNewArchitectureEnabled() {
+ }
+ 
+ apply plugin: 'com.android.library'
+-apply plugin: 'kotlin-android'
+ apply from: "$projectDir/react-native-helpers.gradle"
+ 
+ if (isNewArchitectureEnabled()) {

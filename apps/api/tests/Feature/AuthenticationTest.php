@@ -53,4 +53,28 @@ class AuthenticationTest extends TestCase
             ->assertJsonPath('error.code', 'VALIDATION_FAILED')
             ->assertJsonStructure(['error' => ['code', 'message', 'fields', 'request_id']]);
     }
+
+    public function test_user_can_choose_one_of_the_available_avatars(): void
+    {
+        $registration = $this->postJson('/api/v1/auth/register', [
+            'email' => 'avatar@example.com',
+            'password' => 'segura123',
+            'password_confirmation' => 'segura123',
+            'display_name' => 'Avatar',
+            'username' => 'avatar_azul',
+            'timezone' => 'America/Sao_Paulo',
+            'terms_accepted' => true,
+            'terms_version' => '2026-09-02',
+            'device_name' => 'Android da Avatar',
+        ]);
+
+        $token = $registration->assertCreated()->json('data.token');
+
+        $this->withToken($token)
+            ->patchJson('/api/v1/me/profile', ['avatar_url' => 'avatar_6'])
+            ->assertOk()
+            ->assertJsonPath('data.avatar_url', 'avatar_6');
+
+        $this->assertDatabaseHas('user_profiles', ['username' => 'avatar_azul', 'avatar_url' => 'avatar_6']);
+    }
 }

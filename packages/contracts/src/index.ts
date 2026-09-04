@@ -9,6 +9,7 @@ export interface UserProfile {
   user_id: string;
   display_name: string;
   username: string;
+  avatar_url: string | null;
   timezone: string;
   locale: string;
   favorite_volumes_ml: number[];
@@ -65,12 +66,13 @@ export interface HydrationWeek {
 }
 
 export interface WidgetSnapshot {
-  schema_version: 1;
+  schema_version: 2;
   generated_at: string;
   user_timezone: string;
   last_log_at: string | null;
   days_since_last_log: number | null;
   last_log_semantic_key: 'no_history' | 'today' | 'yesterday' | 'days_ago';
+  current_streak: number;
   today_total_ml: number;
   daily_goal_ml: number;
   condition: MascotCondition;
@@ -86,6 +88,16 @@ export interface HydrationLog {
   local_date: string;
   source: 'mobile' | 'widget' | 'shortcut' | 'import';
   client_event_id: string;
+}
+
+export interface HydrationLogPage {
+  data: HydrationLog[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
 }
 
 export interface RecordWaterInput {

@@ -45,12 +45,13 @@ class MascotSnapshotService
         }
 
         return [
-            'schema_version' => 1,
+            'schema_version' => 2,
             'generated_at' => CarbonImmutable::now('UTC')->toIso8601String(),
             'user_timezone' => $timezone,
             'last_log_at' => $lastLog?->occurred_at->utc()->toIso8601String(),
             'days_since_last_log' => $days,
             'last_log_semantic_key' => $semanticKey,
+            'current_streak' => $user->streak?->current_streak ?? 0,
             'today_total_ml' => $todaySummary['total_ml'],
             'daily_goal_ml' => $todaySummary['goal_ml'],
             'condition' => $condition,

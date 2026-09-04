@@ -6,7 +6,7 @@ export interface Spec extends TurboModule {
   requestReload(): void;
   readPendingAction(): string | null;
   getSchemaVersion(): number;
+  setAppIconMood(mood: string): boolean;
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>('NativeAqualinoWidget');
-

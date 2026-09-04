@@ -1,6 +1,7 @@
 import type {
   HydrationToday,
   HydrationWeek,
+  HydrationLogPage,
   RecordWaterInput,
   RecordWaterResult,
   WidgetSnapshot,
@@ -15,12 +16,14 @@ export interface HydrationHomeData {
 
 export interface HydrationRemoteRepository {
   getHome(): Promise<HydrationHomeData>;
+  getLogs(localDate: string): Promise<HydrationLogPage>;
   record(input: RecordWaterInput): Promise<RecordWaterResult>;
   updateGoal(dailyGoalMl: number): Promise<unknown>;
 }
 
 export const hydrationRemoteRepository: HydrationRemoteRepository = {
   getHome: () => apiRequest<HydrationHomeData>('/hydration/today'),
+  getLogs: localDate => apiRequest<HydrationLogPage>(`/hydration/logs?local_date=${encodeURIComponent(localDate)}`),
   record: input => apiRequest<RecordWaterResult>('/hydration/logs', {method: 'POST', body: input}),
   updateGoal: dailyGoalMl => apiRequest('/hydration/goals/current', {
     method: 'PUT',

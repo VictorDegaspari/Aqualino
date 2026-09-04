@@ -23,9 +23,9 @@ const data: HydrationHomeData = {
     ],
   },
   mascot: {
-    schema_version: 1, generated_at: '2026-09-02T12:00:00Z', user_timezone: 'America/Sao_Paulo',
+    schema_version: 2, generated_at: '2026-09-02T12:00:00Z', user_timezone: 'America/Sao_Paulo',
     last_log_at: null, days_since_last_log: null, last_log_semantic_key: 'no_history', today_total_ml: 0,
-    daily_goal_ml: 2000, condition: 'empty', decoration: null, animation: 'welcoming',
+    current_streak: 0, daily_goal_ml: 2000, condition: 'empty', decoration: null, animation: 'welcoming',
     static_asset: 'aqualino_empty',
   },
 };
@@ -33,7 +33,7 @@ const data: HydrationHomeData = {
 const props = {
   data, loading: false, offline: false, syncing: false, pending: 0,
   displayName: 'Ana', streak: 2, xp: 320, onRetry: jest.fn(), onOpenHydration: jest.fn(),
-  onOpenInventory: jest.fn(), onSignOut: jest.fn(),
+  onOpenInventory: jest.fn(),
 };
 
 const safeAreaMetrics = {
@@ -62,6 +62,28 @@ test('renders friendly empty state and opens the hydration picker', async () => 
   expect(props.onOpenHydration).toHaveBeenCalledTimes(1);
 });
 
+test('keeps group mode locked when the person has no active group', async () => {
+  const view = await renderHome(<HomeView {...props} />);
+
+  expect(view.getByRole('tab', {name: 'Solo'}).props.accessibilityState.selected).toBe(true);
+  expect(view.getByRole('tab', {name: 'Grupo'}).props.accessibilityState.disabled).toBe(true);
+  expect(view.queryByText('Placar do grupo')).toBeNull();
+
+  await fireEvent.press(view.getByRole('tab', {name: 'Grupo'}));
+
+  expect(view.getByRole('tab', {name: 'Solo'}).props.accessibilityState.selected).toBe(true);
+  expect(view.queryByText('Placar do grupo')).toBeNull();
+});
+
+test('shows the group leaderboard when an active group is available', async () => {
+  const view = await renderHome(<HomeView {...props} hasActiveGroup />);
+
+  expect(view.getByRole('tab', {name: 'Grupo'}).props.accessibilityState.disabled).toBe(false);
+  await fireEvent.press(view.getByRole('tab', {name: 'Grupo'}));
+
+  expect(view.getByText('Placar do grupo')).toBeTruthy();
+});
+
 test('renders offline pending state', async () => {
   const view = await renderHome(<HomeView {...props} offline pending={2} />);
   expect(view.getByText('2 registro(s) aguardando sincronização')).toBeTruthy();
@@ -76,7 +98,7 @@ test('renders successful progress and mascot state', async () => {
   const view = await renderHome(<HomeView {...props} data={hydrated} />);
   expect(view.getByText('1.000 ml')).toBeTruthy();
   expect(view.getByLabelText('Aqualino está feliz')).toBeTruthy();
-  expect(view.getByText('Desafio atual')).toBeTruthy();
+  expect(view.queryByText('Desafio atual')).toBeNull();
   expect(view.getByRole('tab', {name: 'Grupo'})).toBeTruthy();
   expect(view.getByLabelText(/TER, 01\/09: Meta perdida.*Protegido por congelamento/)).toBeTruthy();
   expect(view.getByLabelText(/DOM, 06\/09: Futuro/)).toBeTruthy();
