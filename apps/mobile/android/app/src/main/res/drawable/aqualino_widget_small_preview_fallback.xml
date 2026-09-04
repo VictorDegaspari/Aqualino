@@ -6,6 +6,6 @@
         android:height="62dp"
         android:gravity="center"
         android:top="8dp">
-        <bitmap android:gravity="fill" android:src="@drawable/aqualino_happy_active" />
+        <bitmap android:gravity="fill" android:src="@drawable/aqualino_strong" />
     </item>
 </layer-list>

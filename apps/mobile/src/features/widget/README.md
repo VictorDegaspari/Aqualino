@@ -85,6 +85,7 @@ Nunca reutilize uma versão com significado diferente. Dados incompatíveis deve
 | `is_authenticated: false` | Frase “Você está desconectado da conta”, Aqualino triste e fundo espacial em degradê; sequência e dias ficam ocultos. |
 | Autenticado, tamanho pequeno | Sequência, Aqualino e frase curta. |
 | Autenticado, tamanho horizontal | Sequência, frase, janela de cinco dias e Aqualino maior. |
+| Sequência de 3+ dias | Estilo de celebração violeta, Aqualino Strong e marcadores dourados. |
 
 Não há skeleton de rede no widget. A condição de domínio `skeleton` representa o humor do mascote por longo tempo sem água e não um carregamento. Isso evita loading infinito quando o aplicativo ainda não gravou dados.
 
@@ -94,10 +95,13 @@ Os cinco marcadores terminam no dia atual e usam o fuso do perfil. As iniciais s
 
 Cada condição possui três combinações de frase e paleta. A variação é determinística em janelas de três horas, portanto a apresentação muda periodicamente sem trocar a cada recomposição.
 
+Uma sequência de três ou mais dias tem precedência sobre a condição e sobre a variação temporal. Ela usa uma apresentação fixa de celebração, com Aqualino Strong, fundo violeta, dias pendentes escuros e cápsula dourada para a sequência concluída.
+
 - `empty`: Aqualino feliz e convite para o primeiro registro;
 - `happy`: mensagens positivas; pode usar Aqualino forte quando a meta foi atingida;
 - `angry` e `skeleton`: Aqualino triste;
 - `boiling`: alterna Aqualino triste e forte;
+- `3+ dias seguidos`: Aqualino Strong e apresentação de celebração violeta;
 - desconectado: sempre Aqualino triste e paleta espacial.
 
 Android e iOS implementam a mesma regra separadamente. Toda alteração de frases, cores, dimensões ou condição precisa ser replicada e revisada nas duas plataformas.

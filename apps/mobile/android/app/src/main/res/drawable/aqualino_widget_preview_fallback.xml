@@ -2,11 +2,12 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@drawable/aqualino_widget_preview_surface" />
     <item
-        android:width="116dp"
-        android:height="98dp"
-        android:gravity="end|center_vertical"
-        android:right="8dp">
-        <bitmap android:gravity="fill" android:src="@drawable/aqualino_happy_active" />
+        android:width="180dp"
+        android:height="151dp"
+        android:gravity="end|bottom"
+        android:right="16dp"
+        android:bottom="28dp">
+        <bitmap android:gravity="fill" android:src="@drawable/aqualino_strong" />
     </item>
     <item
         android:width="24dp"

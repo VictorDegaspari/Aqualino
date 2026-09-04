@@ -39,6 +39,10 @@ export function setWidgetAuthenticationState(isAuthenticated: boolean): void {
   writeNativeSnapshot(sessionSnapshot(isAuthenticated));
 }
 
+export function reloadWidget(): void {
+  NativeAqualinoWidget.requestReload();
+}
+
 export const widgetBridge: WidgetSnapshotWriter = {
   async write(snapshot) {
     if (!secureTokenStore.getCached()) {

@@ -3,7 +3,7 @@ import {AppError} from '../../../shared/errors/AppError';
 import {secureTokenStore} from '../../../shared/security/secureTokenStore';
 import {secureUserStore} from '../../../shared/security/secureUserStore';
 import {secureRememberedTokenStore} from '../../../shared/security/secureRememberedTokenStore';
-import {setWidgetAuthenticationState} from '../../widget/data/widgetBridge';
+import {reloadWidget, setWidgetAuthenticationState} from '../../widget/data/widgetBridge';
 import {useSessionStore} from '../application/sessionStore';
 import {authRepository} from '../data/authRepository';
 
@@ -43,6 +43,7 @@ jest.mock('../data/authRepository', () => ({
 }));
 
 jest.mock('../../widget/data/widgetBridge', () => ({
+  reloadWidget: jest.fn(),
   setWidgetAuthenticationState: jest.fn(),
 }));
 
@@ -57,6 +58,7 @@ const userStore = secureUserStore as jest.Mocked<typeof secureUserStore>;
 const rememberedTokenStore = secureRememberedTokenStore as jest.Mocked<typeof secureRememberedTokenStore>;
 const repository = authRepository as jest.Mocked<typeof authRepository>;
 const setWidgetAuthentication = setWidgetAuthenticationState as jest.MockedFunction<typeof setWidgetAuthenticationState>;
+const reloadWidgetState = reloadWidget as jest.MockedFunction<typeof reloadWidget>;
 
 const user: User = {
   id: 'user-1',
@@ -97,6 +99,7 @@ describe('sessionStore', () => {
     expect(useSessionStore.getState()).toMatchObject({status: 'signedIn', user});
     expect(tokenStore.clear).not.toHaveBeenCalled();
     expect(userStore.clear).not.toHaveBeenCalled();
+    expect(reloadWidgetState).toHaveBeenCalledTimes(1);
   });
 
   it('clears the local session only when the server rejects the token', async () => {

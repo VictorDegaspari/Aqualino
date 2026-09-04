@@ -7,6 +7,7 @@ private let snapshotKey = "snapshot_json"
 private let schemaVersion = 2
 
 private let variationInterval: TimeInterval = 3 * 60 * 60
+private let strongStreakDays = 3
 
 private struct WidgetPalette {
   let background: Color
@@ -68,12 +69,12 @@ struct WidgetSnapshot: Codable {
     generatedAt: Date(),
     lastLogAt: Date(),
     daysSinceLastLog: 0,
-    currentStreak: 2,
-    todayTotalMl: 1_400,
+    currentStreak: 3,
+    todayTotalMl: 2_000,
     dailyGoalMl: 2_000,
     userTimezone: TimeZone.current.identifier,
     condition: "happy",
-    staticAsset: "aqualino_happy_active",
+    staticAsset: "aqualino_strong",
     isAuthenticated: true
   )
 
@@ -221,26 +222,26 @@ struct AqualinoWidgetView: View {
   }
 
   private var largeContent: some View {
-    HStack(alignment: .center, spacing: 7) {
+    HStack(alignment: .bottom, spacing: 6) {
       VStack(alignment: .leading, spacing: 0) {
-        Spacer(minLength: 8)
-        streakTitle(fontSize: 26)
+        Spacer(minLength: 7)
+        streakTitle(fontSize: 23)
         Text(presentation.phrase)
-          .font(.system(size: 14, weight: .regular, design: .rounded))
+          .font(.system(size: 13, weight: .regular, design: .rounded))
           .foregroundStyle(presentation.palette.copy)
           .lineLimit(1)
           .minimumScaleFactor(0.8)
-          .padding(.top, 8)
+          .padding(.top, 5)
 
-        Spacer(minLength: 12)
-        weekStrip(markerSize: 18, spacing: 8, checkSize: 14, labelSize: 10)
+        Spacer(minLength: 10)
+        weekStrip(markerSize: 22, spacing: 10, checkSize: 16, labelSize: 10)
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
 
       mascot
-        .frame(width: 172, height: 132)
+        .frame(width: 120, height: 96)
     }
-    .padding(.horizontal, 14)
+    .padding(.horizontal, 16)
     .padding(.vertical, 10)
   }
 
@@ -261,6 +262,7 @@ struct AqualinoWidgetView: View {
     HStack(spacing: 7) {
       Image(systemName: "drop.fill")
         .font(.system(size: fontSize - 2, weight: .bold))
+        .foregroundStyle(.white)
       Text(entry.snapshot.currentStreak == 1 ? "1 dia" : "\(entry.snapshot.currentStreak) dias")
         .font(.system(size: fontSize, weight: .bold, design: .rounded))
     }
@@ -376,6 +378,16 @@ private func widgetPresentation(for snapshot: WidgetSnapshot, at date: Date) -> 
     )
   }
 
+  if snapshot.currentStreak >= strongStreakDays {
+    return WidgetPresentation(
+      phrase: snapshot.currentStreak == strongStreakDays
+        ? "Três dias de força!"
+        : "Sua sequência está forte!",
+      mascotAsset: "aqualino_strong",
+      palette: strongStreak
+    )
+  }
+
   let variation = Int(date.timeIntervalSince1970 / variationInterval) % 3
   let phrases: [String]
   let palettes: [WidgetPalette]
@@ -436,6 +448,7 @@ private let sadBlue = WidgetPalette(background: color(0x345A7D), heading: color(
 private let strongOrange = WidgetPalette(background: color(0xE5683A), heading: color(0xFFF8EE), copy: color(0xFFE8D5), pending: color(0xA84426), completed: color(0xFFB26F))
 private let strongPurple = WidgetPalette(background: color(0x7445B8), heading: color(0xFFF5FF), copy: color(0xF2DEFF), pending: color(0x523083), completed: color(0xC18AF1))
 private let strongPink = WidgetPalette(background: color(0xD81B90), heading: color(0xFFE4F3), copy: color(0xFFD3EA), pending: color(0xA8146C), completed: color(0xEF77BE))
+private let strongStreak = WidgetPalette(background: color(0x7C24B8), heading: color(0xFFF7FF), copy: color(0xF8DFFF), pending: color(0x4A126E), completed: color(0xFFD24A))
 private let disconnectedSpace = WidgetPalette(background: color(0x090D2E), heading: color(0xF8F1FF), copy: color(0xEBDFFF), pending: color(0x26204F), completed: color(0x9D65D8))
 
 @main

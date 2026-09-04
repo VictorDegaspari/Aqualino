@@ -13,6 +13,19 @@ interface PendingRow {
 
 interface CacheRow { [key: string]: SQLiteValue; value: string }
 
+const DATABASE_NAME = 'aqualino.sqlite';
+const DATABASE_GLOBAL_KEY = '__aqualinoOutboxDatabase__';
+
+type GlobalWithOutboxDatabase = typeof globalThis & {
+  __aqualinoOutboxDatabase__?: NitroSQLiteConnection;
+};
+
+function getSharedDatabase(): NitroSQLiteConnection {
+  const globalScope = globalThis as GlobalWithOutboxDatabase;
+  globalScope[DATABASE_GLOBAL_KEY] ??= open({name: DATABASE_NAME});
+  return globalScope[DATABASE_GLOBAL_KEY];
+}
+
 export class SQLiteOutboxStore implements OutboxStore {
   private database?: NitroSQLiteConnection;
   private initialization?: Promise<void>;
@@ -104,7 +117,7 @@ export class SQLiteOutboxStore implements OutboxStore {
   }
 
   private getDatabase(): NitroSQLiteConnection {
-    this.database ??= open({name: 'aqualino.sqlite'});
+    this.database ??= getSharedDatabase();
     return this.database;
   }
 }

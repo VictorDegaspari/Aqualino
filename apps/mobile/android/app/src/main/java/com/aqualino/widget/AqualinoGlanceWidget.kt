@@ -4,9 +4,14 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.ColorFilter
@@ -33,10 +38,12 @@ import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import java.util.Calendar
 import java.util.TimeZone
+import kotlinx.coroutines.flow.first
 import org.json.JSONObject
 
 data class AqualinoWidgetSnapshot(
@@ -62,13 +69,23 @@ private data class WidgetPresentation(
   val palette: WidgetPalette,
 )
 
+internal val WIDGET_SNAPSHOT_STORE_KEY = stringPreferencesKey("widget_snapshot_json")
+internal val Context.widgetSnapshotStore by preferencesDataStore(name = "aqualino_widget_snapshot")
+
 class AqualinoGlanceWidget : GlanceAppWidget() {
   override val sizeMode = SizeMode.Single
 
   override suspend fun provideGlance(context: Context, id: GlanceId) {
-    val snapshot = readSnapshot(context)
-    val presentation = widgetPresentation(snapshot)
-    provideContent { AqualinoWidgetContent(snapshot, presentation, compact = false) }
+    val snapshotStore = context.widgetSnapshotStore
+    val initialSnapshot = snapshotFromJson(snapshotStore.data.first()[WIDGET_SNAPSHOT_STORE_KEY])
+      ?: readSnapshot(context)
+    provideContent {
+      // updateAll does not restart an active Glance composition. This DataStore flow keeps the
+      // content observable, including in Samsung's older launcher process.
+      val snapshotState by snapshotStore.data.collectAsState(initial = emptyPreferences())
+      val snapshot = snapshotFromJson(snapshotState[WIDGET_SNAPSHOT_STORE_KEY]) ?: initialSnapshot
+      AqualinoWidgetContent(snapshot, widgetPresentation(snapshot), compact = false)
+    }
   }
 }
 
@@ -76,9 +93,14 @@ class AqualinoSmallGlanceWidget : GlanceAppWidget() {
   override val sizeMode = SizeMode.Single
 
   override suspend fun provideGlance(context: Context, id: GlanceId) {
-    val snapshot = readSnapshot(context)
-    val presentation = widgetPresentation(snapshot)
-    provideContent { AqualinoWidgetContent(snapshot, presentation, compact = true) }
+    val snapshotStore = context.widgetSnapshotStore
+    val initialSnapshot = snapshotFromJson(snapshotStore.data.first()[WIDGET_SNAPSHOT_STORE_KEY])
+      ?: readSnapshot(context)
+    provideContent {
+      val snapshotState by snapshotStore.data.collectAsState(initial = emptyPreferences())
+      val snapshot = snapshotFromJson(snapshotState[WIDGET_SNAPSHOT_STORE_KEY]) ?: initialSnapshot
+      AqualinoWidgetContent(snapshot, widgetPresentation(snapshot), compact = true)
+    }
   }
 }
 
@@ -210,30 +232,30 @@ private fun LargeWidget(
   presentation: WidgetPresentation,
 ) {
   Row(
-    modifier = GlanceModifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp),
-    verticalAlignment = Alignment.CenterVertically,
+    modifier = GlanceModifier.fillMaxSize().padding(start = 20.dp, top = 20.dp, end = 16.dp, bottom = 28.dp),
+    verticalAlignment = Alignment.Bottom,
   ) {
     Column(
       modifier = GlanceModifier.fillMaxSize().defaultWeight(),
       horizontalAlignment = Alignment.Start,
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Spacer(modifier = GlanceModifier.height(7.dp))
-      StreakTitle(snapshot.currentStreak, 22, presentation.palette)
       Spacer(modifier = GlanceModifier.height(6.dp))
+      StreakTitle(snapshot.currentStreak, 28, presentation.palette)
+      Spacer(modifier = GlanceModifier.height(12.dp))
       Text(
         text = presentation.phrase,
-        style = TextStyle(color = ColorProvider(presentation.palette.copy), fontSize = 12.sp),
+        style = TextStyle(color = ColorProvider(presentation.palette.copy), fontSize = 16.sp),
         maxLines = 1,
       )
       Spacer(modifier = GlanceModifier.defaultWeight())
-      WeekStrip(snapshot, presentation.palette, markerSize = 16, gap = 7, checkSize = 12, labelSize = 9)
+      WeekStrip(snapshot, presentation.palette, markerSize = 36, gap = 11, checkSize = 22, labelSize = 12)
     }
-    Spacer(modifier = GlanceModifier.width(5.dp))
+    Spacer(modifier = GlanceModifier.width(4.dp))
     Image(
       provider = ImageProvider(presentation.mascotResId),
       contentDescription = "Aqualino",
-      modifier = GlanceModifier.width(116.dp).height(98.dp),
+      modifier = GlanceModifier.width(180.dp).height(151.dp),
       contentScale = ContentScale.Fit,
     )
   }
@@ -304,6 +326,7 @@ private fun WeekStrip(
             color = ColorProvider(palette.heading),
             fontSize = labelSize.sp,
             fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
           ),
         )
         if (index < days.lastIndex) Spacer(modifier = GlanceModifier.width(gap.dp))
@@ -379,13 +402,15 @@ private fun CompletedDayRun(
 
 private fun readSnapshot(context: Context): AqualinoWidgetSnapshot {
   val raw = context.getSharedPreferences(AqualinoWidgetModule.PREFERENCES, Context.MODE_PRIVATE)
-    .getString(AqualinoWidgetModule.SNAPSHOT_KEY, null) ?: return AqualinoWidgetSnapshot()
+    .getString(AqualinoWidgetModule.SNAPSHOT_KEY, null)
+  return snapshotFromJson(raw) ?: AqualinoWidgetSnapshot()
+}
+
+private fun snapshotFromJson(raw: String?): AqualinoWidgetSnapshot? {
+  if (raw == null) return null
   return runCatching {
     val json = JSONObject(raw)
-    if (json.optInt("schema_version") != AqualinoWidgetModule.SCHEMA_VERSION) {
-      return AqualinoWidgetSnapshot()
-    }
-    java.time.Instant.parse(json.getString("generated_at"))
+    require(json.optInt("schema_version") == AqualinoWidgetModule.SCHEMA_VERSION)
     AqualinoWidgetSnapshot(
       totalMl = json.optInt("today_total_ml"),
       goalMl = json.optInt("daily_goal_ml", 2_000),
@@ -394,7 +419,7 @@ private fun readSnapshot(context: Context): AqualinoWidgetSnapshot {
       condition = json.optString("condition", "empty"),
       isAuthenticated = json.optBoolean("is_authenticated", true),
     )
-  }.getOrDefault(AqualinoWidgetSnapshot())
+  }.getOrNull()
 }
 
 private fun widgetDays(snapshot: AqualinoWidgetSnapshot): List<WidgetDay> {
@@ -420,6 +445,18 @@ private fun widgetPresentation(snapshot: AqualinoWidgetSnapshot): WidgetPresenta
       "Você está desconectado da conta",
       com.aqualino.R.drawable.aqualino_sad,
       DISCONNECTED_SPACE,
+    )
+  }
+
+  if (snapshot.currentStreak >= STRONG_STREAK_DAYS) {
+    return WidgetPresentation(
+      if (snapshot.currentStreak == STRONG_STREAK_DAYS) {
+        "Três dias de força!"
+      } else {
+        "Sua sequência está forte!"
+      },
+      com.aqualino.R.drawable.aqualino_strong,
+      STRONG_STREAK,
     )
   }
 
@@ -458,6 +495,7 @@ private fun widgetPresentation(snapshot: AqualinoWidgetSnapshot): WidgetPresenta
 
 private const val VARIATION_INTERVAL_MS = 3L * 60L * 60L * 1_000L
 private const val VISIBLE_DAY_COUNT = 5
+private const val STRONG_STREAK_DAYS = 3
 
 private val HAPPY_BLUE = WidgetPalette(Color(0xFF087FC7), Color(0xFFF2FBFF), Color(0xFFD9F5FF), Color(0xFF075C92), Color(0xFF50CFF4))
 private val HAPPY_TEAL = WidgetPalette(Color(0xFF087E8B), Color(0xFFF0FFFF), Color(0xFFD4FAF6), Color(0xFF075B64), Color(0xFF5BDED2))
@@ -468,4 +506,5 @@ private val SAD_BLUE = WidgetPalette(Color(0xFF345A7D), Color(0xFFF2FBFF), Color
 private val STRONG_ORANGE = WidgetPalette(Color(0xFFE5683A), Color(0xFFFFF8EE), Color(0xFFFFE8D5), Color(0xFFA84426), Color(0xFFFFB26F))
 private val STRONG_PURPLE = WidgetPalette(Color(0xFF7445B8), Color(0xFFFFF5FF), Color(0xFFF2DEFF), Color(0xFF523083), Color(0xFFC18AF1))
 private val STRONG_PINK = WidgetPalette(Color(0xFFD81B90), Color(0xFFFFE4F3), Color(0xFFFFD3EA), Color(0xFFA8146C), Color(0xFFEF77BE))
+private val STRONG_STREAK = WidgetPalette(Color(0xFF7C24B8), Color(0xFFFFF7FF), Color(0xFFF8DFFF), Color(0xFF4A126E), Color(0xFFFFD24A))
 private val DISCONNECTED_SPACE = WidgetPalette(Color(0xFF090D2E), Color(0xFFF8F1FF), Color(0xFFEBDFFF), Color(0xFF26204F), Color(0xFF9D65D8))

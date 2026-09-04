@@ -1,25 +1,25 @@
 <resources>
     <style name="AqualinoWidgetPreviewDayLabel">
-        <item name="android:layout_width">16dp</item>
+        <item name="android:layout_width">36dp</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:gravity">center</item>
-        <item name="android:textColor">#FFF2FBFF</item>
-        <item name="android:textSize">9sp</item>
+        <item name="android:textColor">#FFFFF7FF</item>
+        <item name="android:textSize">12sp</item>
         <item name="android:textStyle">bold</item>
     </style>
 
     <style name="AqualinoWidgetPreviewPendingDay">
-        <item name="android:layout_width">16dp</item>
-        <item name="android:layout_height">16dp</item>
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">36dp</item>
         <item name="android:background">@drawable/aqualino_widget_preview_pending</item>
     </style>
 
     <style name="AqualinoWidgetPreviewCheck">
-        <item name="android:layout_width">16dp</item>
-        <item name="android:layout_height">16dp</item>
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">36dp</item>
         <item name="android:gravity">center</item>
-        <item name="android:textColor">#FFF2FBFF</item>
-        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">#FFFFF7FF</item>
+        <item name="android:textSize">22sp</item>
         <item name="android:textStyle">bold</item>
     </style>
 

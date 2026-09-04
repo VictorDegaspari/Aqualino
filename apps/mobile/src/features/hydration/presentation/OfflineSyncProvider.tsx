@@ -35,6 +35,7 @@ export function OfflineSyncProvider({children}: React.PropsWithChildren): React.
               await queryClient.invalidateQueries({queryKey: ['hydration', 'home']});
             }
           })
+          .catch(() => undefined)
           .finally(() => setSyncing(false));
       });
     };

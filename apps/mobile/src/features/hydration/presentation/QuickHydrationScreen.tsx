@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
-import {ActivityIndicator, Alert, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
 import {haptics} from '../../../shared/device/haptics';

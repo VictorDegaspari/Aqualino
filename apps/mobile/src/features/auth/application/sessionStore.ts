@@ -4,7 +4,7 @@ import {AppError} from '../../../shared/errors/AppError';
 import {secureTokenStore} from '../../../shared/security/secureTokenStore';
 import {secureUserStore} from '../../../shared/security/secureUserStore';
 import {secureRememberedTokenStore} from '../../../shared/security/secureRememberedTokenStore';
-import {setWidgetAuthenticationState} from '../../widget/data/widgetBridge';
+import {reloadWidget, setWidgetAuthenticationState} from '../../widget/data/widgetBridge';
 import {authRepository, type AuthResult} from '../data/authRepository';
 import {useRememberedAccountsStore} from './rememberedAccountsStore';
 
@@ -36,6 +36,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         .catch(() => undefined);
       return;
     }
+
+    reloadWidgetSafely();
 
     const cachedUser = await cachedUserPromise;
     if (cachedUser) {
@@ -137,6 +139,14 @@ function updateWidgetAuthenticationSafely(isAuthenticated: boolean): void {
     setWidgetAuthenticationState(isAuthenticated);
   } catch {
     // Widget availability must never block login, logout, or session recovery.
+  }
+}
+
+function reloadWidgetSafely(): void {
+  try {
+    reloadWidget();
+  } catch {
+    // A stale widget must never prevent the saved session from being restored.
   }
 }
 

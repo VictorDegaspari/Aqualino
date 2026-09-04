@@ -3,6 +3,7 @@ package com.aqualino.widget
 import android.content.Context
 import android.content.ComponentName
 import android.content.pm.PackageManager
+import androidx.datastore.preferences.core.edit
 import androidx.glance.appwidget.updateAll
 import com.facebook.react.bridge.ReactApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -21,8 +22,22 @@ class AqualinoWidgetModule(reactContext: ReactApplicationContext) : NativeAquali
 
   override fun requestReload() {
     CoroutineScope(Dispatchers.IO).launch {
+      synchronizeGlanceSnapshot()
       AqualinoGlanceWidget().updateAll(reactApplicationContext)
       AqualinoSmallGlanceWidget().updateAll(reactApplicationContext)
+    }
+  }
+
+  private suspend fun synchronizeGlanceSnapshot() {
+    val snapshotJson = reactApplicationContext
+      .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+      .getString(SNAPSHOT_KEY, null)
+    reactApplicationContext.widgetSnapshotStore.edit { preferences ->
+      if (snapshotJson == null) {
+        preferences.remove(WIDGET_SNAPSHOT_STORE_KEY)
+      } else {
+        preferences[WIDGET_SNAPSHOT_STORE_KEY] = snapshotJson
+      }
     }
   }
 
