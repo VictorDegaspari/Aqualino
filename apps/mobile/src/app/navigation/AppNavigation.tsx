@@ -73,7 +73,7 @@ export function AppNavigation(): React.JSX.Element {
   };
 
   return (
-    <View style={styles.root}>
+    <View testID={`screen-${activeRoute ?? 'loading'}`} collapsable={false} style={styles.root}>
       <NavigationContainer
         linking={linking}
         ref={navigationRef}

@@ -21,13 +21,13 @@ const wrapper = ({children}: React.PropsWithChildren) => <SafeAreaProvider initi
 test('shows exactly four profile highlights and opens the complete collection', async () => {
   const onOpen = jest.fn();
   const highlights = items.map(item => ({...item, unlocked_at: '2026-09-04T12:00:00Z'}));
-  const view = await render(<ProfileAchievementHighlights items={highlights} unlockedCount={10} copy={copy} onOpen={onOpen} />);
-  expect(view.getByText('Guardião das gotas')).toBeTruthy();
-  expect(view.getByText('Oceano de cuidado')).toBeTruthy();
-  expect(view.getByText('Maré constante')).toBeTruthy();
-  expect(view.getByText('Sete dias de cuidado')).toBeTruthy();
+  const view = await render(<ProfileAchievementHighlights items={highlights} unlockedCount={14} copy={copy} onOpen={onOpen} />);
+  for (const level of [5, 10, 50, 100]) {
+    expect(view.getByText(`Nível ${level}`)).toBeTruthy();
+    expect(view.getByTestId(`level-medal-${level}`)).toBeTruthy();
+  }
   expect(view.queryByText('Primeira gota')).toBeNull();
-  expect(view.getByText('10 de 10 conquistas')).toBeTruthy();
+  expect(view.getByText('14 de 14 conquistas')).toBeTruthy();
   await fireEvent.press(view.getByRole('button', {name: copy.all}));
   expect(onOpen).toHaveBeenCalledTimes(1);
 });

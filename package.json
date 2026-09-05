@@ -7,6 +7,8 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "mobile:nav": "python3 scripts/mobile_nav.py",
+    "mobile:nav:test": "python3 -m unittest discover -s scripts/mobile_automation/tests -v",
     "mobile:start": "pnpm --filter @aqualino/mobile start",
     "mobile:android": "pnpm --filter @aqualino/mobile android",
     "mobile:android:light": "ANDROID_HOME=$HOME/Android/Sdk ANDROID_SDK_ROOT=$HOME/Android/Sdk CMAKE_BUILD_PARALLEL_LEVEL=2 nice -n 10 taskset -c 0-3 pnpm --filter @aqualino/mobile android",

@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo} from 'react';
+import React, {useEffect, useId, useMemo} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -10,13 +10,15 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withRepeat,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, {Defs, LinearGradient, Path, Rect, Stop} from 'react-native-svg';
+import Svg, {Defs, Ellipse, LinearGradient, Path, Rect, Stop} from 'react-native-svg';
 import {appCopy, type AppLocale} from '../../../shared/i18n/appLocale';
+import {typography} from '../../../shared/theme/typography';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 
-const GLASS_HEIGHT = 224;
+const GLASS_HEIGHT = 200;
 const LIQUID_OVERSCAN = 180;
 const RADIANS_TO_DEGREES = 180 / Math.PI;
 
@@ -29,6 +31,7 @@ interface Props {
 }
 
 export function HydrationWaterGauge({totalMl, goalMl, isToday = true, variant = 'history', locale = 'pt-BR'}: Props): React.JSX.Element {
+  const id = useId();
   const reduceMotion = useReducedMotion();
   const waveProgress = useSharedValue(0);
   const rotation = useAnimatedSensor(SensorType.ROTATION, {
@@ -70,29 +73,27 @@ export function HydrationWaterGauge({totalMl, goalMl, isToday = true, variant = 
     }
 
     const roll = rotation.sensor.value.roll;
-    const pitch = Math.abs(rotation.sensor.value.pitch);
-    const liquidRotation = clamp(-roll * RADIANS_TO_DEGREES, -28, 28);
-    const drinkingTilt = clamp((pitch - 0.35) / 0.95, 0, 1);
+    const liquidRotation = clamp(-roll * RADIANS_TO_DEGREES, -16, 16);
 
     return {
       height,
       transform: [
-        {translateX: clamp(roll * 12, -10, 10)},
-        {translateY: drinkingTilt * 30},
-        {rotateZ: `${liquidRotation}deg`},
+        {translateX: 0},
+        {translateY: 0},
+        {rotateZ: withSpring(`${liquidRotation}deg`, {damping: 22, stiffness: 110, mass: 0.7})},
       ],
     };
   });
   const backWaveStyle = useAnimatedStyle(() => ({
     transform: [
-      {translateX: reduceMotion ? 0 : interpolate(waveProgress.value, [0, 1], [-12, 12])},
-      {translateY: reduceMotion ? 0 : interpolate(waveProgress.value, [0, 1], [1, -2])},
+      {translateX: reduceMotion ? 0 : interpolate(waveProgress.value, [0, 1], [-7, 7])},
+      {translateY: reduceMotion ? 0 : interpolate(waveProgress.value, [0, 1], [1, -1])},
     ],
   }));
   const frontWaveStyle = useAnimatedStyle(() => ({
     transform: [
-      {translateX: reduceMotion ? 0 : interpolate(waveProgress.value, [0, 1], [10, -10])},
-      {translateY: reduceMotion ? 0 : interpolate(waveProgress.value, [0, 1], [-1, 2])},
+      {translateX: reduceMotion ? 0 : interpolate(waveProgress.value, [0, 1], [6, -6])},
+      {translateY: reduceMotion ? 0 : interpolate(waveProgress.value, [0, 1], [-1, 1])},
     ],
   }));
 
@@ -101,38 +102,40 @@ export function HydrationWaterGauge({totalMl, goalMl, isToday = true, variant = 
       accessibilityRole="summary"
       accessibilityLabel={`${comparison.status}. ${comparison.comparison}`}
       style={styles.card}>
-      <View style={styles.glassShadow}>
-        <View style={styles.glass}>
-          {comparison.visualLevel > 0 ? <Animated.View testID="history-water-liquid" style={[styles.liquid, liquidStyle]}>
-            <View style={styles.liquidBody}>
-              <Svg width="100%" height="100%">
-                <Defs>
-                  <LinearGradient id={`water-body-${variant}`} x1="0" y1="0" x2="0" y2="1">
-                    <Stop offset="0" stopColor="#079BD7" />
-                    <Stop offset="1" stopColor="#0563B4" />
-                  </LinearGradient>
-                </Defs>
-                <Rect width="100%" height="100%" fill={`url(#water-body-${variant})`} />
-              </Svg>
-            </View>
-            <Animated.View style={[styles.wave, backWaveStyle]}>
-              <WaterWave variant="back" />
-            </Animated.View>
-            <Animated.View style={[styles.wave, frontWaveStyle]}>
-              <WaterWave variant="front" />
-            </Animated.View>
-            <View style={[styles.bubble, styles.bubbleOne]} />
-            <View style={[styles.bubble, styles.bubbleTwo]} />
-            <View style={[styles.bubble, styles.bubbleThree]} />
-          </Animated.View> : null}
-          <View pointerEvents="none" style={styles.waterContent}>
-            <Text style={styles.waterEyebrow}>{variant === 'goal' ? gaugeCopy.eyebrow : isToday ? 'SEU NÍVEL HOJE' : 'SEU NÍVEL NESSE DIA'}</Text>
-            <Text style={styles.waterStatus}>{comparison.status}</Text>
-            <Text style={styles.waterAmount}>{formatMl(safeTotalMl, locale)}</Text>
-            <Text style={styles.waterComparison}>{comparison.comparison}</Text>
+      <View style={styles.content}>
+        <View style={styles.vessel} pointerEvents="none" accessible={false}>
+          <GlassFinish id={id} layer="back" />
+          <View style={styles.glass}>
+            {comparison.visualLevel > 0 ? <Animated.View testID="history-water-liquid" style={[styles.liquid, liquidStyle]}>
+              <View style={styles.liquidBody}>
+                <Svg width="100%" height="100%">
+                  <Defs>
+                    <LinearGradient id={`${id}-body`} x1="0%" y1="0%" x2="0%" y2="100%">
+                      <Stop offset="0" stopColor="#399FB6" />
+                      <Stop offset="0.6" stopColor="#216D8B" />
+                      <Stop offset="1" stopColor="#12475F" />
+                    </LinearGradient>
+                  </Defs>
+                  <Rect width="100%" height="100%" fill={`url(#${id}-body)`} />
+                </Svg>
+              </View>
+              <Animated.View style={[styles.wave, backWaveStyle]}>
+                <WaterWave id={id} variant="back" />
+              </Animated.View>
+              <Animated.View style={[styles.wave, frontWaveStyle]}>
+                <WaterWave id={id} variant="front" />
+              </Animated.View>
+              <View style={[styles.bubble, styles.bubbleOne]} />
+              <View style={[styles.bubble, styles.bubbleTwo]} />
+            </Animated.View> : null}
           </View>
-          <View pointerEvents="none" style={styles.glassShine} />
-          <View pointerEvents="none" style={styles.glassRim} />
+          <GlassFinish id={id} layer="front" />
+        </View>
+        <View style={styles.waterContent}>
+          <Text style={styles.waterEyebrow}>{variant === 'goal' ? gaugeCopy.eyebrow : isToday ? 'SEU NÍVEL HOJE' : 'SEU NÍVEL NESSE DIA'}</Text>
+          <Text adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1} style={styles.waterAmount}>{formatMl(safeTotalMl, locale)}</Text>
+          <Text style={styles.waterStatus}>{comparison.status}</Text>
+          <Text style={styles.waterComparison}>{comparison.comparison}</Text>
         </View>
       </View>
       <Text style={styles.hint}>{variant === 'goal' ? gaugeCopy.hint : 'Incline o celular para movimentar a água'}</Text>
@@ -140,11 +143,56 @@ export function HydrationWaterGauge({totalMl, goalMl, isToday = true, variant = 
   );
 }
 
+function GlassFinish({id, layer}: {id: string; layer: 'back' | 'front'}): React.JSX.Element {
+  const body = 'M10 14 H134 V172 C134 195.2 115.2 214 92 214 H52 C28.8 214 10 195.2 10 172 Z';
+  return (
+    <Svg width={144} height={232} viewBox="0 0 144 232" style={StyleSheet.absoluteFill}>
+      {layer === 'back' ? (
+        <>
+          <Defs>
+            <LinearGradient id={`${id}-glass`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop stopColor="#98D8DE" stopOpacity={0.13} />
+              <Stop offset="0.5" stopColor="#4A93A5" stopOpacity={0.03} />
+              <Stop offset="1" stopColor="#82BFC9" stopOpacity={0.12} />
+            </LinearGradient>
+          </Defs>
+          <Ellipse cx={72} cy={223} rx={52} ry={5} fill="#04151D" fillOpacity={0.4} />
+          <Path d={body} fill={`url(#${id}-glass)`} />
+          <Ellipse cx={72} cy={14} rx={62} ry={9} fill="#0D2835" stroke="#69ADBA" strokeOpacity={0.3} />
+        </>
+      ) : (
+        <>
+          <Defs>
+            <LinearGradient id={`${id}-edge`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop stopColor="#C4EAEC" stopOpacity={0.8} />
+              <Stop offset="0.45" stopColor="#84B9C4" stopOpacity={0.2} />
+              <Stop offset="1" stopColor="#B2D9DE" stopOpacity={0.65} />
+            </LinearGradient>
+            <LinearGradient id={`${id}-reflection`} x1="0%" y1="0%" x2="100%" y2="0%">
+              <Stop stopColor="#D8F3F2" stopOpacity={0.16} />
+              <Stop offset="1" stopColor="#D8F3F2" stopOpacity={0} />
+            </LinearGradient>
+          </Defs>
+          <Path d={body} fill="none" stroke={`url(#${id}-edge)`} strokeWidth={1.5} />
+          <Path d="M18 30 H39 V185 Q39 199 48 205 Q18 201 18 170 Z" fill={`url(#${id}-reflection)`} />
+          <Path d="M20 39 V150" fill="none" stroke="#E2F7F6" strokeOpacity={0.33} strokeWidth={3} strokeLinecap="round" />
+          <Path d="M125 49 V167 Q125 194 108 201" fill="none" stroke="#B6DDE2" strokeOpacity={0.22} strokeWidth={2} strokeLinecap="round" />
+          <Path d="M114 64 H122 M117 89 H122 M114 114 H122 M117 139 H122 M114 164 H122" fill="none" stroke="#C7E9EA" strokeOpacity={0.4} strokeWidth={1.5} strokeLinecap="round" />
+          <Path d="M41 202 Q72 212 103 202" fill="none" stroke="#C3E7EB" strokeOpacity={0.35} strokeWidth={2.5} strokeLinecap="round" />
+          <Ellipse cx={72} cy={14} rx={62} ry={9} fill="none" stroke="#A9D4DB" strokeOpacity={0.65} strokeWidth={1.5} />
+          <Path d="M12 15 C23 26 121 26 132 15" fill="none" stroke="#D9F2F1" strokeOpacity={0.62} strokeWidth={2} strokeLinecap="round" />
+        </>
+      )}
+    </Svg>
+  );
+}
+
 interface WaterWaveProps {
+  id: string;
   variant: 'back' | 'front';
 }
 
-function WaterWave({variant}: WaterWaveProps): React.JSX.Element {
+function WaterWave({id, variant}: WaterWaveProps): React.JSX.Element {
   const isBack = variant === 'back';
   const path = isBack
     ? 'M0 26 C60 4 120 48 180 26 S300 4 360 26 S480 48 540 26 S660 4 720 26 L720 320 L0 320 Z'
@@ -153,18 +201,18 @@ function WaterWave({variant}: WaterWaveProps): React.JSX.Element {
   return (
     <Svg width="100%" height="100%" viewBox="0 0 720 64" preserveAspectRatio="none">
       <Defs>
-        <LinearGradient id={`water-${variant}`} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={isBack ? '#86F6FF' : '#18DDED'} stopOpacity={isBack ? 0.7 : 0.94} />
-          <Stop offset="0.42" stopColor={isBack ? '#21C9EC' : '#079BD7'} stopOpacity={isBack ? 0.72 : 0.96} />
-          <Stop offset="1" stopColor="#0563B4" stopOpacity={isBack ? 0.76 : 0.98} />
+        <LinearGradient id={`${id}-water-${variant}`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <Stop offset="0" stopColor={isBack ? '#A4E1E3' : '#76CBD4'} stopOpacity={isBack ? 0.7 : 0.94} />
+          <Stop offset="0.55" stopColor={isBack ? '#61B9C9' : '#399FB6'} />
+          <Stop offset="1" stopColor="#399FB6" />
         </LinearGradient>
       </Defs>
-      <Path d={path} fill={`url(#water-${variant})`} />
+      <Path d={path} fill={`url(#${id}-water-${variant})`} />
       <Path
         d={path.split(' L720')[0]}
         fill="none"
-        stroke={isBack ? '#D9FEFF' : '#A3FAFF'}
-        strokeOpacity={isBack ? 0.55 : 0.72}
+        stroke={isBack ? '#D9F1EF' : '#B1E5E6'}
+        strokeOpacity={isBack ? 0.4 : 0.55}
         strokeWidth={isBack ? 3 : 2}
       />
     </Svg>
@@ -213,37 +261,29 @@ function clamp(value: number, minimum: number, maximum: number): number {
 }
 
 const styles = StyleSheet.create({
-  card: {alignItems: 'center', gap: 9},
-  glassShadow: {
-    width: '100%', height: GLASS_HEIGHT, borderRadius: 30,
-    shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.32, shadowRadius: 18, shadowOffset: {width: 0, height: 7}, elevation: 7,
-  },
+  card: {padding: 16, borderRadius: 26, backgroundColor: 'rgba(12, 34, 46, 0.78)', borderWidth: 1, borderColor: 'rgba(105, 173, 186, 0.22)'},
+  content: {flexDirection: 'row', alignItems: 'center', gap: 14},
+  vessel: {width: 144, height: 232},
   glass: {
-    width: '100%', height: GLASS_HEIGHT, overflow: 'hidden', borderRadius: 30,
-    borderWidth: 2, borderColor: 'rgba(121, 234, 255, 0.72)', backgroundColor: 'rgba(7, 40, 73, 0.54)',
+    position: 'absolute', top: 14, left: 10, width: 124, height: GLASS_HEIGHT, overflow: 'hidden',
+    borderTopLeftRadius: 3, borderTopRightRadius: 3, borderBottomLeftRadius: 42, borderBottomRightRadius: 42,
   },
   liquid: {
     position: 'absolute', zIndex: 1, bottom: -LIQUID_OVERSCAN, left: '-40%', width: '180%',
     transformOrigin: '50% 0%',
   },
-  liquidBody: {position: 'absolute', top: 16, right: 0, bottom: 0, left: 0, backgroundColor: '#0563B4'},
+  liquidBody: {position: 'absolute', top: 14, right: 0, bottom: 0, left: 0, backgroundColor: '#216D8B'},
   wave: {position: 'absolute', top: -16, height: 32, right: '-7%', left: '-7%'},
   bubble: {
     position: 'absolute', borderRadius: 99, borderWidth: 1,
-    borderColor: 'rgba(218, 253, 255, 0.62)', backgroundColor: 'rgba(196, 250, 255, 0.16)',
+    borderColor: 'rgba(218, 253, 255, 0.38)', backgroundColor: 'rgba(196, 250, 255, 0.06)',
   },
-  bubbleOne: {top: 64, left: '34%', width: 10, height: 10},
-  bubbleTwo: {top: 112, left: '61%', width: 6, height: 6},
-  bubbleThree: {top: 154, left: '46%', width: 14, height: 14},
-  waterContent: {
-    position: 'absolute', zIndex: 3, top: 26, right: 30, left: 30, alignItems: 'center', gap: 2,
-    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(0, 27, 55, 0.32)',
-  },
-  waterEyebrow: {fontSize: 10, lineHeight: 13, letterSpacing: 0.9, fontWeight: '900', color: 'rgba(181, 248, 255, 0.88)'},
-  waterStatus: {fontSize: 21, lineHeight: 27, fontWeight: '900', color: challengeTheme.colors.text, textAlign: 'center'},
-  waterAmount: {fontSize: 18, lineHeight: 23, fontWeight: '900', color: '#97F8FF'},
-  waterComparison: {fontSize: 12, lineHeight: 17, fontWeight: '700', color: 'rgba(227, 252, 255, 0.9)', textAlign: 'center'},
-  glassShine: {position: 'absolute', zIndex: 4, top: 18, left: 16, width: 4, height: 92, borderRadius: 4, backgroundColor: 'rgba(211, 252, 255, 0.48)'},
-  glassRim: {position: 'absolute', zIndex: 4, top: 7, right: 18, left: 18, height: 1, backgroundColor: 'rgba(225, 254, 255, 0.5)'},
-  hint: {fontSize: 12, lineHeight: 17, fontWeight: '700', color: challengeTheme.colors.muted},
+  bubbleOne: {top: 46, left: '43%', width: 6, height: 6},
+  bubbleTwo: {top: 95, left: '59%', width: 4, height: 4},
+  waterContent: {flex: 1, minWidth: 0, gap: 6, paddingBottom: 12},
+  waterEyebrow: {fontFamily: typography.family, fontSize: 9, lineHeight: 14, letterSpacing: 1.1, fontWeight: '800', color: challengeTheme.colors.muted},
+  waterAmount: {fontFamily: typography.family, fontSize: 28, lineHeight: 37, fontWeight: '900', color: challengeTheme.colors.cyanStrong, fontVariant: ['tabular-nums']},
+  waterStatus: {fontFamily: typography.family, fontSize: 16, lineHeight: 22, fontWeight: '800', color: challengeTheme.colors.text},
+  waterComparison: {fontFamily: typography.family, fontSize: 12, lineHeight: 18, fontWeight: '600', color: challengeTheme.colors.muted},
+  hint: {fontFamily: typography.family, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(105, 173, 186, 0.12)', fontSize: 11, lineHeight: 17, fontWeight: '600', color: challengeTheme.colors.muted, textAlign: 'center'},
 });

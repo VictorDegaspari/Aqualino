@@ -1,12 +1,13 @@
 import React from 'react';
-import {Image, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import type {PrivateGroup} from '@aqualino/contracts';
-import {getAvatarSource} from '../../../shared/avatars/avatarOptions';
+import {UserAvatar} from '../../../shared/avatars/UserAvatar';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
 import type {AppLocale} from '../../../shared/i18n/appLocale';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {GroupButton} from './GroupButton';
 import type {GroupsCopy} from './groupsCopy';
+import {LevelBadge} from '../../../shared/components/LevelBadge';
 
 export function GroupTeam({group, userId, copy, locale, busy, onShare, onRenew, onLeave}: {
   group: PrivateGroup; userId?: string; copy: GroupsCopy; locale: AppLocale; busy: boolean;
@@ -32,12 +33,12 @@ export function GroupTeam({group, userId, copy, locale, busy, onShare, onRenew, 
         <Text accessibilityRole="header" style={styles.sectionTitle}>{copy.members}</Text>
         {group.members.map(member => (
           <View key={member.user_id} style={styles.member}>
-            <Image source={getAvatarSource(member.avatar_url)} style={styles.avatar} />
+            <UserAvatar avatarId={member.avatar_url} style={styles.avatar} />
             <View style={styles.heading}>
               <Text style={styles.name}>{member.display_name}{member.user_id === userId ? ` · ${copy.you}` : ''}</Text>
               <Text style={styles.caption}>{member.role === 'owner' ? copy.owner : copy.member}</Text>
             </View>
-            {member.role === 'owner' ? <AqualinoIcon name="star" size={21} color={challengeTheme.colors.gold} /> : null}
+            <LevelBadge level={member.level ?? 1} locale={locale} />
           </View>
         ))}
         {Array.from({length: Math.max(0, group.max_members - group.members.length)}, (_, index) => (

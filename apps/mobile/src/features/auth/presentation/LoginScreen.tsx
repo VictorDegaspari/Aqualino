@@ -52,6 +52,7 @@ export function LoginForm({initialEmail = '', onAuthenticated, onCreateAccount, 
   return (
     <>
       <AuthField
+        testID="login-email"
         label={copy.email}
         value={email}
         onChangeText={setEmail}
@@ -60,6 +61,7 @@ export function LoginForm({initialEmail = '', onAuthenticated, onCreateAccount, 
         keyboardType="email-address"
       />
       <AuthField
+        testID="login-password"
         label={copy.password}
         value={password}
         onChangeText={setPassword}
@@ -69,7 +71,7 @@ export function LoginForm({initialEmail = '', onAuthenticated, onCreateAccount, 
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       {onForgotPassword ? <SecurityLink label={accountSecurityCopy[locale].forgotLink}
         onPress={() => onForgotPassword(email.trim().toLowerCase())} disabled={loading} /> : null}
-      <AuthButton label={copy.signIn} onPress={submit} loading={loading} disabled={!email || !password} />
+      <AuthButton testID="login-submit" label={copy.signIn} onPress={submit} loading={loading} disabled={!email || !password} />
 
       {onCreateAccount ? (
         <Pressable accessibilityRole="button" onPress={onCreateAccount} style={({pressed}) => [styles.linkButton, pressed && styles.linkPressed]}>

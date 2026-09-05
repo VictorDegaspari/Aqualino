@@ -18,7 +18,7 @@ jest.mock('../data/groupsRepository', () => ({groupsRepository: {
 const repository = jest.mocked(groupsRepository);
 const group: PrivateGroup = {
   id: 'group-1', name: 'Maré de amigos', owner_id: 'ana', timezone: 'UTC', max_members: 5,
-  members: [{user_id: 'ana', display_name: 'Ana', avatar_url: null, role: 'owner'}],
+  members: [{user_id: 'ana', display_name: 'Ana', avatar_url: null, role: 'owner', level: 1}],
   invite: {code: 'ABC123DEF456', expires_at: '2099-01-01T00:00:00Z'},
 };
 const clients: QueryClient[] = [];

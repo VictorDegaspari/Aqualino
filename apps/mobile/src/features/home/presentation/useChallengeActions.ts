@@ -31,6 +31,8 @@ export function useChallengeActions() {
       const challenges = client.getQueryData<HomeCache>(hydrationHomeKey)?.data.challenges;
       if (challenges) await hydrationService.rememberChallenges(challenges).catch(() => undefined);
       client.invalidateQueries({queryKey: ['inventory']});
+      client.invalidateQueries({queryKey: ['achievements']});
+      client.invalidateQueries({queryKey: ['groups']});
       client.invalidateQueries({queryKey: hydrationHomeKey});
       useSessionStore.getState().refreshUser().catch(() => undefined);
     },

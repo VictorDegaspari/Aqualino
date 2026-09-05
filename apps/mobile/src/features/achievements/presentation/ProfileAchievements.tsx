@@ -18,7 +18,7 @@ export function ProfileAchievementHighlights({items, unlockedCount, copy, onOpen
   items: Achievement[]; unlockedCount: number; copy: AchievementCopy; onOpen: () => void;
 }): React.JSX.Element {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={copy.all} accessibilityHint={copy.profileHint}
+    <Pressable testID="profile-achievements" accessibilityRole="button" accessibilityLabel={copy.all} accessibilityHint={copy.profileHint}
       onPress={onOpen} style={({pressed}) => [styles.panel, pressed && styles.pressed]}>
       <View style={styles.header}>
         <View style={styles.heading}><Text style={styles.title}>{copy.title}</Text><Text style={styles.subtitle}>{copy.collectionCount(unlockedCount, items.length)}</Text></View>

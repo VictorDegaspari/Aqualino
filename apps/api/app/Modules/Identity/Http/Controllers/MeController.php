@@ -3,6 +3,8 @@
 namespace App\Modules\Identity\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Gamification\Application\HydrationXpService;
+use App\Modules\Gamification\Application\UserLevelService;
 use App\Modules\Hydration\Application\HydrationGoalService;
 use App\Modules\Identity\Application\DeleteAccount;
 use App\Modules\Identity\Http\Requests\UpdateProfileRequest;
@@ -12,7 +14,7 @@ use Illuminate\Http\Response;
 
 class MeController extends Controller
 {
-    public function __construct(private readonly HydrationGoalService $goals) {}
+    public function __construct(private readonly HydrationGoalService $goals, private readonly UserLevelService $levels, private readonly HydrationXpService $xp) {}
 
     public function show(Request $request): JsonResponse
     {
@@ -24,8 +26,8 @@ class MeController extends Controller
             'email' => $user->email,
             'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             'email_verification_required' => $user->email_verification_required,
-            'xp_total' => $user->xp_total,
-            'level' => intdiv($user->xp_total, 100) + 1,
+            ...$this->levels->snapshot($user),
+            'xp_multiplier' => $this->xp->todayMultiplier($user),
             'profile' => $user->profile,
             'goal' => $this->goals->forDate($user, $today),
             'streak' => $user->streak?->current_streak ?? 0,

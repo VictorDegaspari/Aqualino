@@ -59,10 +59,11 @@ test('keeps the drawn reward and refreshes the inventory and XP from the server'
   const {result, client, invalidate} = await setup();
   await act(async () => {
     await result.current.claim('solo');
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
   });
   expect(client.getQueryData(hydrationHomeKey)).toMatchObject({data: {challenges: {solo: claimed}}});
   expect(hydrationService.rememberChallenges).toHaveBeenCalledWith({...challenges, solo: claimed});
   expect(invalidate).toHaveBeenCalledWith({queryKey: ['inventory']});
+  expect(invalidate).toHaveBeenCalledWith({queryKey: ['achievements']});
   expect(mockRefreshUser).toHaveBeenCalledTimes(1);
 });

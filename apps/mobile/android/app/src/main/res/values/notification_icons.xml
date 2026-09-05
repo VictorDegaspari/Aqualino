@@ -1,0 +1,5 @@
+<resources>
+    <!-- Existing reminder triggers still reference this legacy name. -->
+    <item name="ic_launcher" type="mipmap">@drawable/ic_notification_aqualino</item>
+    <item name="ic_launcher_round" type="mipmap">@mipmap/ic_launcher_happy</item>
+</resources>

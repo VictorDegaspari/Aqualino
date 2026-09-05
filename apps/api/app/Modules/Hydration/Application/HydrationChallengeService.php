@@ -3,6 +3,7 @@
 namespace App\Modules\Hydration\Application;
 
 use App\Models\User;
+use App\Modules\Achievement\Application\AchievementService;
 use App\Modules\Group\Infrastructure\Models\Group;
 use App\Modules\Group\Infrastructure\Models\GroupMembership;
 use App\Modules\Hydration\Infrastructure\Models\HydrationChallenge;
@@ -22,6 +23,7 @@ class HydrationChallengeService
     public function __construct(
         private readonly CreditInventoryItem $inventory,
         private readonly Randomizer $random,
+        private readonly AchievementService $achievements,
     ) {}
 
     public function current(User $user): array
@@ -101,6 +103,7 @@ class HydrationChallengeService
             $amount = $type === 'xp' ? 100 : 1;
             if ($type === 'xp') {
                 $user->increment('xp_total', $amount);
+                $this->achievements->reconcile($user);
             } else {
                 $this->inventory->handle($user, InventoryItemCode::from($type), $amount, InventoryTransactionSource::SoloChallengeReward, $challenge->id);
             }

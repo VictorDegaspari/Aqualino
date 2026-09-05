@@ -94,6 +94,17 @@ test('shows the offline reminder immediately and keeps cached collections isolat
   expect(readAchievementSnapshot('bruno')).toBeUndefined();
 });
 
+test('preserves previously earned medals when adding the new level collection to an old offline cache', () => {
+  const legacy = {...earned, total: 10, items: earned.items.filter(item => item.category !== 'levels')};
+  saveAchievementSnapshot('ana', legacy);
+  const restored = readAchievementSnapshot('ana')!;
+  expect(restored.total).toBe(14);
+  expect(restored.unlocked_count).toBe(1);
+  expect(restored.items.find(item => item.code === 'first_reminder')?.unlocked_at).toBeTruthy();
+  expect(restored.items.filter(item => item.category === 'levels')).toHaveLength(4);
+  expect(restored.items.filter(item => item.category === 'levels').every(item => item.unlocked_at === null)).toBe(true);
+});
+
 test('retries a lost reminder response before acknowledging its celebration', async () => {
   const {client} = setup();
   useAchievementLocalStore.getState().markReminder('ana');

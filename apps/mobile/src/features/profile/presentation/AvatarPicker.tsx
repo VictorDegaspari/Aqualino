@@ -6,7 +6,7 @@ import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 
 interface Props {
   disabled?: boolean;
-  selectedAvatar: AvatarId;
+  selectedAvatar: AvatarId | null;
   onClose: () => void;
   onSelect: (avatarId: AvatarId) => void;
 }

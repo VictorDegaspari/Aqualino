@@ -75,15 +75,17 @@ export function AuthField({label, ...props}: AuthFieldProps): React.JSX.Element 
 }
 
 interface AuthButtonProps {
+  testID?: string;
   label: string;
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
 }
 
-export function AuthButton({label, onPress, loading, disabled}: AuthButtonProps): React.JSX.Element {
+export function AuthButton({testID, label, onPress, loading, disabled}: AuthButtonProps): React.JSX.Element {
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{disabled: Boolean(disabled || loading), busy: Boolean(loading)}}

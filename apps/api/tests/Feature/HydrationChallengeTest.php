@@ -97,6 +97,9 @@ class HydrationChallengeTest extends TestCase
             $this->travelTo(CarbonImmutable::parse($date));
             $this->drink($date);
         }
+        if ($type === 'xp') {
+            $user->update(['xp_total' => 450]);
+        }
         $xpBefore = $user->fresh()->xp_total;
         $this->getJson('/api/v1/hydration/today')->assertJsonPath('data.challenges.solo.reward.state', 'available');
         $this->assertDatabaseCount('inventory_transactions', 0);
@@ -114,6 +117,8 @@ class HydrationChallengeTest extends TestCase
             $this->assertDatabaseHas('inventory_balances', ['user_id' => $user->id, 'item_code' => $type, 'quantity' => 1]);
         } else {
             $this->assertDatabaseCount('inventory_transactions', 0);
+            $this->assertSame(5, $user->fresh()->level);
+            $this->assertDatabaseHas('user_achievements', ['user_id' => $user->id, 'code' => 'level_5']);
         }
         $this->authenticatedUser();
         $this->postJson($rewardUrl)->assertNotFound();

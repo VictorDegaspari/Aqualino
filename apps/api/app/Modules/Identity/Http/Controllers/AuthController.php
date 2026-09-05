@@ -4,6 +4,8 @@ namespace App\Modules\Identity\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Modules\Gamification\Application\HydrationXpService;
+use App\Modules\Gamification\Application\UserLevelService;
 use App\Modules\Hydration\Infrastructure\Models\HydrationGoal;
 use App\Modules\Identity\Application\AccountSecurityService;
 use App\Modules\Identity\Http\Requests\LoginRequest;
@@ -18,6 +20,8 @@ use Throwable;
 
 class AuthController extends Controller
 {
+    public function __construct(private readonly UserLevelService $levels, private readonly HydrationXpService $xp) {}
+
     public function usernameAvailability(Request $request): JsonResponse
     {
         $username = mb_strtolower(trim((string) $request->query('username')));
@@ -100,7 +104,7 @@ class AuthController extends Controller
 
     private function authPayload(User $user, string $token): array
     {
-        $user->load('profile');
+        $user->load('profile', 'streak');
 
         return [
             'token' => $token,
@@ -111,6 +115,9 @@ class AuthController extends Controller
                 'email_verified_at' => $user->email_verified_at?->toIso8601String(),
                 'email_verification_required' => $user->email_verification_required,
                 'profile' => $user->profile,
+                ...$this->levels->snapshot($user),
+                'xp_multiplier' => $this->xp->todayMultiplier($user),
+                'streak' => $user->streak?->current_streak ?? 0,
             ],
         ];
     }

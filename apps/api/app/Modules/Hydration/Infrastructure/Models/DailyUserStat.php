@@ -16,6 +16,7 @@ class DailyUserStat extends Model
         'goal_ml_snapshot',
         'goal_achieved_at',
         'xp_earned',
+        'xp_multiplier',
         'record_xp_earned',
         'log_count',
     ];
@@ -23,6 +24,7 @@ class DailyUserStat extends Model
     protected function casts(): array
     {
         return [
+            'xp_multiplier' => 'integer',
             'local_date' => 'immutable_date',
             'goal_achieved_at' => 'immutable_datetime',
         ];

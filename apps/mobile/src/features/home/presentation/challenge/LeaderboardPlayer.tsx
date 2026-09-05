@@ -1,6 +1,6 @@
 import React, {memo} from 'react';
-import {Image, StyleSheet, Text, View, type TextStyle, type ViewStyle} from 'react-native';
-import {getAvatarSource} from '../../../../shared/avatars/avatarOptions';
+import {StyleSheet, Text, View, type TextStyle, type ViewStyle} from 'react-native';
+import {UserAvatar} from '../../../../shared/avatars/UserAvatar';
 import {AqualinoIcon} from '../../../../shared/components/AqualinoIcon';
 import {ChallengeAsset, type ChallengeAssetName} from './ChallengeAsset';
 import {challengeTheme} from './challengeTheme';
@@ -31,7 +31,7 @@ export const LeaderboardPlayer = memo(function LeaderboardPlayerView({position, 
       </View>
       <View style={[styles.avatarRing, active && styles.activeRing]}>
         {active
-          ? <Image source={getAvatarSource(avatarId)} resizeMethod="resize" resizeMode="cover" style={styles.avatar} />
+          ? <UserAvatar avatarId={avatarId} style={styles.avatar} />
           : <AqualinoIcon name="plus" size={14} color="#E6F8FF" />}
       </View>
       <View style={styles.track}>

@@ -147,7 +147,7 @@ export function RemindersView(props: Props): React.JSX.Element {
               <Text style={styles.sectionSubtitle}>Configure os dias de cada lembrete.</Text>
             </View>
             {!editing ? (
-              <Pressable accessibilityRole="button" onPress={() => setEditing(true)} style={styles.addSmallButton}>
+              <Pressable testID="reminders-new" accessibilityRole="button" onPress={() => setEditing(true)} style={styles.addSmallButton}>
                 <AqualinoIcon name="plus" size={15} color={challengeTheme.colors.backgroundDeep} />
                 <Text style={styles.addSmallButtonLabel}>Novo</Text>
               </Pressable>

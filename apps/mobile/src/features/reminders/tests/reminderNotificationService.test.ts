@@ -48,7 +48,11 @@ test('uses one daily native trigger when every weekday is selected', async () =>
 
   expect(notifee.createTriggerNotification).toHaveBeenCalledTimes(1);
   expect(notifee.createTriggerNotification).toHaveBeenCalledWith(
-    expect.objectContaining({id: 'hydration-reminder-morning'}),
+    expect.objectContaining({
+      id: 'hydration-reminder-morning',
+      android: expect.objectContaining({smallIcon: 'ic_notification_aqualino', largeIcon: 'aqualino_happy_active'}),
+      ios: expect.objectContaining({sound: 'default'}),
+    }),
     expect.objectContaining({repeatFrequency: RepeatFrequency.DAILY}),
   );
 });

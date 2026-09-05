@@ -1,10 +1,11 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {Image, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
 import {ProfileAchievements} from '../../achievements/presentation/ProfileAchievements';
-import {avatarIds, defaultAvatarId, getAvatarSource, type AvatarId} from '../../../shared/avatars/avatarOptions';
+import {isAvatarId, type AvatarId} from '../../../shared/avatars/avatarOptions';
+import {UserAvatar} from '../../../shared/avatars/UserAvatar';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
 import {PencilIcon} from '../../../shared/components/PencilIcon';
 import {TabScreenHeader} from '../../../shared/components/TabScreenHeader';
@@ -16,6 +17,7 @@ import {AvatarPicker} from './AvatarPicker';
 import {HydrationFlame} from '../../hydration/presentation/HydrationFlame';
 import {useHydrationHomeData} from '../../hydration/presentation/useHydrationHome';
 import {AppDialog} from '../../../shared/components/AppDialog';
+import {LevelProgressCard} from './LevelProgressCard';
 
 export function ProfileScreen({navigation}: NativeStackScreenProps<RootStackParamList, 'Profile'>): React.JSX.Element {
   const user = useSessionStore(state => state.user);
@@ -23,11 +25,13 @@ export function ProfileScreen({navigation}: NativeStackScreenProps<RootStackPara
   const signOut = useSessionStore(state => state.signOut);
   const hydration = useHydrationHomeData();
   const savedAvatar = user?.profile.avatar_url;
-  const currentAvatar = isAvatarId(savedAvatar) ? savedAvatar : defaultAvatarId;
-  const [selectedAvatar, setSelectedAvatar] = useState<AvatarId>(currentAvatar);
+  const currentAvatar = isAvatarId(savedAvatar) ? savedAvatar : null;
+  const [selectedAvatar, setSelectedAvatar] = useState<AvatarId | null>(currentAvatar);
   const [editingAvatar, setEditingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarError, setAvatarError] = useState<string>();
+
+  useEffect(() => {setSelectedAvatar(currentAvatar);}, [currentAvatar, user?.id]);
 
   const openAvatarEditor = useCallback(() => {
     if (saving) return;
@@ -79,14 +83,17 @@ export function ProfileScreen({navigation}: NativeStackScreenProps<RootStackPara
           />
           <View style={styles.profileHeader}>
             <Pressable
+              testID="profile-avatar"
               accessibilityRole="button"
-              accessibilityLabel="Editar avatar"
+              accessibilityLabel={selectedAvatar ? 'Editar avatar' : 'Escolher avatar'}
               accessibilityHint="Abre a seleção de avatares"
               disabled={saving}
               onPress={openAvatarEditor}
               style={({pressed}) => [styles.avatarEditor, pressed && !saving && styles.avatarEditorPressed]}>
-              <View style={styles.heroAvatarRing}>
-                <Image source={getAvatarSource(selectedAvatar)} resizeMethod="resize" resizeMode="cover" style={styles.heroAvatar} />
+              <View style={[styles.heroAvatarRing, !selectedAvatar && styles.emptyAvatarRing]}>
+                <UserAvatar avatarId={selectedAvatar} style={styles.heroAvatar}>
+                  <Text style={styles.chooseAvatarLabel}>Escolher avatar</Text>
+                </UserAvatar>
               </View>
               <View style={styles.pencilBadge}><PencilIcon size={17} color={challengeTheme.colors.backgroundDeep} /></View>
             </Pressable>
@@ -106,6 +113,8 @@ export function ProfileScreen({navigation}: NativeStackScreenProps<RootStackPara
               </View>
             </View>
           </View>
+
+          {user?.level_progress ? <LevelProgressCard level={user.level ?? 1} progress={user.level_progress} multiplier={user.xp_multiplier} /> : null}
 
           {editingAvatar ? (
             <AvatarPicker
@@ -149,10 +158,6 @@ export function ProfileScreen({navigation}: NativeStackScreenProps<RootStackPara
   );
 }
 
-function isAvatarId(value?: string | null): value is AvatarId {
-  return Boolean(value && avatarIds.includes(value as AvatarId));
-}
-
 function Medal({name, label}: {name: 'medalGold' | 'medalSilver' | 'medalBronze'; label: string}): React.JSX.Element {
   return (
     <View style={styles.medal}>
@@ -177,6 +182,8 @@ const styles = StyleSheet.create({
     shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.6, shadowRadius: 20, shadowOffset: {width: 0, height: 2}, elevation: 10,
   },
   heroAvatar: {width: '100%', height: '100%', borderRadius: 52},
+  emptyAvatarRing: {backgroundColor: challengeTheme.colors.panelSoft, borderWidth: 1, borderStyle: 'dashed', borderColor: challengeTheme.colors.borderStrong, shadowOpacity: 0, elevation: 0},
+  chooseAvatarLabel: {maxWidth: 76, textAlign: 'center', fontSize: 13, lineHeight: 18, fontWeight: '700', color: challengeTheme.colors.cyanStrong},
   pencilBadge: {position: 'absolute', right: -4, bottom: -2, width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: challengeTheme.colors.cyanStrong, borderWidth: 3, borderColor: challengeTheme.colors.background, shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.5, shadowRadius: 8, shadowOffset: {width: 0, height: 2}, elevation: 7},
   name: {marginTop: 13, fontSize: 27, lineHeight: 34, fontWeight: '900', color: challengeTheme.colors.text},
   username: {marginTop: 2, fontSize: 14, lineHeight: 20, color: challengeTheme.colors.muted},

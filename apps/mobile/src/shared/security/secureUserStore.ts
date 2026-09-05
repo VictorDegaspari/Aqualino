@@ -2,10 +2,11 @@ import type {User} from '@aqualino/contracts';
 import * as Keychain from 'react-native-keychain';
 
 const SERVICE = 'br.com.aqualino.mobile.user';
+let storageOperation: Promise<unknown> = Promise.resolve();
 
 export const secureUserStore = {
   async hydrate(): Promise<User | null> {
-    const credentials = await Keychain.getGenericPassword({service: SERVICE});
+    const credentials = await inStorageOrder(() => Keychain.getGenericPassword({service: SERVICE}));
     if (!credentials) return null;
 
     try {
@@ -17,16 +18,24 @@ export const secureUserStore = {
   },
 
   async set(user: User): Promise<void> {
-    await Keychain.setGenericPassword('mobile-user', JSON.stringify(user), {
+    const value = JSON.stringify(user);
+    await inStorageOrder(() => Keychain.setGenericPassword('mobile-user', value, {
       service: SERVICE,
       accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-    });
+    }));
   },
 
   async clear(): Promise<void> {
-    await Keychain.resetGenericPassword({service: SERVICE});
+    await inStorageOrder(() => Keychain.resetGenericPassword({service: SERVICE}));
   },
 };
+
+function inStorageOrder<T>(operation: () => Promise<T>): Promise<T> {
+  // Profile refreshes, water rewards and logout must reach the keychain in order.
+  const next = storageOperation.then(operation);
+  storageOperation = next.catch(() => undefined);
+  return next;
+}
 
 function isUser(value: unknown): value is User {
   if (!value || typeof value !== 'object') return false;

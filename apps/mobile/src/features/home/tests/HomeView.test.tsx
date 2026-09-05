@@ -33,7 +33,7 @@ const data: HydrationHomeData = {
 
 const props = {
   data: activeData(data), loading: false, offline: false, syncing: false, pending: 0,
-  displayName: 'Ana', streak: 2, xp: 320, onRetry: jest.fn(), onOpenHydration: jest.fn(),
+  displayName: 'Ana', streak: 2, xp: 320, level: 10, onRetry: jest.fn(), onOpenHydration: jest.fn(),
   onOpenInventory: jest.fn(),
 };
 
@@ -58,6 +58,7 @@ test('renders error state with retry', async () => {
 
 test('renders friendly empty state and opens the hydration picker', async () => {
   const view = await renderHome(<HomeView {...props} />);
+  expect(view.getByLabelText('Nível 10')).toBeTruthy();
   expect(view.getByText('Sua primeira gota de hoje está a um toque.')).toBeTruthy();
   expect(view.getByLabelText('Fogo apagado: você ainda não bebeu água hoje')).toBeTruthy();
   await fireEvent.press(view.getByRole('button', {name: 'Bebi água'}));

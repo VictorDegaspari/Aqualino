@@ -76,10 +76,12 @@ export const useAchievementLocalStore = create<LocalState>((set, get) => {
 export function readAchievementSnapshot(userId: string): AchievementCollection | undefined {
   try {
     const value = JSON.parse(storage.getString(`collection.${userId}`) ?? 'null');
-    if (!value || !Array.isArray(value.items) || value.items.length !== knownCodes.size) return undefined;
+    if (!value || !Array.isArray(value.items) || value.items.length === 0 || value.items.length > knownCodes.size) return undefined;
     if (!value.items.every((item: AchievementCollection['items'][number]) => item && knownCodes.has(item.code) && Number.isFinite(item.progress) && item.target > 0 && (item.unlocked_at === null || Number.isFinite(Date.parse(item.unlocked_at))))) return undefined;
-    if (new Set(value.items.map((item: AchievementCollection['items'][number]) => item.code)).size !== knownCodes.size) return undefined;
-    return value;
+    if (new Set(value.items.map((item: AchievementCollection['items'][number]) => item.code)).size !== value.items.length) return undefined;
+    const saved = new Map<AchievementCode, AchievementCollection['items'][number]>(value.items.map((item: AchievementCollection['items'][number]) => [item.code, item]));
+    const items = emptyAchievementCollection.items.map(item => saved.get(item.code) ?? item);
+    return {items, total: items.length, unlocked_count: items.filter(item => item.unlocked_at).length};
   } catch {
     return undefined;
   }

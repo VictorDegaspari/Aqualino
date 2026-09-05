@@ -1,0 +1,65 @@
+{
+  "package": "com.aqualino",
+  "screens": {
+    "welcome": {"route": "Welcome", "path": "welcome", "access": "signed-out", "description": "Boas-vindas → idioma → meta → login/cadastro/conta lembrada"},
+    "login": {"route": "SignIn", "path": "auth/sign-in", "access": "public", "description": "Entrar com e-mail e senha; recuperar senha"},
+    "forgot-password": {"route": "ForgotPassword", "path": "auth/forgot-password", "access": "public", "description": "Solicitar link de recuperação por e-mail"},
+    "reset-password": {"route": "ResetPassword", "path": "auth/reset-password", "access": "public", "description": "Definir senha a partir de link válido; abrir sem token mostra orientação"},
+    "verify-email": {"route": "VerifyEmail", "path": "auth/verify-email", "access": "unverified-account", "description": "Verificar confirmação ou reenviar e-mail"},
+    "onboarding": {"route": "Onboarding", "path": "onboarding", "access": "incomplete-profile", "description": "Configurar meta, volumes e idioma; concluir preferências"},
+    "home": {"route": "Home", "path": "home", "access": "verified-account", "nav": "nav.home", "description": "Aqualino, XP, nível, sequência, desafios solo/grupo, gotas, baú e câmera"},
+    "groups": {"route": "Groups", "path": "groups", "access": "verified-account", "nav": "nav.groups", "description": "Criar grupo, convite, participantes, compartilhar, renovar convite ou sair"},
+    "reminders": {"route": "Reminders", "path": "reminders", "access": "verified-account", "nav": "nav.reminders", "description": "Horários e dias; criar, ativar/desativar, remover e abrir ajustes do Android"},
+    "history": {"route": "History", "path": "history", "access": "verified-account", "nav": "nav.history", "description": "Copo com movimento, seleção dos últimos sete dias e marcações"},
+    "profile": {"route": "Profile", "path": "profile", "access": "verified-account", "nav": "nav.profile", "description": "Avatar, nível, sequência, medalhas, conquistas e sair da conta"},
+    "inventory": {"route": "Inventory", "path": "inventory", "access": "verified-account", "description": "Poções e itens; congelar ou reviver sequência"},
+    "achievements": {"route": "Achievements", "path": "achievements", "access": "verified-account", "description": "Coleção, categorias e detalhes das conquistas; voltar por botão/gesto"},
+    "hydrate": {"route": "QuickHydration", "path": "hydrate/quick", "access": "verified-account", "description": "Foto obrigatória → volume → salvar → Home atualizada; abrir não registra água"}
+  },
+  "controls": {
+    "nav.home": "id=nav-home",
+    "nav.groups": "id=nav-group",
+    "nav.reminders": "id=nav-reminders",
+    "nav.history": "id=nav-history",
+    "nav.profile": "id=nav-profile",
+    "home.inventory": "id=home-inventory",
+    "home.camera": "id=home-drink-water",
+    "profile.avatar": "id=profile-avatar",
+    "profile.achievements": "id=profile-achievements",
+    "profile.logout": "label=Sair da conta",
+    "avatar.close": "label=Fechar editor de avatar",
+    "login.email": "id=login-email",
+    "login.password": "id=login-password",
+    "login.submit": "id=login-submit",
+    "group.name": "id=group-name",
+    "group.code": "id=group-code",
+    "reminders.new": "id=reminders-new",
+    "reminders.hour": "label=Hora do lembrete",
+    "reminders.minute": "label=Minuto do lembrete",
+    "hydrate.photo": "label=Tirar foto do copo"
+  },
+  "panels": [
+    {"name": "group.create", "from": "groups", "open": "label=Criar grupo", "close": "back", "effect": "Preencher e confirmar cria um grupo"},
+    {"name": "group.join", "from": "groups", "open": "label=Entrar com código", "close": "back", "effect": "Consultar convite → aceitar entra no grupo"},
+    {"name": "profile.avatar", "from": "profile", "open": "profile.avatar", "close": "avatar.close", "effect": "Selecionar um avatar salva imediatamente"},
+    {"name": "reminders.editor", "from": "reminders", "open": "reminders.new", "close": "text=Cancelar", "effect": "Salvar agenda notificações; não faz parte do tour"},
+    {"name": "achievement.details", "from": "achievements", "open": "label da medalha obtido por inspect", "close": "back", "effect": "Mostra detalhes da conquista"},
+    {"name": "challenge.day", "from": "home", "open": "label da gota obtido por inspect", "close": "back", "effect": "Mostra progresso do dia"},
+    {"name": "dialog", "from": "qualquer tela", "open": "conforme ação", "close": "back", "effect": "Confirmações usam app-modal; Back respeita dismissible e não confirma"}
+  ],
+  "flows": {
+    "tour": [
+      {"open": "home"}, {"tap": "nav.groups", "expect": "groups"},
+      {"tap": "nav.reminders", "expect": "reminders"}, {"tap": "nav.history", "expect": "history"},
+      {"tap": "nav.profile", "expect": "profile"}, {"open": "inventory"},
+      {"open": "achievements"}, {"open": "home"}
+    ],
+    "avatar-preview": [
+      {"open": "profile"}, {"tap": "profile.avatar"}, {"assert": "text=Escolha seu avatar"},
+      {"tap": "avatar.close"}, {"expect": "profile"}
+    ],
+    "water-preview": [
+      {"open": "hydrate"}, {"assert": "hydrate.photo"}, {"open": "home"}
+    ]
+  }
+}

@@ -16,6 +16,7 @@ export function HomeScreen(): React.JSX.Element {
   const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
   const recordedAmountMl = route.params?.recordedAmountMl;
   const user = useSessionStore(state => state.user);
+  const refreshUser = useSessionStore(state => state.refreshUser);
   const {query} = useHydrationHome();
   const challenges = useChallengeActions();
   const syncing = useSyncStatusStore(state => state.syncing);
@@ -26,10 +27,11 @@ export function HomeScreen(): React.JSX.Element {
 
   useEffect(() => {
     if (!isFocused) return;
-    refreshHome();
-    const timer = setInterval(() => {refreshHome();}, 60_000);
+    const refresh = () => {refreshHome(); refreshUser().catch(() => undefined);};
+    refresh();
+    const timer = setInterval(refresh, 60_000);
     return () => clearInterval(timer);
-  }, [isFocused, refreshHome]);
+  }, [isFocused, refreshHome, refreshUser]);
 
   useEffect(() => {
     if (!isFocused || !recordedAmountMl) return;
@@ -75,6 +77,7 @@ export function HomeScreen(): React.JSX.Element {
         avatarId={user?.profile.avatar_url}
         streak={user?.streak ?? 0}
         xp={user?.xp_total ?? 0}
+        level={user?.level ?? 1}
         startingChallenge={challenges.starting}
         challengeError={challenges.startError}
         onStartChallenge={mode => {challenges.start(mode).catch(() => undefined);}}

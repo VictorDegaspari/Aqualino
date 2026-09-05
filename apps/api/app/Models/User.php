@@ -108,6 +108,9 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     protected function casts(): array
     {
         return [
+            'xp_total' => 'integer',
+            'level' => 'integer',
+            'level_started_at_xp' => 'integer',
             'email_verified_at' => 'datetime',
             'email_verification_required' => 'boolean',
             'terms_accepted_at' => 'immutable_datetime',

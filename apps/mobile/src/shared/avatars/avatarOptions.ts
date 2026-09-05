@@ -14,10 +14,11 @@ export const avatarSources = {
 export type AvatarId = keyof typeof avatarSources;
 
 export const avatarIds = Object.keys(avatarSources) as AvatarId[];
-export const defaultAvatarId: AvatarId = 'avatar_1';
 
-export function getAvatarSource(avatarId?: string | null): ImageSourcePropType {
-  return avatarId && avatarId in avatarSources
-    ? avatarSources[avatarId as AvatarId]
-    : avatarSources[defaultAvatarId];
+export function isAvatarId(value?: string | null): value is AvatarId {
+  return Boolean(value && Object.prototype.hasOwnProperty.call(avatarSources, value));
+}
+
+export function getAvatarSource(avatarId?: string | null): ImageSourcePropType | undefined {
+  return isAvatarId(avatarId) ? avatarSources[avatarId] : undefined;
 }

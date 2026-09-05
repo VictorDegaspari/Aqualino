@@ -4,7 +4,9 @@ namespace App\Modules\Hydration\Application;
 
 use App\Models\User;
 use App\Modules\Achievement\Application\AchievementService;
+use App\Modules\Gamification\Application\HydrationXpService;
 use App\Modules\Gamification\Application\StreakCalculator;
+use App\Modules\Gamification\Application\UserLevelService;
 use App\Modules\Hydration\Infrastructure\Models\DailyUserStat;
 use App\Modules\Hydration\Infrastructure\Models\HydrationLog;
 use App\Modules\Inventory\Application\ApplyArmedHydrationStreakFreeze;
@@ -22,6 +24,8 @@ class RecordWaterIntake
         private readonly StreakCalculator $streaks,
         private readonly ApplyArmedHydrationStreakFreeze $applyStreakFreeze,
         private readonly AchievementService $achievements,
+        private readonly UserLevelService $levels,
+        private readonly HydrationXpService $xp,
     ) {}
 
     public function handle(User $user, array $input): array
@@ -53,6 +57,12 @@ class RecordWaterIntake
         $localDate = $occurredAt->setTimezone($timezone)->toDateString();
 
         $result = DB::transaction(function () use ($user, $input, $occurredAt, $timezone, $localDate): array {
+            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $existing = HydrationLog::query()->where('user_id', $user->id)->where('client_event_id', $input['client_event_id'])->first();
+            if ($existing) {
+                return ['log' => $existing, 'idempotent_replay' => true];
+            }
+            $this->applyStreakFreeze->handle($user, $localDate);
             $goal = $this->goals->forDate($user, $localDate);
             $goalMl = $goal?->daily_goal_ml ?? 2000;
             $stat = DailyUserStat::query()
@@ -68,7 +78,10 @@ class RecordWaterIntake
             $recordXp = min($baseXp, max(0, self::DAILY_RECORD_XP_CAP - $recordXpBefore));
             $afterTotal = $beforeTotal + $input['amount_ml'];
             $goalBonus = $beforeTotal < $goalMl && $afterTotal >= $goalMl ? 25 : 0;
-            $xpAwarded = $recordXp + $goalBonus;
+            $multiplier = $stat?->xp_multiplier ?? $this->xp->percentageForDate($user, $localDate);
+            $xpAwarded = $this->xp->multiply($recordXpBefore + $recordXp, $multiplier)
+                - $this->xp->multiply($recordXpBefore, $multiplier)
+                + $this->xp->multiply($goalBonus, $multiplier);
 
             $log = HydrationLog::query()->create([
                 'user_id' => $user->id,
@@ -79,6 +92,7 @@ class RecordWaterIntake
                 'source' => $input['source'],
                 'client_event_id' => $input['client_event_id'],
                 'xp_awarded' => $xpAwarded,
+                'xp_multiplier' => $multiplier,
                 'metadata' => $input['metadata'] ?? null,
             ]);
 
@@ -88,12 +102,14 @@ class RecordWaterIntake
                 'goal_ml_snapshot' => $stat->exists ? $stat->goal_ml_snapshot : $goalMl,
                 'goal_achieved_at' => $stat->goal_achieved_at ?? ($goalBonus > 0 ? now() : null),
                 'xp_earned' => ($stat->xp_earned ?? 0) + $xpAwarded,
+                'xp_multiplier' => $multiplier,
                 'record_xp_earned' => $recordXpBefore + $recordXp,
                 'log_count' => $beforeCount + 1,
             ]);
             $stat->save();
 
             $user->increment('xp_total', $xpAwarded);
+            $this->levels->snapshot($user);
 
             OutboxEvent::query()->create([
                 'type' => 'hydration.log.created.v1',
@@ -109,7 +125,9 @@ class RecordWaterIntake
             return ['log' => $log, 'idempotent_replay' => false];
         });
 
-        $this->applyStreakFreeze->handle($user, $result['log']->local_date->toDateString());
+        if ($result['idempotent_replay']) {
+            $this->applyStreakFreeze->handle($user, $result['log']->local_date->toDateString());
+        }
         $this->streaks->recalculate($user);
 
         $result['new_achievements'] = $this->achievements->reconcile($user);

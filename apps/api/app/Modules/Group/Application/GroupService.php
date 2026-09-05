@@ -175,6 +175,7 @@ final class GroupService
                 'user_id' => $member->user_id,
                 'display_name' => $member->user->profile?->display_name ?? 'Aqualino',
                 'avatar_url' => $member->user->profile?->avatar_url,
+                'level' => $member->user->level,
                 'role' => $member->user_id === $group->owner_id ? 'owner' : 'member',
             ])->all(),
             'invite' => $group->owner_id === $viewer->id ? [

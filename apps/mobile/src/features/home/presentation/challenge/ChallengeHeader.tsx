@@ -5,20 +5,25 @@ import {AqualinoIcon, type AqualinoIconName} from '../../../../shared/components
 import {AqualinoMascot} from '../AqualinoMascot';
 import {challengeTheme} from './challengeTheme';
 import {HydrationFlame} from '../../../hydration/presentation/HydrationFlame';
+import {LevelBadge} from '../../../../shared/components/LevelBadge';
 
 interface Props {
   condition: MascotCondition;
   streak: number;
   waterMl: number;
   xp: number;
+  level?: number;
   onOpenInventory: () => void;
 }
 
-export const ChallengeHeader = memo(function ChallengeHeaderView({condition, streak, waterMl, xp, onOpenInventory}: Props): React.JSX.Element {
+export const ChallengeHeader = memo(function ChallengeHeaderView({condition, streak, waterMl, xp, level = 1, onOpenInventory}: Props): React.JSX.Element {
   return (
     <>
       <View style={styles.topRow}>
-        <AqualinoMascot condition={condition} compact />
+        <View style={styles.mascot}>
+          <AqualinoMascot condition={condition} compact />
+          <LevelBadge level={level} />
+        </View>
         <View style={styles.statsPanel}>
           <View style={styles.stat}>
             <HydrationFlame totalMl={waterMl} size={22} />
@@ -28,6 +33,7 @@ export const ChallengeHeader = memo(function ChallengeHeaderView({condition, str
           <Stat icon="water" label={`${formatNumber(waterMl)} ml`} />
           <View style={styles.divider} />
           <Pressable
+            testID="home-inventory"
             accessibilityRole="button"
             accessibilityLabel={`Abrir inventário, ${xp} XP`}
             onPress={onOpenInventory}
@@ -55,6 +61,7 @@ function formatNumber(value: number): string {
 }
 
 const styles = StyleSheet.create({
+  mascot: {alignItems: 'center', gap: 4},
   topRow: {flexDirection: 'row', alignItems: 'center', gap: 9},
   statsPanel: {
     flex: 1, height: 54, flexDirection: 'row', alignItems: 'center', overflow: 'hidden',

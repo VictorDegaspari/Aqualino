@@ -2,6 +2,7 @@ This is a new [**React Native**](https://reactnative.dev) project, bootstrapped 
 
 ## Project documentation
 
+- [Navigation map and Android automation](../../scripts/mobile_automation/README.md)
 - [Hydration reminders](src/features/reminders/README.md)
 - [Aqualino home-screen widget](src/features/widget/README.md)
 

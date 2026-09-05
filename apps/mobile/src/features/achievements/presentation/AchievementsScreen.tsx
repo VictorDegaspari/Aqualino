@@ -70,7 +70,7 @@ export function AchievementCollectionView({items, unlockedCount, copy, loading, 
             <Pressable accessibilityRole="button" onPress={onRefresh} style={styles.retry}><Text style={styles.retryLabel}>{copy.retry}</Text></Pressable>
           </View> : null}
           {!visible.length ? <Text style={styles.description}>{filter === 'locked' ? copy.noLocked : copy.empty}</Text> : null}
-          {(['beginnings', 'consistency', 'goals'] as const).map(category => {
+          {(['beginnings', 'consistency', 'goals', 'levels'] as const).map(category => {
             const section = visible.filter(item => item.category === category);
             if (!section.length) return null;
             return <View key={category} style={styles.section}>

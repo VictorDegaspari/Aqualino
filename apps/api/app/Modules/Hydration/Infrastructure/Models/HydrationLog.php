@@ -21,12 +21,14 @@ class HydrationLog extends Model
         'source',
         'client_event_id',
         'xp_awarded',
+        'xp_multiplier',
         'metadata',
     ];
 
     protected function casts(): array
     {
         return [
+            'xp_multiplier' => 'integer',
             'occurred_at' => 'immutable_datetime',
             'local_date' => 'immutable_date',
             'metadata' => 'array',

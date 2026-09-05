@@ -2,12 +2,60 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_xp_level_and_consecutive_days_survive_logout_and_a_new_login(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-09-03T15:00:00Z'));
+        $user = User::factory()->create();
+        $user->profile()->create([
+            'display_name' => 'Ana', 'username' => 'ana',
+            'timezone' => 'America/Sao_Paulo', 'locale' => 'pt-BR',
+        ]);
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email, 'password' => 'password',
+        ])->assertOk()->json('data.token');
+
+        foreach ([3, 4, 5] as $day) {
+            $this->travelTo(CarbonImmutable::parse("2026-09-0{$day}T15:00:00Z"));
+            $this->app['auth']->forgetGuards();
+            $this->withToken($token)->postJson('/api/v1/hydration/logs', [
+                'amount_ml' => 2000, 'client_event_id' => (string) Str::uuid(),
+            ])->assertCreated()->assertJsonPath('data.gamification.streak', $day - 2);
+        }
+
+        $this->app['auth']->forgetGuards();
+        $before = $this->withToken($token)->getJson('/api/v1/me')->assertOk()
+            ->assertJsonPath('data.xp_total', 116)
+            ->assertJsonPath('data.level', 2)
+            ->assertJsonPath('data.level_progress.current_xp', 16)
+            ->assertJsonPath('data.streak', 3)->json('data');
+        $this->app['auth']->forgetGuards();
+        $this->withToken($token)->postJson('/api/v1/auth/logout')->assertOk();
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'xp_total' => 116, 'level' => 2]);
+        $this->assertDatabaseHas('user_streaks', ['user_id' => $user->id, 'current_streak' => 3]);
+
+        $this->app['auth']->forgetGuards();
+        $login = $this->withoutToken()->postJson('/api/v1/auth/login', [
+            'email' => $user->email, 'password' => 'password',
+        ])->assertOk();
+        $this->app['auth']->forgetGuards();
+        $restored = $this->withToken($login->json('data.token'))->getJson('/api/v1/me')->assertOk();
+
+        foreach (['xp_total', 'level', 'level_progress', 'streak', 'xp_multiplier'] as $field) {
+            $login->assertJsonPath("data.user.{$field}", $before[$field]);
+            $restored->assertJsonPath("data.{$field}", $before[$field]);
+        }
+        $this->assertDatabaseCount('hydration_logs', 3);
+    }
 
     public function test_user_can_register_login_and_logout_with_a_mobile_token(): void
     {

@@ -8,6 +8,8 @@ const definitions: Array<[AchievementCode, Achievement['category'], number, numb
   ['streak_3', 'consistency', 3, 50], ['streak_7', 'consistency', 7, 60],
   ['goals_7', 'goals', 7, 70], ['streak_14', 'consistency', 14, 80],
   ['goals_30', 'goals', 30, 90], ['streak_30', 'consistency', 30, 100],
+  ['level_5', 'levels', 5, 110], ['level_10', 'levels', 10, 120],
+  ['level_50', 'levels', 50, 130], ['level_100', 'levels', 100, 140],
 ];
 
 export const emptyAchievementCollection: AchievementCollection = {

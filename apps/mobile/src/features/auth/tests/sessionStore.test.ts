@@ -141,6 +141,114 @@ describe('sessionStore', () => {
     expect(userStore.set).not.toHaveBeenCalled();
   });
 
+  it('applies confirmed XP and level immediately and persists the progress', () => {
+    useSessionStore.setState({status: 'signedIn', user});
+    const progress = {current_xp: 10, required_xp: 200, remaining_xp: 190, percentage: 5};
+    useSessionStore.getState().applyGamification(user.id, {xp_awarded: 20, xp_total: 560, level: 5, level_progress: progress, xp_multiplier: 2, streak: 11, new_achievements: ['level_5']});
+    expect(useSessionStore.getState().user).toMatchObject({xp_total: 560, level: 5, level_progress: progress, xp_multiplier: 2});
+    expect(userStore.set).toHaveBeenCalledWith(useSessionStore.getState().user);
+  });
+
+  it('ignores an older XP response and rewards for a different account', () => {
+    const current = {...user, xp_total: 560, level: 5};
+    useSessionStore.setState({status: 'signedIn', user: current});
+    useSessionStore.getState().applyGamification(user.id, {xp_awarded: 10, xp_total: 550, level: 5, streak: 1, new_achievements: []});
+    useSessionStore.getState().applyGamification('user-2', {xp_awarded: 10, xp_total: 1000, level: 7, streak: 1, new_achievements: []});
+    expect(useSessionStore.getState().user).toBe(current);
+    expect(userStore.set).not.toHaveBeenCalled();
+  });
+
+  it('does not lower a freshly earned level when a profile refresh arrives late', async () => {
+    useSessionStore.setState({status: 'signedIn', user: {...user, level: 4, xp_total: 540}});
+    let finish!: (value: User) => void;
+    repository.me.mockReturnValueOnce(new Promise(resolve => {finish = resolve;}));
+    const refresh = useSessionStore.getState().refreshUser();
+    useSessionStore.getState().applyGamification(user.id, {xp_awarded: 10, xp_total: 550, level: 5, streak: 1, new_achievements: ['level_5']});
+    finish({...user, level: 4, xp_total: 540});
+    await refresh;
+    expect(useSessionStore.getState().user).toMatchObject({xp_total: 550, level: 5});
+  });
+
+  it('restores confirmed XP and consecutive days when signing in again', async () => {
+    await useSessionStore.getState().authenticate({token: 'first-token', token_type: 'Bearer', user});
+    useSessionStore.getState().applyGamification(user.id, {xp_awarded: 10, xp_total: 550, level: 5, streak: 3, new_achievements: []});
+    const saved = useSessionStore.getState().user!;
+
+    await useSessionStore.getState().signOut();
+    await useSessionStore.getState().authenticate({token: 'second-token', token_type: 'Bearer', user: saved});
+
+    expect(useSessionStore.getState().user).toMatchObject({xp_total: 550, level: 5, streak: 3});
+    expect(userStore.set).toHaveBeenLastCalledWith(saved);
+  });
+
+  it('accepts a broken streak from the server without losing permanent XP', async () => {
+    useSessionStore.setState({status: 'signedIn', user: {...user, xp_total: 550, level: 5, streak: 3}});
+    repository.me.mockResolvedValueOnce({...user, xp_total: 550, level: 5, streak: 0});
+
+    await useSessionStore.getState().refreshUser();
+
+    expect(useSessionStore.getState().user).toMatchObject({xp_total: 550, level: 5, streak: 0});
+  });
+
+  it('does not carry XP or consecutive days into another account', async () => {
+    useSessionStore.setState({status: 'signedIn', user: {...user, xp_total: 550, level: 5, streak: 3}});
+    const other = {...user, id: 'user-2', email: 'bia@example.com', xp_total: 0, level: 1, streak: 0};
+
+    await useSessionStore.getState().authenticate({token: 'other-token', token_type: 'Bearer', user: other});
+
+    expect(useSessionStore.getState().user).toEqual(other);
+    expect(userStore.set).toHaveBeenLastCalledWith(other);
+  });
+
+  it.each(['response', 'network error'])('keeps progress earned while bootstrap waits for a %s', async outcome => {
+    tokenStore.hydrate.mockResolvedValue('active-token');
+    userStore.hydrate.mockResolvedValue({...user, xp_total: 0, level: 1, streak: 0});
+    let finish!: (value: User) => void;
+    let fail!: (error: Error) => void;
+    const requested = new Promise<void>(started => {
+      repository.me.mockImplementationOnce(() => {
+        started();
+        return new Promise((resolve, reject) => {finish = resolve; fail = reject;});
+      });
+    });
+    const bootstrap = useSessionStore.getState().bootstrap();
+    await requested;
+    useSessionStore.getState().applyGamification(user.id, {xp_awarded: 10, xp_total: 550, level: 5, streak: 3, new_achievements: []});
+    if (outcome === 'response') finish({...user, xp_total: 0, level: 1, streak: 0});
+    else fail(new AppError('Sem rede', 'NETWORK_UNAVAILABLE'));
+    await bootstrap;
+
+    expect(useSessionStore.getState().user).toMatchObject({xp_total: 550, level: 5, streak: 3});
+    expect(userStore.set).toHaveBeenLastCalledWith(expect.objectContaining({xp_total: 550, level: 5, streak: 3}));
+  });
+
+  it.each(['response', 'unauthorized'])('ignores an old bootstrap %s after signing out and in', async outcome => {
+    tokenStore.hydrate.mockResolvedValue('active-token');
+    userStore.hydrate.mockResolvedValue({...user, xp_total: 0, streak: 0});
+    let finish!: (value: User) => void;
+    let fail!: (error: Error) => void;
+    const requested = new Promise<void>(started => {
+      repository.me.mockImplementationOnce(() => {
+        started();
+        return new Promise((resolve, reject) => {finish = resolve; fail = reject;});
+      });
+    });
+    const bootstrap = useSessionStore.getState().bootstrap();
+    await requested;
+    await useSessionStore.getState().signOut();
+    const restored = {...user, xp_total: 550, level: 5, streak: 3};
+    await useSessionStore.getState().authenticate({token: 'new-token', token_type: 'Bearer', user: restored});
+    userStore.clear.mockClear();
+
+    if (outcome === 'response') finish({...user, xp_total: 0, streak: 0});
+    else fail(new AppError('Expirado', 'UNAUTHENTICATED', 401));
+    await bootstrap;
+
+    expect(useSessionStore.getState()).toMatchObject({status: 'signedIn', user: restored});
+    expect(userStore.set).toHaveBeenLastCalledWith(restored);
+    expect(userStore.clear).not.toHaveBeenCalled();
+  });
+
   it('clears the local session only when the server rejects the token', async () => {
     tokenStore.hydrate.mockResolvedValue('expired-token');
     userStore.hydrate.mockResolvedValue(user);
@@ -229,5 +337,20 @@ describe('sessionStore', () => {
 
     expect(useSessionStore.getState()).toMatchObject({status: 'signedOut', user: null});
     expect(repository.me).not.toHaveBeenCalled();
+  });
+
+  it('does not clear a new login when an old unauthenticated cache read finishes', async () => {
+    tokenStore.hydrate.mockResolvedValue(null);
+    let finish!: (value: User | null) => void;
+    userStore.hydrate.mockReturnValueOnce(new Promise(resolve => {finish = resolve;}));
+    await useSessionStore.getState().bootstrap();
+    const restored = {...user, xp_total: 550, level: 5, streak: 3};
+    await useSessionStore.getState().authenticate({token: 'new-token', token_type: 'Bearer', user: restored});
+
+    finish(null);
+    await new Promise<void>(resolve => setImmediate(resolve));
+
+    expect(userStore.clear).not.toHaveBeenCalled();
+    expect(useSessionStore.getState().user).toEqual(restored);
   });
 });

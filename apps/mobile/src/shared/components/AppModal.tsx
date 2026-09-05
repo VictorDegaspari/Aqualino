@@ -47,6 +47,8 @@ export function AppModalProvider({children}: React.PropsWithChildren): React.JSX
         {active ? <AppModalLayer>{entries.map(entry => (
           <View
             key={entry.id}
+            testID="app-modal"
+            collapsable={false}
             style={styles.overlay}
             pointerEvents={entry === active ? 'auto' : 'none'}
             accessibilityViewIsModal={entry === active}

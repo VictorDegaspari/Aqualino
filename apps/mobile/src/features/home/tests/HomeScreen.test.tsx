@@ -11,7 +11,8 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => mockNavigation, useIsFocused: () => true, useRoute: () => ({params: undefined}),
 }));
 jest.mock('react-native-image-picker', () => ({launchCamera: jest.fn()}));
-jest.mock('../../auth/application/sessionStore', () => ({useSessionStore: (selector: (state: unknown) => unknown) => selector({user: null})}));
+const mockRefreshUser = jest.fn().mockResolvedValue(undefined);
+jest.mock('../../auth/application/sessionStore', () => ({useSessionStore: (selector: (state: unknown) => unknown) => selector({user: null, refreshUser: mockRefreshUser})}));
 jest.mock('../../hydration/presentation/useHydrationHome', () => ({useHydrationHome: () => ({query: {refetch: mockRefetch}})}));
 jest.mock('../presentation/useChallengeActions', () => ({useChallengeActions: () => ({start: jest.fn(), claim: jest.fn(), starting: false})}));
 jest.mock('../presentation/HomeView', () => ({HomeView: ({onOpenHydration}: {onOpenHydration: () => void}) => {

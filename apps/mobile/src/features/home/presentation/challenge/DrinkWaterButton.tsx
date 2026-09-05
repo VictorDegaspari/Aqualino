@@ -16,6 +16,7 @@ export const DrinkWaterButton = memo(function DrinkWaterButtonView({onPress}: Pr
 
   return (
     <Pressable
+      testID="home-drink-water"
       accessibilityRole="button"
       accessibilityLabel="Bebi água"
       onPress={handlePress}

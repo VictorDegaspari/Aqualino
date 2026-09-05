@@ -3,7 +3,9 @@
 namespace App\Modules\Hydration\Application;
 
 use App\Models\User;
+use App\Modules\Gamification\Application\HydrationXpService;
 use App\Modules\Gamification\Application\MascotSnapshotService;
+use App\Modules\Gamification\Application\UserLevelService;
 use App\Modules\Hydration\Infrastructure\Models\HydrationLog;
 
 class HydrationPayloadFactory
@@ -12,6 +14,8 @@ class HydrationPayloadFactory
         private readonly HydrationQueryService $hydration,
         private readonly MascotSnapshotService $mascot,
         private readonly HydrationChallengeService $challenges,
+        private readonly UserLevelService $levels,
+        private readonly HydrationXpService $xp,
     ) {}
 
     public function created(User $user, HydrationLog $log, bool $idempotentReplay, array $newAchievements = []): array
@@ -33,8 +37,9 @@ class HydrationPayloadFactory
             'today' => $today,
             'gamification' => [
                 'xp_awarded' => $log->xp_awarded,
-                'xp_total' => $user->xp_total,
-                'level' => intdiv($user->xp_total, 100) + 1,
+                'awarded_xp_multiplier' => $log->xp_multiplier / 100,
+                'xp_multiplier' => $this->xp->todayMultiplier($user),
+                ...$this->levels->snapshot($user),
                 'streak' => $user->streak?->current_streak ?? 0,
                 'new_achievements' => $newAchievements,
             ],

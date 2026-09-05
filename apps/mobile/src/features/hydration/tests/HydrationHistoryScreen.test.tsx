@@ -84,6 +84,6 @@ test.each([0, 1250, 2500, 3000])('keeps the water within the glass with %i ml an
     expect(view.queryByTestId('history-water-liquid')).toBeNull();
   } else {
     const liquid = view.getByTestId('history-water-liquid');
-    expect(liquid).toHaveStyle({height: 180 + 224 * Math.min(totalMl / 2500, 1)});
+    expect(liquid).toHaveStyle({height: 180 + 200 * Math.min(totalMl / 2500, 1)});
   }
 });

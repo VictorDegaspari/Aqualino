@@ -14,11 +14,12 @@ import {hydrationHomeKey} from '../presentation/useHydrationHome';
 import {QuickHydrationScreen} from '../presentation/QuickHydrationScreen';
 
 const mockPreferences = {lastAmountMl: 300, selectAmount: jest.fn()};
+const mockApplyGamification = jest.fn();
 jest.mock('../application/hydrationService', () => ({hydrationService: {record: jest.fn(), pendingCount: jest.fn()}}));
 jest.mock('@react-native-community/netinfo', () => ({useNetInfo: () => ({isConnected: true})}));
 jest.mock('react-native-image-picker', () => ({launchCamera: jest.fn()}));
 jest.mock('../../auth/application/sessionStore', () => ({
-  useSessionStore: (selector: (state: unknown) => unknown) => selector({user: {profile: {favorite_volumes_ml: [200, 300, 500]}}}),
+  useSessionStore: (selector: (state: unknown) => unknown) => selector({user: {id: 'ana', profile: {favorite_volumes_ml: [200, 300, 500]}}, applyGamification: mockApplyGamification}),
 }));
 jest.mock('../application/hydrationPreferencesStore', () => ({
   useHydrationPreferencesStore: (selector: (state: typeof mockPreferences) => unknown) => selector(mockPreferences),
@@ -107,6 +108,7 @@ test('updates the Home drop before returning and prevents repeated taps during s
   expect(navigation.popTo).not.toHaveBeenCalled();
 
   navigation.popTo.mockImplementation(() => {
+    expect(mockApplyGamification).toHaveBeenCalledWith('ana', saved.result.gamification);
     const home = client.getQueryData<{data: HydrationHomeData}>(hydrationHomeKey)!;
     expect(home.data.today.total_ml).toBe(300);
     expect(home.data.week.days[0]).toMatchObject({total_ml: 300, percentage: 15, state: 'in_progress'});
@@ -125,6 +127,7 @@ test('returns with the updated drop when the drink is saved offline', async () =
   await waitFor(() => expect(navigation.popTo).toHaveBeenCalledWith('Home', {recordedAmountMl: 300}));
   const home = client.getQueryData<{data: HydrationHomeData; offline: boolean}>(hydrationHomeKey)!;
   expect(home.offline).toBe(true);
+  expect(mockApplyGamification).not.toHaveBeenCalled();
   expect(home.data.week.days[0]).toMatchObject({total_ml: 300, percentage: 15});
   expect(client.getQueryData<HydrationLogPage>([...hydrationLogsKey, '2026-09-02'])?.data).toEqual([
     expect.objectContaining({amount_ml: 300, client_event_id: 'event', local_date: '2026-09-02'}),

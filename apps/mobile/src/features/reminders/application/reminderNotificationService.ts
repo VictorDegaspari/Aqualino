@@ -76,7 +76,9 @@ export async function scheduleReminder(
           android: {
             channelId,
             pressAction: {id: 'default'},
-            smallIcon: 'ic_launcher',
+            smallIcon: 'ic_notification_aqualino',
+            largeIcon: 'aqualino_happy_active',
+            color: '#69ADBA',
           },
           ios: {
             sound: 'default',

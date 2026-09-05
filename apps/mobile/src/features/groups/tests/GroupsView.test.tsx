@@ -12,7 +12,7 @@ const safeAreaMetrics = {
 
 const group: PrivateGroup = {
   id: 'group-1', name: 'Maré de amigos', timezone: 'America/Sao_Paulo', owner_id: 'ana', max_members: 5,
-  members: [{user_id: 'ana', display_name: 'Ana', avatar_url: 'avatar_2', role: 'owner'}],
+  members: [{user_id: 'ana', display_name: 'Ana', avatar_url: 'avatar_2', role: 'owner', level: 50}],
   invite: {code: 'ABC123DEF456', expires_at: '2099-09-12T00:00:00Z'},
 };
 
@@ -35,6 +35,11 @@ test('presents the empty group state and the signed-in member', async () => {
   expect(view.getByText('NENHUM GRUPO ATIVO')).toBeTruthy();
   expect(view.getByText('Ana')).toBeTruthy();
   expect(view.getByLabelText('Ana e quatro vagas disponíveis')).toBeTruthy();
+});
+
+test('shows the level of another group participant', async () => {
+  const view = await renderGroups(props({group, userId: 'guest'}));
+  expect(view.getByLabelText('Nível 50')).toBeTruthy();
 });
 
 test('validates the name and creates a group with trimmed input', async () => {

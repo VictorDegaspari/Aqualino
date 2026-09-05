@@ -16,6 +16,13 @@ export interface UserProfile {
   onboarding_completed_at: string | null;
 }
 
+export interface LevelProgress {
+  current_xp: number;
+  required_xp: number;
+  remaining_xp: number;
+  percentage: number;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -23,7 +30,9 @@ export interface User {
   email_verified_at?: string | null;
   email_verification_required?: boolean;
   xp_total?: number;
+  xp_multiplier?: number;
   level?: number;
+  level_progress?: LevelProgress;
   streak?: number;
   profile: UserProfile;
 }
@@ -140,8 +149,11 @@ export interface RecordWaterResult {
   today: HydrationToday;
   gamification: {
     xp_awarded: number;
+    xp_multiplier?: number;
+    awarded_xp_multiplier?: number;
     xp_total: number;
     level: number;
+    level_progress?: LevelProgress;
     streak: number;
     new_achievements: AchievementCode[];
   };
@@ -203,6 +215,7 @@ export interface GroupMember {
   display_name: string;
   avatar_url: string | null;
   role: 'owner' | 'member';
+  level: number;
 }
 
 export interface GroupInvite {
@@ -228,13 +241,16 @@ export interface GroupInvitePreview {
   expires_at: string;
 }
 
+export type LevelAchievementCode = 'level_5' | 'level_10' | 'level_50' | 'level_100';
+
 export type AchievementCode =
+  | LevelAchievementCode
   | 'first_drop' | 'first_reminder' | 'first_goal' | 'team_player'
   | 'streak_3' | 'streak_7' | 'streak_14' | 'streak_30' | 'goals_7' | 'goals_30';
 
 export interface Achievement {
   code: AchievementCode;
-  category: 'beginnings' | 'consistency' | 'goals';
+  category: 'beginnings' | 'consistency' | 'goals' | 'levels';
   rank: number;
   target: number;
   progress: number;

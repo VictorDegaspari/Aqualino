@@ -25,15 +25,15 @@ class AchievementControllerTest extends TestCase
         $this->json($method, $path)->assertUnauthorized();
     }
 
-    public function test_a_new_profile_has_ten_locked_achievements(): void
+    public function test_a_new_profile_has_fourteen_locked_achievements(): void
     {
         $this->member();
         $items = $this->getJson('/api/v1/achievements')->assertOk()
-            ->assertJsonCount(10, 'data.items')->assertJsonPath('data.unlocked_count', 0)->json('data.items');
+            ->assertJsonCount(14, 'data.items')->assertJsonPath('data.unlocked_count', 0)->json('data.items');
         foreach ($items as $item) {
             $this->assertNull($item['unlocked_at']);
             $this->assertNull($item['celebrated_at']);
-            $this->assertSame(0, $item['progress']);
+            $this->assertSame($item['category'] === 'levels' ? 1 : 0, $item['progress']);
         }
         $this->assertDatabaseCount('user_achievements', 0);
     }

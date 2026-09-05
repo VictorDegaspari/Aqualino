@@ -5,6 +5,7 @@ namespace App\Modules\Achievement\Application;
 use App\Models\User;
 use App\Modules\Achievement\Domain\AchievementCatalog;
 use App\Modules\Achievement\Infrastructure\Models\UserAchievement;
+use App\Modules\Gamification\Application\UserLevelService;
 use App\Modules\Gamification\Infrastructure\Models\UserStreak;
 use App\Modules\Group\Infrastructure\Models\GroupMembership;
 use App\Modules\Hydration\Infrastructure\Models\DailyUserStat;
@@ -15,11 +16,13 @@ use InvalidArgumentException;
 
 final class AchievementService
 {
+    public function __construct(private readonly UserLevelService $levels) {}
+
     /** @return list<string> */
     public function reconcile(User $user): array
     {
         return DB::transaction(function () use ($user): array {
-            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $this->levels->snapshot($user);
             $progress = $this->progress($user);
             $owned = UserAchievement::query()->where('user_id', $user->id)->pluck('code')->all();
             $new = [];
@@ -85,10 +88,11 @@ final class AchievementService
         return ['code' => $code, 'celebrated_at' => $award->fresh()->celebrated_at->toIso8601String()];
     }
 
-    /** @return array{records: int, reminders: int, teams: int, goals: int, streak: int} */
+    /** @return array{records: int, reminders: int, teams: int, goals: int, streak: int, level: int} */
     private function progress(User $user): array
     {
         return [
+            'level' => $user->level,
             'records' => (int) HydrationLog::query()->where('user_id', $user->id)->exists(),
             'reminders' => (int) UserAchievement::query()->where('user_id', $user->id)->where('code', 'first_reminder')->exists(),
             'teams' => (int) GroupMembership::query()->where('user_id', $user->id)->exists(),

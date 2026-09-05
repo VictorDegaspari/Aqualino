@@ -51,7 +51,7 @@ export function GroupForm({mode, copy, busy, error, onClose, onClearError, onCre
                 ) : (
                   <>
                     <Text style={styles.label}>{isCreate ? copy.groupName : copy.code}</Text>
-                    <TextInput accessibilityLabel={isCreate ? copy.groupName : copy.code}
+                    <TextInput testID={isCreate ? 'group-name' : 'group-code'} accessibilityLabel={isCreate ? copy.groupName : copy.code}
                       accessibilityHint={isCreate ? copy.nameHint : copy.codeHint}
                       value={value} onChangeText={text => {setValue(text); onClearError();}}
                       placeholder={isCreate ? copy.namePlaceholder : copy.codePlaceholder}

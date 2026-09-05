@@ -11,6 +11,7 @@ export function OfflineSyncProvider({children}: React.PropsWithChildren): React.
   const queryClient = useQueryClient();
   const sessionStatus = useSessionStore(state => state.status);
   const verificationRequired = useSessionStore(state => requiresEmailVerification(state.user));
+  const refreshUser = useSessionStore(state => state.refreshUser);
   const setSyncing = useSyncStatusStore(state => state.setSyncing);
   const setPending = useSyncStatusStore(state => state.setPending);
 
@@ -32,6 +33,10 @@ export function OfflineSyncProvider({children}: React.PropsWithChildren): React.
         setSyncing(true);
         hydrationService.flush()
           .then(async ({synced, rejected}) => {
+            if (synced > 0) {
+              refreshUser().catch(() => undefined);
+              queryClient.invalidateQueries({queryKey: ['groups']});
+            }
             if (synced > 0 || rejected > 0) {
               queryClient.invalidateQueries({queryKey: ['achievements']});
               await queryClient.invalidateQueries({queryKey: ['hydration']});
@@ -55,7 +60,7 @@ export function OfflineSyncProvider({children}: React.PropsWithChildren): React.
       if (backgroundTimer) clearTimeout(backgroundTimer);
       unsubscribe?.();
     };
-  }, [queryClient, sessionStatus, verificationRequired, setPending, setSyncing]);
+  }, [queryClient, sessionStatus, verificationRequired, setPending, setSyncing, refreshUser]);
 
   return <>{children}</>;
 }

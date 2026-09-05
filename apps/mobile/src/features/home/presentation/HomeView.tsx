@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import type {HydrationHomeData} from '../../hydration/data/hydrationRemoteRepository';
 import {PrimaryButton} from '../../../shared/components/PrimaryButton';
@@ -12,6 +12,7 @@ import {DrinkWaterButton} from './challenge/DrinkWaterButton';
 import {ChallengeStartCard} from './challenge/ChallengeStartCard';
 import {SoloRewardDialog} from './challenge/SoloRewardDialog';
 import {challengeTheme} from './challenge/challengeTheme';
+import {HomeLoading} from './HomeLoading';
 
 interface Props {
   data?: HydrationHomeData;
@@ -26,6 +27,7 @@ interface Props {
   avatarId?: string | null;
   streak: number;
   xp: number;
+  level?: number;
   motionEnabled?: boolean;
   onRetry: () => void;
   onOpenHydration: () => void;
@@ -41,11 +43,7 @@ export function HomeView({motionEnabled = true, ...props}: Props): React.JSX.Ele
   const [rewardOpen, setRewardOpen] = useState(false);
 
   if (props.loading && !props.data) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator accessibilityLabel="Carregando hidratação" size="large" color={challengeTheme.colors.cyan} />
-      </View>
-    );
+    return <HomeLoading motionEnabled={motionEnabled} />;
   }
 
   if (props.error && !props.data) {
@@ -75,6 +73,7 @@ export function HomeView({motionEnabled = true, ...props}: Props): React.JSX.Ele
             streak={props.streak}
             waterMl={today?.total_ml ?? 0}
             xp={props.xp}
+            level={props.level}
             onOpenInventory={props.onOpenInventory}
           />
 

@@ -49,6 +49,12 @@
       "size" : "60x60"
     },
     {
+      "filename" : "icon-20@2x.png",
+      "idiom" : "ipad",
+      "scale" : "2x",
+      "size" : "20x20"
+    },
+    {
       "filename" : "icon-marketing.png",
       "idiom" : "ios-marketing",
       "scale" : "1x",

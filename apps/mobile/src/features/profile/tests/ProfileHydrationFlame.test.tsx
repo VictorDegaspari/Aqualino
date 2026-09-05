@@ -10,7 +10,7 @@ import {ProfileScreen} from '../presentation/ProfileScreen';
 jest.mock('../../hydration/application/hydrationService', () => ({hydrationService: {cachedOrRemote: jest.fn()}}));
 jest.mock('@react-native-community/netinfo', () => ({useNetInfo: () => ({isConnected: true})}));
 jest.mock('../../auth/application/sessionStore', () => ({useSessionStore: (selector: (state: unknown) => unknown) => selector({
-  user: {streak: 9, level: 2, profile: {display_name: 'Ana', username: 'ana'}},
+  user: {streak: 9, level: 2, xp_multiplier: 1.9, level_progress: {current_xp: 25, required_xp: 125, remaining_xp: 100, percentage: 20}, profile: {display_name: 'Ana', username: 'ana'}},
   refreshUser: jest.fn(), signOut: jest.fn(),
 })}));
 jest.mock('../../auth/data/authRepository', () => ({authRepository: {updateProfile: jest.fn()}}));
@@ -38,6 +38,9 @@ test('keeps the flame off before drinking today even with an existing streak', a
   expect(view.getByLabelText(offLabel)).toBeTruthy();
   expect(view.queryByLabelText(onLabel)).toBeNull();
   expect(view.getByText('9')).toBeTruthy();
+  expect(view.getByRole('progressbar')).toHaveAccessibilityValue({min: 0, max: 125, now: 25});
+  expect(view.getByText('Próximo nível: 3')).toBeTruthy();
+  expect(view.getByText('Sequência: 1,9× XP · +10% por dia seguido, até 2×.')).toBeTruthy();
 });
 
 test('lights the profile flame from the same updated daily total as Home and resets for the next day', async () => {

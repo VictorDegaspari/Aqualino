@@ -42,6 +42,7 @@ function NavItem({icon, label, active = false, onPress}: {icon: ColorfulNavigati
 
   return (
     <Pressable
+      testID={`nav-${icon}`}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{selected: active, disabled: active || !onPress}}

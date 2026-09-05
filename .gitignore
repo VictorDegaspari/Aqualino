@@ -5,6 +5,8 @@
 node_modules/
 .pnpm-store/
 coverage/
+.artifacts/
+__pycache__/
 dist/
 *.log
 
@@ -26,4 +28,3 @@ apps/mobile/ios/Pods/
 apps/mobile/ios/build/
 apps/mobile/ios/*.xcworkspace/xcuserdata/
 apps/mobile/ios/DerivedData/
-

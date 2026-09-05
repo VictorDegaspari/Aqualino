@@ -2,7 +2,7 @@ import React, {useState} from 'react';
 import type {GroupInvitePreview, PrivateGroup} from '@aqualino/contracts';
 import {ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {getAvatarSource} from '../../../shared/avatars/avatarOptions';
+import {UserAvatar} from '../../../shared/avatars/UserAvatar';
 import {AqualinoIcon, type AqualinoIconName} from '../../../shared/components/AqualinoIcon';
 import {TabScreenHeader} from '../../../shared/components/TabScreenHeader';
 import {haptics} from '../../../shared/device/haptics';
@@ -89,7 +89,7 @@ export function GroupsView({displayName, avatarId, userId, locale = 'pt-BR', gro
             <View accessibilityLabel={copy.openSlots(displayName)} style={styles.membersPreview}>
               <View style={styles.memberPreview}>
                 <View style={styles.avatarRing}>
-                  <Image source={getAvatarSource(avatarId)} resizeMethod="resize" resizeMode="cover" style={styles.avatar} />
+                  <UserAvatar avatarId={avatarId} style={styles.avatar} />
                 </View>
                 <Text numberOfLines={1} style={styles.memberName}>{displayName}</Text>
               </View>

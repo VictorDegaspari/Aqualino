@@ -34,6 +34,8 @@ function useRecordHydration() {
   const network = useNetInfo();
   const setPending = useSyncStatusStore(state => state.setPending);
   const timezone = useSessionStore(state => state.user?.profile.timezone ?? 'America/Sao_Paulo');
+  const userId = useSessionStore(state => state.user?.id);
+  const applyGamification = useSessionStore(state => state.applyGamification);
 
   return useMutation({
     mutationFn: ({amountMl, source}: {amountMl: number; source: PendingHydration['source']}) =>
@@ -60,14 +62,18 @@ function useRecordHydration() {
           },
         });
       }
-      return {previous};
+      return {previous, userId};
     },
     onError: (_error, _variables, context) => {
       if (context?.previous) {
         queryClient.setQueryData(hydrationHomeKey, context.previous);
       }
     },
-    onSuccess: async outcome => {
+    onSuccess: async (outcome, _variables, context) => {
+      if (outcome.kind === 'synced' && context?.userId) {
+        applyGamification(context.userId, outcome.result.gamification);
+        queryClient.invalidateQueries({queryKey: ['groups']});
+      }
       await queryClient.cancelQueries({queryKey: hydrationLogsKey});
       const log = outcome.kind === 'synced' ? outcome.result.log : pendingHydrationLog(outcome.event, timezone);
       queryClient.setQueryData<HydrationLogPage>([...hydrationLogsKey, log.local_date], current =>

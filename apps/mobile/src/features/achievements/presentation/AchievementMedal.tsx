@@ -4,12 +4,15 @@ import type {Achievement} from '@aqualino/contracts';
 import {achievementImages} from '../../../assets/achievements/achievementImages';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
+import {LevelMedal} from './LevelMedal';
 
 export function AchievementMedal({achievement, size = 88}: {achievement: Achievement; size?: number}): React.JSX.Element {
   const locked = !achievement.unlocked_at;
+  const source = achievement.code in achievementImages ? achievementImages[achievement.code as keyof typeof achievementImages] : undefined;
   return (
     <View style={{width: size, height: size}}>
-      <Image source={achievementImages[achievement.code]} resizeMode="contain" resizeMethod="resize" style={[styles.image, locked && styles.locked]} />
+      {source ? <Image source={source} resizeMode="contain" resizeMethod="resize" style={[styles.image, locked && styles.locked]} />
+        : <LevelMedal level={achievement.target} size={size} locked={locked} />}
       {locked ? <View style={styles.lock}><AqualinoIcon name="lock" size={12} color={challengeTheme.colors.muted} /></View> : null}
     </View>
   );
