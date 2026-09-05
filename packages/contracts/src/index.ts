@@ -19,6 +19,9 @@ export interface UserProfile {
 export interface User {
   id: string;
   email: string;
+  // Optional when restoring profiles cached before email verification was introduced.
+  email_verified_at?: string | null;
+  email_verification_required?: boolean;
   xp_total?: number;
   level?: number;
   streak?: number;
@@ -55,7 +58,7 @@ export interface HydrationWeekDay {
 }
 
 export interface HydrationWeek {
-  mode: 'civil_week';
+  mode: 'civil_week' | 'challenge';
   starts_on: string;
   ends_on: string;
   current_date: string;
@@ -63,6 +66,29 @@ export interface HydrationWeek {
   completed_goal_days: number;
   total_ml: number;
   days: HydrationWeekDay[];
+}
+
+export interface ChallengeReward {
+  state: 'locked' | 'available' | 'claimed';
+  type: 'xp' | InventoryItemCode | null;
+  amount: number | null;
+}
+
+export interface HydrationChallenge {
+  id: string;
+  mode: 'solo' | 'group';
+  status: 'scheduled' | 'active' | 'completed';
+  starts_at: string;
+  ends_at: string;
+  progress: HydrationWeek;
+  reward: ChallengeReward | null;
+}
+
+export interface HydrationChallenges {
+  solo: HydrationChallenge | null;
+  group: HydrationChallenge | null;
+  group_name: string | null;
+  can_start_group: boolean;
 }
 
 export interface WidgetSnapshot {
@@ -108,6 +134,7 @@ export interface RecordWaterInput {
 }
 
 export interface RecordWaterResult {
+  challenges?: HydrationChallenges;
   log: HydrationLog;
   idempotent_replay: boolean;
   today: HydrationToday;
@@ -116,7 +143,7 @@ export interface RecordWaterResult {
     xp_total: number;
     level: number;
     streak: number;
-    new_achievements: string[];
+    new_achievements: AchievementCode[];
   };
   mascot: Pick<WidgetSnapshot, 'condition' | 'decoration' | 'animation' | 'static_asset'>;
   widget: WidgetSnapshot;
@@ -199,6 +226,26 @@ export interface GroupInvitePreview {
   member_count: number;
   max_members: number;
   expires_at: string;
+}
+
+export type AchievementCode =
+  | 'first_drop' | 'first_reminder' | 'first_goal' | 'team_player'
+  | 'streak_3' | 'streak_7' | 'streak_14' | 'streak_30' | 'goals_7' | 'goals_30';
+
+export interface Achievement {
+  code: AchievementCode;
+  category: 'beginnings' | 'consistency' | 'goals';
+  rank: number;
+  target: number;
+  progress: number;
+  unlocked_at: string | null;
+  celebrated_at: string | null;
+}
+
+export interface AchievementCollection {
+  items: Achievement[];
+  unlocked_count: number;
+  total: number;
 }
 
 export interface ApiErrorBody {

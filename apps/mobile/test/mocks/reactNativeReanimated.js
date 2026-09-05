@@ -1,9 +1,10 @@
 /* global jest */
 
 const {Animated, Easing} = require('react-native');
+const {useRef} = require('react');
 
 function useSharedValue(value) {
-  return {value};
+  return useRef({value}).current;
 }
 
 function useAnimatedStyle(updater) {
@@ -19,7 +20,8 @@ function useAnimatedSensor() {
   };
 }
 
-function withTiming(value) {
+function withTiming(value, _config, callback) {
+  callback?.(true);
   return value;
 }
 
@@ -45,6 +47,7 @@ module.exports = {
   cancelAnimation: jest.fn(),
   Easing,
   interpolate,
+  isSharedValue: value => Boolean(value && typeof value === 'object' && 'value' in value),
   ReduceMotion: {System: 'system'},
   SensorType: {ROTATION: 5},
   useAnimatedSensor,
@@ -54,5 +57,6 @@ module.exports = {
   withDelay,
   withRepeat,
   withSequence,
+  withSpring: withTiming,
   withTiming,
 };

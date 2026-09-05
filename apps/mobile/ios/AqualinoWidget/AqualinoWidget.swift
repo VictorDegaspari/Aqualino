@@ -174,7 +174,7 @@ struct AqualinoWidgetView: View {
   }
 
   private var widgetContent: some View {
-    Link(destination: URL(string: "aqualino://hydrate/quick?source=widget")!) {
+    Link(destination: URL(string: "aqualino://home?source=widget")!) {
       Group {
         if isDisconnected {
           disconnectedContent

@@ -8,19 +8,25 @@ import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {useSessionStore} from '../../auth/application/sessionStore';
 import {useHydrationLogs} from './useHydrationLogs';
 import {HydrationWaterGauge} from './HydrationWaterGauge';
+import {useHydrationHomeData} from './useHydrationHome';
+import {hydrationLogDate} from '../application/hydrationHistory';
 
-const dateFormatter = new Intl.DateTimeFormat('pt-BR', {weekday: 'short', day: '2-digit', month: 'short'});
-const timeFormatter = new Intl.DateTimeFormat('pt-BR', {hour: '2-digit', minute: '2-digit'});
+const dateFormatter = new Intl.DateTimeFormat('pt-BR', {timeZone: 'UTC', weekday: 'short', day: '2-digit', month: 'short'});
 
 export function HydrationHistoryScreen(): React.JSX.Element {
   const isFocused = useIsFocused();
   const timezone = useSessionStore(state => state.user?.profile.timezone ?? 'America/Sao_Paulo');
-  const dates = useMemo(() => recentDates(timezone), [timezone]);
-  const [selectedDate, setSelectedDate] = useState(() => dates[0]?.value ?? formatDate(new Date(), timezone));
-  const query = useHydrationLogs(selectedDate);
+  const today = hydrationLogDate(new Date(), timezone);
+  const dates = useMemo(() => recentDates(today), [today]);
+  const [pickedDate, setSelectedDate] = useState<string | null>(null);
+  const selectedDate = pickedDate ?? today;
+  const query = useHydrationLogs(selectedDate, timezone);
+  const home = useHydrationHomeData();
   const logs = query.data?.data ?? [];
   const total = logs.reduce((sum, log) => sum + log.amount_ml, 0);
-  const refresh = () => query.refetch().then(() => undefined);
+  const goalMl = home.data?.data.week.days.find(day => day.date === selectedDate)?.goal_ml ?? home.data?.data.today.goal_ml;
+  const timeFormatter = useMemo(() => new Intl.DateTimeFormat('pt-BR', {timeZone: timezone, hour: '2-digit', minute: '2-digit'}), [timezone]);
+  const refresh = () => Promise.all([query.refetch(), home.refetch()]).then(() => undefined);
 
   return (
     <View style={styles.page}>
@@ -43,7 +49,7 @@ export function HydrationHistoryScreen(): React.JSX.Element {
             icon={<AqualinoIcon name="history" size={34} color={challengeTheme.colors.cyanStrong} />}
           />
 
-          {isFocused ? <HydrationWaterGauge totalMl={total} /> : null}
+          {isFocused && query.data ? <HydrationWaterGauge totalMl={total} goalMl={goalMl} isToday={selectedDate === today} /> : null}
 
           <View style={styles.daySelector} accessibilityRole="tablist">
             {dates.map(date => {
@@ -103,23 +109,17 @@ export function HydrationHistoryScreen(): React.JSX.Element {
   );
 }
 
-function formatDate(date: Date, timezone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit'}).formatToParts(date);
-  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value ?? '';
-  return `${value('year')}-${value('month')}-${value('day')}`;
-}
-
-function recentDates(timezone: string) {
+function recentDates(today: string) {
   return Array.from({length: 7}, (_, index) => {
-    const date = new Date();
+    const date = new Date(`${today}T12:00:00Z`);
     date.setUTCDate(date.getUTCDate() - index);
-    const value = formatDate(date, timezone);
+    const value = date.toISOString().slice(0, 10);
     const [year, month, day] = value.split('-').map(Number);
     const localDate = new Date(Date.UTC(year, month - 1, day, 12));
     return {
       value,
       label: dateFormatter.format(localDate),
-      weekday: new Intl.DateTimeFormat('pt-BR', {weekday: 'narrow'}).format(localDate).toUpperCase(),
+      weekday: new Intl.DateTimeFormat('pt-BR', {timeZone: 'UTC', weekday: 'narrow'}).format(localDate).toUpperCase(),
       day: String(day),
     };
   });

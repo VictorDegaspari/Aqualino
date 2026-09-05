@@ -7,6 +7,7 @@ import {secureRememberedTokenStore} from '../../../shared/security/secureRemembe
 import {reloadWidget, setWidgetAuthenticationState} from '../../widget/data/widgetBridge';
 import {authRepository, type AuthResult} from '../data/authRepository';
 import {useRememberedAccountsStore} from './rememberedAccountsStore';
+import {requiresEmailVerification} from './emailVerification';
 
 type SessionStatus = 'booting' | 'signedOut' | 'signedIn';
 
@@ -17,6 +18,7 @@ interface SessionState {
   authenticate: (result: AuthResult) => Promise<void>;
   refreshUser: () => Promise<void>;
   signOut: () => Promise<void>;
+  clearPasswordResetCredentials: (email: string) => Promise<void>;
   resumeRememberedAccount: (accountId: string) => Promise<boolean>;
   removeRememberedAccount: (accountId: string) => Promise<void>;
 }
@@ -41,6 +43,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     const cachedUser = await cachedUserPromise;
     if (cachedUser) {
+      updateWidgetAuthenticationSafely(!requiresEmailVerification(cachedUser));
       useRememberedAccountsStore.getState().remember(cachedUser);
       set({status: 'signedIn', user: cachedUser});
     }
@@ -49,6 +52,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const user = await authRepository.me();
       await secureUserStore.set(user).catch(() => undefined);
       useRememberedAccountsStore.getState().remember(user);
+      updateWidgetAuthenticationSafely(!requiresEmailVerification(user));
       set({status: 'signedIn', user});
     } catch (error) {
       if (isInvalidSession(error)) {
@@ -69,14 +73,33 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     await secureUserStore.set(result.user).catch(() => undefined);
     await secureRememberedTokenStore.set(result.user.id, result.token).catch(() => undefined);
     useRememberedAccountsStore.getState().remember(result.user);
-    updateWidgetAuthenticationSafely(true);
+    updateWidgetAuthenticationSafely(!requiresEmailVerification(result.user));
     set({status: 'signedIn', user: result.user});
   },
   async refreshUser() {
     if (get().status === 'signedIn') {
+      const accountId = get().user?.id;
+      const token = secureTokenStore.getCached();
       const user = await authRepository.me();
+      if (get().user?.id !== accountId || secureTokenStore.getCached() !== token || user.id !== accountId) return;
       await secureUserStore.set(user).catch(() => undefined);
+      if (get().user?.id !== accountId || secureTokenStore.getCached() !== token) return;
+      updateWidgetAuthenticationSafely(!requiresEmailVerification(user));
       set({user});
+    }
+  },
+  async clearPasswordResetCredentials(email) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = get().user;
+    const accountIds = new Set(useRememberedAccountsStore.getState().accounts
+      .filter(account => account.email.toLowerCase() === normalizedEmail).map(account => account.id));
+    if (user?.email.toLowerCase() === normalizedEmail) accountIds.add(user.id);
+    await Promise.allSettled([...accountIds].map(id => secureRememberedTokenStore.clear(id)));
+    if (user && accountIds.has(user.id) && get().user?.id === user.id) {
+      // A reset revokes this token on the server; never save it again through signOut.
+      set({status: 'signedOut', user: null});
+      updateWidgetAuthenticationSafely(false);
+      await clearLocalSession();
     }
   },
   async signOut() {

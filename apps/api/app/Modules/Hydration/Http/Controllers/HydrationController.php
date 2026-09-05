@@ -4,6 +4,7 @@ namespace App\Modules\Hydration\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Gamification\Application\MascotSnapshotService;
+use App\Modules\Hydration\Application\HydrationChallengeService;
 use App\Modules\Hydration\Application\HydrationPayloadFactory;
 use App\Modules\Hydration\Application\HydrationQueryService;
 use App\Modules\Hydration\Application\RecordWaterIntake;
@@ -20,6 +21,7 @@ class HydrationController extends Controller
         private readonly HydrationPayloadFactory $payloads,
         private readonly MascotSnapshotService $mascot,
         private readonly WeeklyHydrationQuery $weeklyHydration,
+        private readonly HydrationChallengeService $challenges,
     ) {}
 
     public function today(Request $request): JsonResponse
@@ -30,6 +32,7 @@ class HydrationController extends Controller
             'today' => $this->queries->today($user),
             'week' => $this->weeklyHydration->forUser($user),
             'mascot' => $this->mascot->forUser($user),
+            'challenges' => $this->challenges->current($user),
         ]]);
     }
 
@@ -54,7 +57,7 @@ class HydrationController extends Controller
     {
         $user = $request->user()->loadMissing('profile');
         $result = $this->recordWater->handle($user, $request->validated());
-        $payload = $this->payloads->created($user, $result['log'], $result['idempotent_replay']);
+        $payload = $this->payloads->created($user, $result['log'], $result['idempotent_replay'], $result['new_achievements']);
 
         return response()->json(['data' => $payload], $result['idempotent_replay'] ? 200 : 201);
     }

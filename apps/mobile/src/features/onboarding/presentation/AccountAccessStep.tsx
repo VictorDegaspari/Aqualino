@@ -25,6 +25,7 @@ interface Props {
   onReturnToAccounts: () => void;
   onRestart: () => void;
   onAuthenticated: () => void;
+  onForgotPassword?: (email: string) => void;
 }
 
 export const AccountAccessStep = memo(function AccountAccessStepView({
@@ -41,6 +42,7 @@ export const AccountAccessStep = memo(function AccountAccessStepView({
   onReturnToAccounts,
   onRestart,
   onAuthenticated,
+  onForgotPassword,
 }: Props): React.JSX.Element {
   const copy = appCopy[locale].welcome;
   const [busyAccountId, setBusyAccountId] = useState<string>();
@@ -206,6 +208,7 @@ export const AccountAccessStep = memo(function AccountAccessStepView({
           initialEmail={selectedAccount?.email}
           onAuthenticated={onAuthenticated}
           onCreateAccount={onRestart}
+          onForgotPassword={onForgotPassword}
         />
       </View>
     );

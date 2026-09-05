@@ -11,9 +11,10 @@ class HydrationPayloadFactory
     public function __construct(
         private readonly HydrationQueryService $hydration,
         private readonly MascotSnapshotService $mascot,
+        private readonly HydrationChallengeService $challenges,
     ) {}
 
-    public function created(User $user, HydrationLog $log, bool $idempotentReplay): array
+    public function created(User $user, HydrationLog $log, bool $idempotentReplay, array $newAchievements = []): array
     {
         $user->refresh()->load('profile', 'streak');
         $today = $this->hydration->today($user);
@@ -35,7 +36,7 @@ class HydrationPayloadFactory
                 'xp_total' => $user->xp_total,
                 'level' => intdiv($user->xp_total, 100) + 1,
                 'streak' => $user->streak?->current_streak ?? 0,
-                'new_achievements' => [],
+                'new_achievements' => $newAchievements,
             ],
             'mascot' => [
                 'condition' => $widget['condition'],
@@ -44,6 +45,7 @@ class HydrationPayloadFactory
                 'static_asset' => $widget['static_asset'],
             ],
             'widget' => $widget,
+            'challenges' => $this->challenges->current($user),
         ];
     }
 }

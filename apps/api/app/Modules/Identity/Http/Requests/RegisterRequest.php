@@ -25,10 +25,10 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email:rfc', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'email:rfc', 'max:255', Rule::unique('users', 'email')->withoutTrashed()],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
             'display_name' => ['required', 'string', 'min:2', 'max:80'],
-            'username' => ['required', 'string', 'regex:/^[a-z0-9_]{3,24}$/', 'unique:user_profiles,username'],
+            'username' => ['required', 'string', 'regex:/^[a-z0-9_]{3,24}$/', Rule::unique('user_profiles', 'username')->withoutTrashed()],
             'timezone' => ['required', 'string', Rule::in(DateTimeZone::listIdentifiers())],
             'locale' => ['sometimes', 'string', Rule::in(['pt-BR', 'en-US'])],
             'daily_goal_ml' => ['sometimes', 'integer', 'between:500,10000'],
@@ -36,6 +36,8 @@ class RegisterRequest extends FormRequest
             'terms_accepted' => ['accepted'],
             'terms_version' => ['required', 'string', 'max:32'],
             'device_name' => ['sometimes', 'string', 'max:80'],
+            'email_verified_at' => ['prohibited'],
+            'email_verification_required' => ['prohibited'],
         ];
     }
 }

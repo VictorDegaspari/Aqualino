@@ -17,7 +17,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function DayDetailsModal({day, index, onClose}: Props): React.JSX.Element {
+export function DayDetailsModal({day, onClose}: Props): React.JSX.Element {
   const sheetRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   const safePercentage = Math.min(100, Math.max(0, day?.percentage ?? 0));
@@ -61,7 +61,7 @@ export function DayDetailsModal({day, index, onClose}: Props): React.JSX.Element
       style={styles.sheet}>
       <BottomSheetView accessibilityViewIsModal style={[styles.card, cardInset]}>
         <View style={styles.heading}>
-          <Text accessibilityRole="header" style={styles.title}>{weekdayLabels[index]} • {formatDisplayDate(day.date)}</Text>
+          <Text accessibilityRole="header" style={styles.title}>{weekdayLabels[day.weekday - 1]} • {formatDisplayDate(day.date)}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Fechar" onPress={dismiss} style={styles.close}>
             <Text style={styles.closeText}>Fechar</Text>
           </Pressable>

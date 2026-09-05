@@ -12,23 +12,23 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, {Defs, LinearGradient, Path, Stop} from 'react-native-svg';
+import Svg, {Defs, LinearGradient, Path, Rect, Stop} from 'react-native-svg';
 import {appCopy, type AppLocale} from '../../../shared/i18n/appLocale';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 
-// Referência editorial do produto até que a API disponibilize uma média agregada.
-const GLOBAL_DAILY_REFERENCE_ML = 2000;
 const GLASS_HEIGHT = 224;
 const LIQUID_OVERSCAN = 180;
 const RADIANS_TO_DEGREES = 180 / Math.PI;
 
 interface Props {
   totalMl: number;
+  goalMl?: number;
+  isToday?: boolean;
   variant?: 'history' | 'goal';
   locale?: AppLocale;
 }
 
-export function HydrationWaterGauge({totalMl, variant = 'history', locale = 'pt-BR'}: Props): React.JSX.Element {
+export function HydrationWaterGauge({totalMl, goalMl, isToday = true, variant = 'history', locale = 'pt-BR'}: Props): React.JSX.Element {
   const reduceMotion = useReducedMotion();
   const waveProgress = useSharedValue(0);
   const rotation = useAnimatedSensor(SensorType.ROTATION, {
@@ -37,11 +37,15 @@ export function HydrationWaterGauge({totalMl, variant = 'history', locale = 'pt-
   });
   const safeTotalMl = Number.isFinite(totalMl) ? Math.max(0, totalMl) : 0;
   const comparison = useMemo(
-    () => variant === 'goal' ? createGoalPreview(safeTotalMl, locale) : createComparison(safeTotalMl),
-    [locale, safeTotalMl, variant],
+    () => variant === 'goal' ? createGoalPreview(safeTotalMl, locale) : createComparison(safeTotalMl, goalMl),
+    [goalMl, locale, safeTotalMl, variant],
   );
   const gaugeCopy = appCopy[locale].goalGauge;
-  const liquidHeight = GLASS_HEIGHT * (comparison.visualLevel / 100) + LIQUID_OVERSCAN;
+  const level = useSharedValue(comparison.visualLevel);
+
+  useEffect(() => {
+    level.value = reduceMotion ? comparison.visualLevel : withTiming(comparison.visualLevel, {duration: 450});
+  }, [comparison.visualLevel, level, reduceMotion]);
 
   useEffect(() => {
     if (reduceMotion) {
@@ -60,8 +64,9 @@ export function HydrationWaterGauge({totalMl, variant = 'history', locale = 'pt-
   }, [reduceMotion, waveProgress]);
 
   const liquidStyle = useAnimatedStyle(() => {
+    const height = GLASS_HEIGHT * (level.value / 100) + LIQUID_OVERSCAN;
     if (reduceMotion) {
-      return {transform: [{translateX: 0}, {translateY: 0}, {rotateZ: '0deg'}]};
+      return {height, transform: [{translateX: 0}, {translateY: 0}, {rotateZ: '0deg'}]};
     }
 
     const roll = rotation.sensor.value.roll;
@@ -70,6 +75,7 @@ export function HydrationWaterGauge({totalMl, variant = 'history', locale = 'pt-
     const drinkingTilt = clamp((pitch - 0.35) / 0.95, 0, 1);
 
     return {
+      height,
       transform: [
         {translateX: clamp(roll * 12, -10, 10)},
         {translateY: drinkingTilt * 30},
@@ -97,7 +103,18 @@ export function HydrationWaterGauge({totalMl, variant = 'history', locale = 'pt-
       style={styles.card}>
       <View style={styles.glassShadow}>
         <View style={styles.glass}>
-          <Animated.View style={[styles.liquid, {height: liquidHeight}, liquidStyle]}>
+          {comparison.visualLevel > 0 ? <Animated.View testID="history-water-liquid" style={[styles.liquid, liquidStyle]}>
+            <View style={styles.liquidBody}>
+              <Svg width="100%" height="100%">
+                <Defs>
+                  <LinearGradient id={`water-body-${variant}`} x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor="#079BD7" />
+                    <Stop offset="1" stopColor="#0563B4" />
+                  </LinearGradient>
+                </Defs>
+                <Rect width="100%" height="100%" fill={`url(#water-body-${variant})`} />
+              </Svg>
+            </View>
             <Animated.View style={[styles.wave, backWaveStyle]}>
               <WaterWave variant="back" />
             </Animated.View>
@@ -107,9 +124,9 @@ export function HydrationWaterGauge({totalMl, variant = 'history', locale = 'pt-
             <View style={[styles.bubble, styles.bubbleOne]} />
             <View style={[styles.bubble, styles.bubbleTwo]} />
             <View style={[styles.bubble, styles.bubbleThree]} />
-          </Animated.View>
+          </Animated.View> : null}
           <View pointerEvents="none" style={styles.waterContent}>
-            <Text style={styles.waterEyebrow}>{variant === 'goal' ? gaugeCopy.eyebrow : 'SEU NÍVEL HOJE'}</Text>
+            <Text style={styles.waterEyebrow}>{variant === 'goal' ? gaugeCopy.eyebrow : isToday ? 'SEU NÍVEL HOJE' : 'SEU NÍVEL NESSE DIA'}</Text>
             <Text style={styles.waterStatus}>{comparison.status}</Text>
             <Text style={styles.waterAmount}>{formatMl(safeTotalMl, locale)}</Text>
             <Text style={styles.waterComparison}>{comparison.comparison}</Text>
@@ -134,7 +151,7 @@ function WaterWave({variant}: WaterWaveProps): React.JSX.Element {
     : 'M0 32 C60 50 120 14 180 32 S300 50 360 32 S480 14 540 32 S660 50 720 32 L720 320 L0 320 Z';
 
   return (
-    <Svg width="100%" height="100%" viewBox="0 0 720 320" preserveAspectRatio="none">
+    <Svg width="100%" height="100%" viewBox="0 0 720 64" preserveAspectRatio="none">
       <Defs>
         <LinearGradient id={`water-${variant}`} x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0" stopColor={isBack ? '#86F6FF' : '#18DDED'} stopOpacity={isBack ? 0.7 : 0.94} />
@@ -154,28 +171,26 @@ function WaterWave({variant}: WaterWaveProps): React.JSX.Element {
   );
 }
 
-function createComparison(totalMl: number): {status: string; comparison: string; visualLevel: number} {
-  const difference = totalMl - GLOBAL_DAILY_REFERENCE_ML;
-  const percentage = Math.round((totalMl / GLOBAL_DAILY_REFERENCE_ML) * 100);
-  const visualLevel = clamp(38 + percentage * 0.54, 38, 92);
-  const status = percentage >= 100
-    ? 'Hidratação em dia'
-    : percentage >= 75
-      ? 'Quase no ritmo'
-      : percentage >= 45
-        ? 'Em progresso'
-        : 'Precisa de mais água';
-
-  if (difference === 0) {
-    return {status, visualLevel, comparison: 'Você está na referência global de 2.000 ml.'};
+function createComparison(totalMl: number, goalMl?: number): {status: string; comparison: string; visualLevel: number} {
+  if (!goalMl || !Number.isFinite(goalMl) || goalMl <= 0) {
+    return {status: totalMl > 0 ? 'Em progresso' : 'Ainda sem registros', comparison: 'Seu consumo de água neste dia.', visualLevel: 0};
   }
+  const percentage = (totalMl / goalMl) * 100;
+  const visualLevel = clamp(percentage, 0, 100);
+  const status = totalMl === 0
+    ? 'Ainda sem registros'
+    : percentage >= 100
+      ? 'Meta atingida!'
+      : percentage >= 75
+        ? 'Quase na meta'
+        : percentage >= 45
+          ? 'Em progresso'
+          : 'Primeiras gotas';
 
   return {
     status,
     visualLevel,
-    comparison: difference > 0
-      ? `${formatMl(difference)} acima da referência global de 2.000 ml.`
-      : `${formatMl(Math.abs(difference))} abaixo da referência global de 2.000 ml.`,
+    comparison: `${Math.floor(percentage)}% da meta de ${formatMl(goalMl)}.`,
   };
 }
 
@@ -211,7 +226,8 @@ const styles = StyleSheet.create({
     position: 'absolute', zIndex: 1, bottom: -LIQUID_OVERSCAN, left: '-40%', width: '180%',
     transformOrigin: '50% 0%',
   },
-  wave: {position: 'absolute', top: -8, right: '-7%', bottom: 0, left: '-7%'},
+  liquidBody: {position: 'absolute', top: 16, right: 0, bottom: 0, left: 0, backgroundColor: '#0563B4'},
+  wave: {position: 'absolute', top: -16, height: 32, right: '-7%', left: '-7%'},
   bubble: {
     position: 'absolute', borderRadius: 99, borderWidth: 1,
     borderColor: 'rgba(218, 253, 255, 0.62)', backgroundColor: 'rgba(196, 250, 255, 0.16)',

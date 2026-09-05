@@ -6,6 +6,7 @@ module.exports = {
     '^@notifee/react-native$': '<rootDir>/test/mocks/notifee.js',
     '^react-native-haptic-feedback$': '<rootDir>/test/mocks/reactNativeHapticFeedback.js',
     '^react-native-reanimated$': '<rootDir>/test/mocks/reactNativeReanimated.js',
+    '^react-native-worklets$': '<rootDir>/test/mocks/reactNativeWorklets.js',
   },
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-gesture-handler|react-native-reanimated|react-native-worklets)/)',

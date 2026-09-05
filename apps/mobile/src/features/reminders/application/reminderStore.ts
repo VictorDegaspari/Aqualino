@@ -1,5 +1,7 @@
 import {createMMKV} from 'react-native-mmkv';
 import {create} from 'zustand';
+import {useSessionStore} from '../../auth/application/sessionStore';
+import {useAchievementLocalStore} from '../../achievements/application/achievementLocalStore';
 import {cancelReminder, scheduleReminder} from './reminderNotificationService';
 import {
   ALL_REMINDER_WEEKDAYS,
@@ -29,6 +31,7 @@ interface ReminderState {
 export const useReminderStore = create<ReminderState>((set, get) => ({
   reminders: loadReminders(),
   async addReminder(hour, minute, selectedWeekdays) {
+    const userId = useSessionStore.getState().user?.id;
     const reminders = get().reminders;
     const weekdays = normalizeReminderWeekdays(selectedWeekdays);
     if (weekdays.length === 0) {
@@ -44,6 +47,7 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
     const reminder: HydrationReminder = {id: createReminderId(), hour, minute, weekdays, enabled: true};
     await scheduleReminder(reminder.id, hour, minute, weekdays);
     updateReminders([...reminders, reminder], set);
+    if (userId) useAchievementLocalStore.getState().markReminder(userId);
   },
   async toggleReminder(id, enabled) {
     const reminder = get().reminders.find(item => item.id === id);

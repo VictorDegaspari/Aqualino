@@ -148,8 +148,9 @@ class GroupControllerTest extends TestCase
         $this->getJson('/api/v1/groups/current')->assertJsonPath('data.owner_id', $nextOwner->id)->assertJsonPath('data.members.0.role', 'owner');
         $this->deleteJson('/api/v1/groups/current/membership')->assertOk();
         $this->deleteJson('/api/v1/groups/current/membership')->assertOk();
-        $this->assertDatabaseCount('groups', 0);
-        $this->assertDatabaseCount('group_memberships', 0);
+        $this->assertSoftDeleted('groups', ['id' => $group['id']]);
+        $this->assertSoftDeleted('group_memberships', ['group_id' => $group['id'], 'user_id' => $owner->id]);
+        $this->assertSoftDeleted('group_memberships', ['group_id' => $group['id'], 'user_id' => $nextOwner->id]);
     }
 
     public function test_invitation_attempts_are_rate_limited(): void
@@ -170,7 +171,7 @@ class GroupControllerTest extends TestCase
         $this->postJson('/api/v1/groups/invites/accept', ['code' => $group['invite']['code'], 'accept' => true])->assertOk();
         Sanctum::actingAs($owner);
         $this->deleteJson('/api/v1/me')->assertNoContent();
-        $this->assertDatabaseMissing('users', ['id' => $owner->id]);
+        $this->assertSoftDeleted('users', ['id' => $owner->id]);
         Sanctum::actingAs($other);
         $this->getJson('/api/v1/groups/current')->assertOk()->assertJsonPath('data.id', $group['id'])
             ->assertJsonPath('data.owner_id', $other->id)->assertJsonCount(1, 'data.members');

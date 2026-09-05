@@ -5,6 +5,7 @@ namespace App\Modules\Identity\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Modules\Hydration\Infrastructure\Models\HydrationGoal;
+use App\Modules\Identity\Application\AccountSecurityService;
 use App\Modules\Identity\Http\Requests\LoginRequest;
 use App\Modules\Identity\Http\Requests\RegisterRequest;
 use App\Modules\Identity\Infrastructure\Models\UserProfile;
@@ -13,7 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
+use Throwable;
 
 class AuthController extends Controller
 {
@@ -30,7 +31,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function register(RegisterRequest $request): JsonResponse
+    public function register(RegisterRequest $request, AccountSecurityService $security): JsonResponse
     {
         $validated = $request->validated();
         $dailyGoalMl = $validated['daily_goal_ml'] ?? 2000;
@@ -43,6 +44,7 @@ class AuthController extends Controller
                 'terms_version' => $validated['terms_version'],
                 'terms_accepted_at' => now(),
             ]);
+            $user->forceFill(['email_verification_required' => true])->save();
 
             UserProfile::query()->create([
                 'user_id' => $user->id,
@@ -65,6 +67,12 @@ class AuthController extends Controller
 
             return [$user, $token];
         });
+
+        try {
+            $security->sendVerification($user);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
 
         return response()->json(['data' => $this->authPayload($user, $token)], 201);
     }
@@ -90,16 +98,6 @@ class AuthController extends Controller
         return response()->json(['data' => ['logged_out' => true]]);
     }
 
-    public function forgotPassword(Request $request): JsonResponse
-    {
-        $validated = $request->validate(['email' => ['required', 'email:rfc', 'max:255']]);
-        Password::sendResetLink(['email' => mb_strtolower($validated['email'])]);
-
-        return response()->json([
-            'data' => ['message' => 'Se a conta existir, enviaremos as instruções de recuperação.'],
-        ], 202);
-    }
-
     private function authPayload(User $user, string $token): array
     {
         $user->load('profile');
@@ -110,6 +108,8 @@ class AuthController extends Controller
             'user' => [
                 'id' => $user->id,
                 'email' => $user->email,
+                'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+                'email_verification_required' => $user->email_verification_required,
                 'profile' => $user->profile,
             ],
         ];

@@ -118,7 +118,7 @@ private fun AqualinoWidgetContent(
   presentation: WidgetPresentation,
   compact: Boolean,
 ) {
-  val deepLink = Intent(Intent.ACTION_VIEW, Uri.parse("aqualino://hydrate/quick?source=widget"))
+  val deepLink = Intent(Intent.ACTION_VIEW, Uri.parse("aqualino://home?source=widget"))
   var backgroundModifier = GlanceModifier
     .fillMaxSize()
     // Lets the launcher identify this surface as the widget background, so its

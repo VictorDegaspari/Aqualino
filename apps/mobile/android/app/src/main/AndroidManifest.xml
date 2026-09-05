@@ -25,6 +25,13 @@
             <data android:scheme="aqualino" />
         </intent-filter>
       </activity>
+      <activity
+        android:name=".LauncherActivity"
+        android:exported="false"
+        android:excludeFromRecents="true"
+        android:noHistory="true"
+        android:taskAffinity=""
+        android:theme="@android:style/Theme.NoDisplay" />
       <activity-alias
         android:name=".MainActivityHappy"
         android:enabled="true"
@@ -32,7 +39,7 @@
         android:icon="@mipmap/ic_launcher_happy"
         android:roundIcon="@mipmap/ic_launcher_happy"
         android:label="@string/app_name"
-        android:targetActivity=".MainActivity">
+        android:targetActivity=".LauncherActivity">
         <intent-filter>
           <action android:name="android.intent.action.MAIN" />
           <category android:name="android.intent.category.LAUNCHER" />
@@ -45,7 +52,7 @@
         android:icon="@mipmap/ic_launcher_sad"
         android:roundIcon="@mipmap/ic_launcher_sad"
         android:label="@string/app_name"
-        android:targetActivity=".MainActivity">
+        android:targetActivity=".LauncherActivity">
         <intent-filter>
           <action android:name="android.intent.action.MAIN" />
           <category android:name="android.intent.category.LAUNCHER" />

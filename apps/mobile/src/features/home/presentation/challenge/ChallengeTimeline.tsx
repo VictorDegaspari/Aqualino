@@ -1,7 +1,8 @@
-import type {HydrationWeek, HydrationWeekDay} from '@aqualino/contracts';
+import type {ChallengeReward, HydrationWeek, HydrationWeekDay} from '@aqualino/contracts';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   RefreshControl,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,23 +14,26 @@ import {
 } from 'react-native';
 import {ChallengeBubbles} from './ChallengeBubbles';
 import {ChallengeDay} from './ChallengeDay';
-import {ChallengeModeToggle, type ChallengeMode} from './ChallengeModeToggle';
+import {type ChallengeMode} from './ChallengeModeToggle';
+import {RewardChestIcon} from './RewardChestIcon';
 import {ChallengePath} from './ChallengePath';
 import {DayDetailsModal} from './DayDetailsModal';
 import {challengeCanvasHeight, challengeTheme, dayNodes, timelineLayout} from './challengeTheme';
 import {haptics} from '../../../../shared/device/haptics';
 
+const SCENE_TOP_SPACE = 68;
+
 interface Props {
   week: HydrationWeek;
   mode: ChallengeMode;
-  groupAvailable: boolean;
+  reward?: ChallengeReward | null;
+  onReward?: () => void;
   motionEnabled?: boolean;
   refreshing?: boolean;
-  onModeChange: (mode: ChallengeMode) => void;
   onRefresh: () => void;
 }
 
-export function ChallengeTimeline({week, mode, groupAvailable, motionEnabled = true, refreshing = false, onModeChange, onRefresh}: Props): React.JSX.Element {
+export function ChallengeTimeline({week, mode, reward, onReward, motionEnabled = true, refreshing = false, onRefresh}: Props): React.JSX.Element {
   const [viewportHeight, setViewportHeight] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
   const [selected, setSelected] = useState<{day: HydrationWeekDay; index: number}>();
@@ -46,7 +50,7 @@ export function ChallengeTimeline({week, mode, groupAvailable, motionEnabled = t
       return;
     }
     const currentNode = dayNodes[currentIndex] ?? dayNodes[0];
-    const currentVisualCenter = (currentNode.y - 48) * scale;
+    const currentVisualCenter = (SCENE_TOP_SPACE + currentNode.y - 48) * scale;
     const maxOffset = Math.max(0, contentHeight - viewportHeight);
     const target = Math.min(maxOffset, Math.max(0, currentVisualCenter - viewportHeight / 2));
     scrollRef.current?.scrollTo({y: target, animated: false});
@@ -70,7 +74,6 @@ export function ChallengeTimeline({week, mode, groupAvailable, motionEnabled = t
 
   return (
     <View style={styles.section}>
-      <ChallengeModeToggle mode={mode} groupAvailable={groupAvailable} onChange={onModeChange} />
       <Text style={styles.range}>
         <Text style={styles.rangeStrong}>{formatShortRange(week.starts_on, week.ends_on)}</Text>
         {'  ·  '}Dia {currentIndex + 1} de 7
@@ -90,10 +93,12 @@ export function ChallengeTimeline({week, mode, groupAvailable, motionEnabled = t
               <ChallengeDay day={day} index={index} key={day.date} scale={scale} motionEnabled={motionEnabled} onPress={handleDayPress} />
             ))}
           </View>
+          {mode === 'solo' ? <Pressable accessibilityRole="button" accessibilityLabel="Ver baú do desafio solo" onPress={onReward} style={styles.chest}>
+            <RewardChestIcon opened={reward?.state === 'claimed'} />
+            <Text style={styles.chestLabel}>{reward?.state === 'claimed' ? 'Recompensa recebida' : reward?.state === 'available' ? 'Seu baú está liberado!' : 'Baú surpresa • cumpra as 7 metas'}</Text>
+          </Pressable> : null}
         </ScrollView>
         {motionEnabled ? <ChallengeBubbles viewportHeight={viewportHeight || 320} /> : null}
-        <View pointerEvents="none" style={styles.topFade} />
-        <View pointerEvents="none" style={styles.bottomFade} />
       </View>
 
       <DayDetailsModal day={selected?.day} index={selected?.index ?? 0} onClose={closeDetails} />
@@ -105,6 +110,7 @@ function createLayout(scale: number): {scene: ViewStyle} {
   return {
     scene: {
       alignSelf: 'center', position: 'relative', overflow: 'visible',
+      marginTop: SCENE_TOP_SPACE * scale,
       width: timelineLayout.canvasWidth * scale, height: challengeCanvasHeight * scale,
     },
   };
@@ -128,6 +134,6 @@ const styles = StyleSheet.create({
   rangeStrong: {color: challengeTheme.colors.cyan, fontWeight: '900'},
   viewport: {flex: 1, minHeight: 170, overflow: 'hidden'},
   scrollContent: {flexGrow: 1},
-  topFade: {position: 'absolute', top: 0, right: 0, left: 0, height: 12, backgroundColor: 'rgba(0, 18, 38, 0.32)'},
-  bottomFade: {position: 'absolute', right: 0, bottom: 0, left: 0, height: 15, backgroundColor: 'rgba(0, 13, 31, 0.42)'},
+  chest: {alignItems: 'center', paddingVertical: 12, gap: 4},
+  chestLabel: {color: challengeTheme.colors.cyanStrong, fontSize: 13, fontWeight: '800'},
 });

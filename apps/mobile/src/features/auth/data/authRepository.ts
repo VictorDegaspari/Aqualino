@@ -28,7 +28,30 @@ export interface UsernameAvailability {
   available: boolean;
 }
 
+export interface PasswordResetInput {
+  email: string;
+  token: string;
+  password: string;
+  password_confirmation: string;
+}
+
 export const authRepository = {
+  forgotPassword(email: string): Promise<{message: string; retry_after: number}> {
+    return apiRequest('/auth/forgot-password', {
+      method: 'POST', body: {email}, authenticated: false, timeoutMs: 12_000,
+    });
+  },
+
+  resetPassword(input: PasswordResetInput): Promise<{message: string}> {
+    return apiRequest('/auth/reset-password', {
+      method: 'POST', body: input, authenticated: false, timeoutMs: 12_000,
+    });
+  },
+
+  resendVerification(): Promise<{email_verified_at: string | null; retry_after: number}> {
+    return apiRequest('/auth/email/verification-notification', {method: 'POST', timeoutMs: 12_000});
+  },
+
   usernameAvailability(username: string): Promise<UsernameAvailability> {
     return apiRequest<UsernameAvailability>(`/auth/username-availability?username=${encodeURIComponent(username)}`, {
       authenticated: false,

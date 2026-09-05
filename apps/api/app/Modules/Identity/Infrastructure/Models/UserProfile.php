@@ -5,9 +5,12 @@ namespace App\Modules\Identity\Infrastructure\Models;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class UserProfile extends Model
 {
+    use SoftDeletes;
+
     protected $primaryKey = 'user_id';
 
     public $incrementing = false;

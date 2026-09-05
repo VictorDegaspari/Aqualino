@@ -93,7 +93,7 @@ export class SQLiteOutboxStore implements OutboxStore {
   async saveHome(data: HydrationHomeData): Promise<void> {
     await this.initialize();
     await this.getDatabase().executeAsync(
-      `INSERT INTO app_cache (cache_key, value, updated_at) VALUES ('hydration_home', ?, ?)
+      `INSERT INTO app_cache (cache_key, value, updated_at) VALUES ('hydration_confirmed_home_v2', ?, ?)
        ON CONFLICT(cache_key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
       [JSON.stringify(data), new Date().toISOString()],
     );
@@ -102,7 +102,7 @@ export class SQLiteOutboxStore implements OutboxStore {
   async loadHome(): Promise<HydrationHomeData | null> {
     await this.initialize();
     const {rows} = await this.getDatabase().executeAsync<CacheRow>(
-      "SELECT value FROM app_cache WHERE cache_key = 'hydration_home' LIMIT 1",
+      "SELECT value FROM app_cache WHERE cache_key = 'hydration_confirmed_home_v2' LIMIT 1",
     );
     const value = rows.item(0)?.value;
     if (!value) {

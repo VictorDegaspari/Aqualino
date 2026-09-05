@@ -5,6 +5,8 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {OfflineSyncProvider} from '../../features/hydration/presentation/OfflineSyncProvider';
+import {AchievementProvider} from '../../features/achievements/presentation/AchievementProvider';
+import {AppModalProvider} from '../../shared/components/AppModal';
 
 export function AppProviders({children}: React.PropsWithChildren): React.JSX.Element {
   const [queryClient] = useState(() => new QueryClient({
@@ -15,9 +17,11 @@ export function AppProviders({children}: React.PropsWithChildren): React.JSX.Ele
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <BottomSheetModalProvider>
-            <OfflineSyncProvider>{children}</OfflineSyncProvider>
-          </BottomSheetModalProvider>
+          <AppModalProvider>
+            <BottomSheetModalProvider>
+              <OfflineSyncProvider><AchievementProvider>{children}</AchievementProvider></OfflineSyncProvider>
+            </BottomSheetModalProvider>
+          </AppModalProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

@@ -11,7 +11,7 @@ Os widgets são nativos e funcionam sem manter o processo React Native aberto.
 | Android | Jetpack Glance 1.1.1 | API 24 / Android 7 | pequeno 2×2 e horizontal 4×2 |
 | iOS | WidgetKit + SwiftUI | iOS 15.1 | `systemSmall` e `systemMedium` |
 
-O tamanho pequeno mostra sequência, mascote e frase. O horizontal também mostra os cinco dias mais recentes. Os dois abrem o registro rápido de água ao toque.
+O tamanho pequeno mostra sequência, mascote e frase. O horizontal também mostra os cinco dias mais recentes. Os dois abrem a tela inicial do aplicativo ao toque.
 
 Não existem widgets redimensionáveis, `systemLarge`, tela bloqueada, Live Activity ou registro de água diretamente no widget. Essas possibilidades não devem ser presumidas pela interface React Native.
 
@@ -33,7 +33,7 @@ NativeAqualinoWidget (TurboModule)
       |
       +--> iOS App Group UserDefaults --> WidgetKit
 
-Widget -- aqualino://hydrate/quick?source=widget --> AppNavigation
+Widget -- aqualino://home?source=widget --> AppNavigation
 ```
 
 O widget não chama a API, não recebe token e não conhece e-mail, nome ou outros dados pessoais. Ele renderiza somente o último snapshot JSON gravado pelo aplicativo. A API continua sendo a fonte de verdade para sequência, condição do mascote e totais reconciliados.
@@ -156,16 +156,16 @@ Esses 30 minutos são uma solicitação, não uma garantia. Economia de bateria,
 Toda a superfície abre:
 
 ```text
-aqualino://hydrate/quick?source=widget
+aqualino://home?source=widget
 ```
 
-O deep link é declarado no Manifest Android, no linking do React Navigation e no esquema de URL do iOS. A rota `QuickHydration` fica no navigator raiz:
+O deep link é declarado no Manifest Android, no linking do React Navigation e no esquema de URL do iOS. A navegação respeita a sessão atual:
 
-- pessoa autenticada e com onboarding completo: abre o registro rápido;
+- pessoa autenticada e com onboarding completo: abre a tela inicial (`Home`);
 - sem sessão: redireciona para os steps de entrada;
 - onboarding pendente: redireciona para o onboarding.
 
-Registros originados nessa rota usam `source: "widget"`, inclusive quando entram na fila offline.
+O toque abre o aplicativo sem iniciar um registro de água. O parâmetro `source=widget` identifica a origem da abertura.
 
 ## Configuração Android
 
@@ -226,7 +226,7 @@ O snapshot autenticado também solicita o humor do ícone:
 - `empty` e `happy` usam o ícone feliz;
 - `angry`, `boiling` e `skeleton` usam o triste.
 
-No Android, aliases de Activity são alternados com `DONT_KILL_APP`. No iOS, `setAlternateIconName` seleciona `AppIconSad` ou retorna ao ícone principal. A troca pode exibir a confirmação padrão do iOS.
+No Android, aliases de Activity são alternados com `DONT_KILL_APP`. Eles apontam para `LauncherActivity`, que abre a `MainActivity` e termina imediatamente. Assim, a troca de humor não desativa a Activity que mantém a Home e o registro de água abertos. Alterações nesse encaminhamento exigem rebuild e reinstalação. No iOS, `setAlternateIconName` seleciona `AppIconSad` ou retorna ao ícone principal. A troca pode exibir a confirmação padrão do iOS.
 
 O script [`generate-dynamic-icons.sh`](../../../scripts/generate-dynamic-icons.sh) gera os tamanhos Android e iOS a partir dos masters em `src/assets/app-icon/source`, usando Lanczos. O widget nunca recebe o token da conta durante essa operação.
 
@@ -244,7 +244,7 @@ pnpm mobile:android:light
 Para testar o deep link no Android conectado:
 
 ```bash
-adb shell am start -a android.intent.action.VIEW -d 'aqualino://hydrate/quick?source=widget' com.aqualino
+adb shell am start -a android.intent.action.VIEW -d 'aqualino://home?source=widget' com.aqualino
 ```
 
 Validação manual mínima:
@@ -256,7 +256,7 @@ Validação manual mínima:
 5. abrir sem sessão e confirmar que dias e sequência estão ocultos;
 6. fazer login e abrir a Home para gravar o snapshot;
 7. registrar água pelo app e conferir a atualização otimista;
-8. tocar no widget e registrar com origem `widget`;
+8. tocar no widget e confirmar a abertura da Home, sem abrir o registro rápido;
 9. testar offline e depois reconectar;
 10. sair da conta e confirmar a apresentação desconectada;
 11. repetir em Android anterior e posterior à API 31, quando disponíveis;

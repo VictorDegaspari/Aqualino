@@ -1,6 +1,7 @@
 import React, {useEffect} from 'react';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useSessionStore} from '../../features/auth/application/sessionStore';
+import {requiresEmailVerification} from '../../features/auth/application/emailVerification';
 import {QuickHydrationScreen} from '../../features/hydration/presentation/QuickHydrationScreen';
 import {AppLoadingScreen} from '../presentation/AppLoadingScreen';
 import type {RootStackParamList} from './AppNavigation';
@@ -11,7 +12,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'QuickHydration'>;
 export function QuickHydrationRoute(props: Props): React.JSX.Element {
   const status = useSessionStore(state => state.status);
   const onboardingCompleted = useSessionStore(state => Boolean(state.user?.profile.onboarding_completed_at));
-  const redirect = quickHydrationRedirectForSession(status, onboardingCompleted);
+  const verificationRequired = useSessionStore(state => requiresEmailVerification(state.user));
+  const redirect = quickHydrationRedirectForSession(status, onboardingCompleted, verificationRequired);
 
   useEffect(() => {
     if (redirect) props.navigation.replace(redirect);

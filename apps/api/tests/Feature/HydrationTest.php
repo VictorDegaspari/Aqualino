@@ -10,6 +10,7 @@ use App\Modules\Identity\Infrastructure\Models\UserProfile;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class HydrationTest extends TestCase
@@ -138,6 +139,75 @@ class HydrationTest extends TestCase
             ->assertJsonPath('error.code', 'VALIDATION_FAILED');
 
         $this->assertDatabaseCount('hydration_logs', 0);
+    }
+
+    #[TestWith([false, '2026-09-03T03:01:00Z'])]
+    #[TestWith([true, '2026-09-03T03:01:00Z'])]
+    #[TestWith([false, '2026-09-10T12:00:00Z'])]
+    #[TestWith([true, '2026-09-10T12:00:00Z'])]
+    public function test_future_offline_records_cannot_advance_solo_or_group_progress(bool $inGroup, string $occurredAt): void
+    {
+        // 23:59 in São Paulo: the old five-minute tolerance allowed tomorrow.
+        CarbonImmutable::setTestNow('2026-09-03T02:59:00Z');
+        $user = $this->authenticatedUser(goalMl: 500);
+
+        if ($inGroup) {
+            $this->postJson('/api/v1/groups', ['name' => 'Grupo de teste'])->assertCreated();
+        }
+
+        $xpBefore = $user->fresh()->xp_total;
+        $this->postJson('/api/v1/hydration/logs', [
+            'amount_ml' => 500,
+            'occurred_at' => $occurredAt,
+            'source' => 'mobile',
+            'client_event_id' => '770ab8ca-63c7-4f3d-bf90-c45b47405751',
+        ])->assertUnprocessable()->assertJsonPath('error.code', 'VALIDATION_FAILED');
+
+        $this->assertDatabaseCount('hydration_logs', 0);
+        $this->assertDatabaseCount('daily_user_stats', 0);
+        $this->assertDatabaseMissing('outbox_events', ['type' => 'hydration.log.created.v1']);
+        $this->assertDatabaseMissing('user_achievements', ['user_id' => $user->id, 'code' => 'first_drop']);
+        $this->assertSame($xpBefore, $user->fresh()->xp_total);
+
+        $this->getJson('/api/v1/hydration/today')->assertOk()
+            ->assertJsonPath('data.today.total_ml', 0)
+            ->assertJsonPath('data.today.goal_achieved', false)
+            ->assertJsonPath('data.week.current_date', '2026-09-02')
+            ->assertJsonPath('data.week.completed_goal_days', 0)
+            ->assertJsonPath('data.mascot.current_streak', 0);
+    }
+
+    public function test_a_valid_offline_record_keeps_its_original_day_when_synchronized_later(): void
+    {
+        CarbonImmutable::setTestNow('2026-09-04T12:00:00Z');
+        $user = $this->authenticatedUser();
+        $payload = [
+            'amount_ml' => 300,
+            'occurred_at' => '2026-09-02T23:59:00-03:00',
+            'client_event_id' => '8dc5cdb6-aaef-4c78-bb49-40a9134e36a7',
+        ];
+
+        $this->postJson('/api/v1/hydration/logs', $payload)->assertCreated()
+            ->assertJsonPath('data.log.local_date', '2026-09-02')
+            ->assertJsonPath('data.today.total_ml', 0);
+        $this->postJson('/api/v1/hydration/logs', $payload)->assertOk()
+            ->assertJsonPath('data.idempotent_replay', true);
+
+        $this->assertDatabaseCount('hydration_logs', 1);
+        $this->assertDatabaseHas('daily_user_stats', ['user_id' => $user->id, 'local_date' => '2026-09-02 00:00:00', 'total_ml' => 300]);
+        $this->assertSame(10, $user->fresh()->xp_total);
+    }
+
+    public function test_current_server_instant_is_accepted_regardless_of_its_offset_representation(): void
+    {
+        CarbonImmutable::setTestNow('2026-09-03T02:59:00Z');
+        $this->authenticatedUser();
+
+        $this->postJson('/api/v1/hydration/logs', [
+            'amount_ml' => 300,
+            'occurred_at' => '2026-09-03T11:59:00+09:00',
+            'client_event_id' => '0fca4723-7298-4c9d-84f1-cfd42b96d58f',
+        ])->assertCreated()->assertJsonPath('data.log.local_date', '2026-09-02');
     }
 
     private function authenticatedUser(string $timezone = 'America/Sao_Paulo', int $goalMl = 2000): User

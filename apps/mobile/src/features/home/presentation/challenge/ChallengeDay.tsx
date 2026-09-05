@@ -5,7 +5,7 @@ import {AqualinoIcon} from '../../../../shared/components/AqualinoIcon';
 import {ChallengeAsset, type ChallengeAssetName} from './ChallengeAsset';
 import {CurrentWaterDrop} from './CurrentWaterDrop';
 import {WaterProgress} from './WaterProgress';
-import {challengeTheme, dayNodes, dayStateLabels, timelineLayout, weekdayLabels} from './challengeTheme';
+import {dayNodes, dayStateLabels, timelineLayout, weekdayLabels} from './challengeTheme';
 
 interface Props {
   day: HydrationWeekDay;
@@ -33,14 +33,14 @@ export const ChallengeDay = memo(function ChallengeDayView({day, index, scale, m
     : day.protection === 'streak_revive'
       ? 'Recuperado por poção'
       : undefined;
-  const accessibilityLabel = `${weekdayLabels[index]}, ${formatDate(day.date)}: ${content}, ${dayProgress}${protection ? `, ${protection}` : ''}`;
+  const accessibilityLabel = `${weekdayLabels[day.weekday - 1]}, ${formatDate(day.date)}: ${content}, ${dayProgress}${protection ? `, ${protection}` : ''}`;
   const layout = useMemo(() => createLayout(index, scale, day), [day, index, scale]);
 
   return (
     <View pointerEvents="box-none" style={[styles.layer, layout.layer]}>
       <View pointerEvents="none" style={layout.label}>
         <View style={styles.dayLabel}>
-          <Text style={[styles.weekday, day.is_today && styles.todayLabel]}>{weekdayLabels[index]}</Text>
+          <Text style={[styles.weekday, day.is_today && styles.todayLabel]}>{weekdayLabels[day.weekday - 1]}</Text>
           {day.is_today ? <AqualinoIcon name="play" size={12} color="#B9F3F5" /> : null}
         </View>
       </View>
@@ -51,16 +51,11 @@ export const ChallengeDay = memo(function ChallengeDayView({day, index, scale, m
         accessibilityHint="Abre os detalhes de hidratação deste dia"
         onPress={() => onPress(day, index)}
         style={({pressed}) => [layout.nodeTouch, pressed && styles.pressed]}>
-        {day.is_trophy ? (
-          <>
-            <ChallengeAsset name="trophySilver" style={layout.trophyImage} />
-            <Text numberOfLines={1} style={styles.projected}>Prata projetada</Text>
-          </>
-        ) : day.is_today && motionEnabled ? (
-          <CurrentWaterDrop scale={scale} />
-        ) : !day.is_today ? (
+        {day.is_today ? (
+          <CurrentWaterDrop scale={scale} totalMl={day.total_ml} goalMl={day.goal_ml} motionEnabled={motionEnabled} />
+        ) : (
           <ChallengeAsset name={stateAssets[day.state]} style={layout.markerImage} />
-        ) : null}
+        )}
       </Pressable>
 
       {day.is_today ? (
@@ -77,7 +72,6 @@ function createLayout(index: number, scale: number, day: HydrationWeekDay): {
   label: ViewStyle;
   nodeTouch: ViewStyle;
   markerImage: ImageStyle;
-  trophyImage: ImageStyle;
   progress: ViewStyle;
 } {
   const node = dayNodes[index] ?? dayNodes[dayNodes.length - 1];
@@ -87,15 +81,11 @@ function createLayout(index: number, scale: number, day: HydrationWeekDay): {
   const markerHeight = 84 * scale;
   const currentWidth = 120 * scale;
   const currentHeight = 147 * scale;
-  const trophyWidth = 82 * scale;
-  const trophyHeight = 99 * scale;
   const labelTop = (node.y - (day.is_today ? 80 : 58)) * scale;
 
-  const visual = day.is_trophy
-    ? {width: 98 * scale, height: 116 * scale, top: nodeY - trophyHeight * 0.88}
-    : day.is_today
-      ? {width: currentWidth, height: currentHeight, top: nodeY - currentHeight * 0.84}
-      : {width: markerWidth, height: markerHeight, top: nodeY - markerHeight * 0.82};
+  const visual = day.is_today
+    ? {width: currentWidth, height: currentHeight, top: nodeY - currentHeight * 0.84}
+    : {width: markerWidth, height: markerHeight, top: nodeY - markerHeight * 0.82};
 
   return {
     layer: {zIndex: day.is_today ? 10 : index + 1},
@@ -109,7 +99,6 @@ function createLayout(index: number, scale: number, day: HydrationWeekDay): {
       width: visual.width, height: visual.height, alignItems: 'center', overflow: 'visible',
     },
     markerImage: {width: markerWidth, height: markerHeight},
-    trophyImage: {width: trophyWidth, height: trophyHeight},
     progress: {
       position: 'absolute', left: timelineLayout.statsLeft * scale,
       top: (node.y - 85) * scale, width: timelineLayout.statsWidth * scale,
@@ -139,9 +128,4 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 10, 18, 0.95)', textShadowRadius: 4, textShadowOffset: {width: 0, height: 1},
   },
   todayLabel: {fontSize: 18, lineHeight: 23, color: '#D4FEFF', fontWeight: '900'},
-  projected: {
-    marginTop: -8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, overflow: 'hidden',
-    borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: 'rgba(0, 24, 52, 0.94)',
-    color: '#E6F5FF', fontSize: 10, lineHeight: 13, fontWeight: '700',
-  },
 });

@@ -146,11 +146,102 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageEnvelope'
+                allOf:
+                  - $ref: '#/components/schemas/MessageEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [retry_after]
+                        properties:
+                          retry_after:
+                            type: integer
+                            const: 60
         '422':
           $ref: '#/components/responses/ValidationError'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+  /v1/auth/reset-password:
+    post:
+      operationId: resetPassword
+      summary: Redefine a senha com link de uso único e encerra as sessões da conta
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, token, password, password_confirmation]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+                token:
+                  type: string
+                  maxLength: 256
+                  description: Token de recuperação válido por 60 minutos.
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  maxLength: 128
+                  description: Deve conter letras e números.
+                password_confirmation:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Senha atualizada. Entre novamente; o e-mail não é confirmado por esta ação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageEnvelope'
+        '422':
+          description: Campos inválidos ou PASSWORD_RESET_INVALID para token inválido, expirado ou já utilizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/auth/email/verification-notification:
+    post:
+      operationId: resendEmailVerification
+      summary: Reenvia a confirmação de e-mail da conta autenticada
+      description: No máximo um envio por conta a cada 60 segundos. Contas confirmadas não recebem outro e-mail.
+      tags: [Authentication]
+      responses:
+        '202':
+          description: Pedido aceito. O link assinado vale por 60 minutos.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [email_verified_at, retry_after]
+                    properties:
+                      email_verified_at:
+                        type: [string, 'null']
+                        format: date-time
+                      retry_after:
+                        type: integer
+                        const: 60
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: EMAIL_DELIVERY_UNAVAILABLE; tente reenviar mais tarde.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /v1/me:
     get:
       operationId: getMe
@@ -171,11 +262,12 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
     delete:
       operationId: deleteMe
+      description: Aplica soft delete à conta e aos dados vinculados, preserva o histórico e revoga tokens, sessões e links de recuperação. A equipe é transferida a outro integrante ou excluída logicamente quando fica vazia.
       summary: Exclui a conta atual e revoga seus tokens
       tags: [Account]
       responses:
         '204':
-          description: Conta excluída.
+          description: Conta excluída logicamente e acesso revogado.
         '401':
           $ref: '#/components/responses/Unauthenticated'
   /v1/me/profile:
@@ -220,16 +312,81 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [today, week, mascot]
+                    required: [today, week, mascot, challenges]
                     properties:
                       today:
                         $ref: '#/components/schemas/HydrationToday'
                       week:
                         $ref: '#/components/schemas/HydrationWeek'
+                      challenges:
+                        $ref: '#/components/schemas/HydrationChallenges'
                       mascot:
                         $ref: '#/components/schemas/WidgetSnapshot'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
+  /v1/hydration/challenges:
+    post:
+      operationId: startHydrationChallenge
+      summary: Inicia 7 dias no solo hoje ou agenda o grupo para amanhã no fuso do grupo
+      tags: [Hydration]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode]
+              properties:
+                mode:
+                  type: string
+                  enum: [solo, group]
+      responses:
+        '200':
+          description: Desafio iniciado ou desafio em andamento preservado, sem reiniciar as datas.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/HydrationChallenges'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: Somente o responsável pelo grupo pode agendar o desafio compartilhado.
+        '422':
+          description: Modo inválido ou baú anterior ainda aguardando abertura.
+  /v1/hydration/challenges/{challengeId}/reward:
+    post:
+      operationId: claimSoloChallengeReward
+      summary: Abre o baú após 7 metas, sorteando 100 XP ou uma poção apenas uma vez
+      tags: [Hydration]
+      parameters:
+        - in: path
+          name: challengeId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Resultado persistido. Repetições retornam a mesma recompensa sem novo crédito.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/HydrationChallenge'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Desafio solo não encontrado para esta pessoa.
+        '422':
+          description: As 7 metas ainda não foram cumpridas.
   /v1/hydration/logs:
     get:
       operationId: listHydrationLogs
@@ -255,6 +412,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HydrationLogPage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
@@ -283,6 +442,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RecordWaterEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
@@ -299,6 +460,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HydrationGoalEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
     put:
@@ -324,6 +487,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HydrationGoalEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '422':
@@ -357,6 +522,8 @@ paths:
                         minimum: 0
                       mascot:
                         $ref: '#/components/schemas/WidgetSnapshot'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
   /v1/inventory:
@@ -372,6 +539,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InventoryEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
   /v1/inventory/streak-freezes:
@@ -399,6 +568,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PotionActionEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '409':
@@ -425,6 +596,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PotionActionEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -458,12 +631,104 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PotionActionEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '409':
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/achievements:
+    get:
+      operationId: getAchievements
+      summary: Retorna todas as conquistas do perfil autenticado
+      description: Reconcilia de forma idempotente os marcos já atingidos no histórico. Conquistas desbloqueadas permanecem vinculadas ao perfil.
+      tags: [Gamification]
+      responses:
+        '200':
+          description: Catálogo completo com progresso, desbloqueios e celebrações.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AchievementCollectionEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /v1/achievements/events:
+    post:
+      operationId: recordAchievementEvent
+      summary: Registra a criação bem-sucedida de um lembrete nativo
+      description: O evento reminder_created libera apenas first_reminder, uma vez por perfil. Os demais critérios são calculados pela API. Não concede XP.
+      tags: [Gamification]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event]
+              properties:
+                event:
+                  type: string
+                  const: reminder_created
+                code: false
+                progress: false
+                user_id: false
+      responses:
+        '200':
+          description: Coleção atualizada; reenviar o evento não duplica a conquista.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AchievementCollectionEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/achievements/{code}/celebration:
+    post:
+      operationId: acknowledgeAchievementCelebration
+      summary: Confirma que a pessoa fechou a celebração de uma conquista
+      description: Preserva a primeira confirmação para evitar repetição nas próximas sessões e sincronizações.
+      tags: [Gamification]
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            $ref: '#/components/schemas/AchievementCode'
+      responses:
+        '200':
+          description: Celebração confirmada de forma idempotente.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [code, celebrated_at]
+                    properties:
+                      code:
+                        $ref: '#/components/schemas/AchievementCode'
+                      celebrated_at:
+                        type: string
+                        format: date-time
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/TooManyRequests'
   /v1/groups/current:
@@ -478,6 +743,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CurrentGroupEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
   /v1/groups:
@@ -498,6 +765,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GroupEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '409':
@@ -524,6 +793,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GroupInvitePreviewEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -550,6 +821,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GroupEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -590,6 +863,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmptyGroupEnvelope'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '429':
@@ -610,6 +885,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/WidgetSnapshot'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '401':
           $ref: '#/components/responses/Unauthenticated'
 components:
@@ -620,7 +897,7 @@ components:
       bearerFormat: Sanctum token
   responses:
     Forbidden:
-      description: Ação restrita ao responsável do grupo.
+      description: E-mail pendente de confirmação (EMAIL_VERIFICATION_REQUIRED) ou ação restrita ao responsável do grupo.
       content:
         application/json:
           schema:
@@ -662,6 +939,53 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
+    AchievementCode:
+      type: string
+      enum: [first_drop, first_reminder, first_goal, team_player, streak_3, streak_7, streak_14, streak_30, goals_7, goals_30]
+    Achievement:
+      type: object
+      required: [code, category, rank, target, progress, unlocked_at, celebrated_at]
+      properties:
+        code:
+          $ref: '#/components/schemas/AchievementCode'
+        category:
+          type: string
+          enum: [beginnings, consistency, goals]
+        rank:
+          type: integer
+          minimum: 1
+          description: Prioridade dos destaques; conquistas desbloqueadas de maior prioridade aparecem primeiro.
+        target:
+          type: integer
+          minimum: 1
+        progress:
+          type: integer
+          minimum: 0
+          description: Limitado ao target; permanece completo após o desbloqueio.
+        unlocked_at:
+          type: [string, 'null']
+          format: date-time
+        celebrated_at:
+          type: [string, 'null']
+          format: date-time
+    AchievementCollectionEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [items, unlocked_count, total]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Achievement'
+            unlocked_count:
+              type: integer
+              minimum: 0
+            total:
+              type: integer
+              minimum: 0
     CreateGroupInput:
       type: object
       required: [name]
@@ -881,13 +1205,19 @@ components:
               $ref: '#/components/schemas/AuthUser'
     AuthUser:
       type: object
-      required: [id, email, profile]
+      required: [id, email, email_verified_at, email_verification_required, profile]
       properties:
         id:
           type: string
         email:
           type: string
           format: email
+        email_verified_at:
+          type: [string, 'null']
+          format: date-time
+        email_verification_required:
+          type: boolean
+          description: Novos cadastros exigem confirmação antes de acessar hidratação, equipes, conquistas, inventário e widget. Contas anteriores permanecem acessíveis.
         profile:
           $ref: '#/components/schemas/UserProfile'
     CurrentUser:
@@ -1027,7 +1357,7 @@ components:
       properties:
         mode:
           type: string
-          const: civil_week
+          enum: [civil_week, challenge]
         starts_on:
           type: string
           format: date
@@ -1052,6 +1382,58 @@ components:
           maxItems: 7
           items:
             $ref: '#/components/schemas/HydrationWeekDay'
+    ChallengeReward:
+      type: object
+      required: [state, type, amount]
+      properties:
+        state:
+          type: string
+          enum: [locked, available, claimed]
+        type:
+          enum: [null, xp, streak_freeze, streak_revive]
+        amount:
+          type: [integer, 'null']
+    HydrationChallenge:
+      type: object
+      required: [id, mode, status, starts_at, ends_at, progress, reward]
+      properties:
+        id:
+          type: string
+        mode:
+          type: string
+          enum: [solo, group]
+        status:
+          type: string
+          enum: [scheduled, active, completed]
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+          description: Limite exclusivo, à meia-noite após o sétimo dia.
+        progress:
+          $ref: '#/components/schemas/HydrationWeek'
+        reward:
+          oneOf:
+            - $ref: '#/components/schemas/ChallengeReward'
+            - type: 'null'
+    HydrationChallenges:
+      type: object
+      required: [solo, group, group_name, can_start_group]
+      properties:
+        solo:
+          oneOf:
+            - $ref: '#/components/schemas/HydrationChallenge'
+            - type: 'null'
+        group:
+          oneOf:
+            - $ref: '#/components/schemas/HydrationChallenge'
+            - type: 'null'
+        group_name:
+          type: [string, 'null']
+        can_start_group:
+          type: boolean
     HydrationLog:
       type: object
       required: [id, amount_ml, occurred_at, local_date, source, client_event_id]
@@ -1101,6 +1483,8 @@ components:
       type: object
       required: [log, idempotent_replay, today, gamification, mascot, widget]
       properties:
+        challenges:
+          $ref: '#/components/schemas/HydrationChallenges'
         log:
           $ref: '#/components/schemas/HydrationLog'
         idempotent_replay:
@@ -1126,7 +1510,7 @@ components:
             new_achievements:
               type: array
               items:
-                type: string
+                $ref: '#/components/schemas/AchievementCode'
         mascot:
           type: object
           required: [condition, decoration, animation, static_asset]

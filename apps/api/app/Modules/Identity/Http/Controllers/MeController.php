@@ -3,13 +3,12 @@
 namespace App\Modules\Identity\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Group\Application\GroupService;
 use App\Modules\Hydration\Application\HydrationGoalService;
+use App\Modules\Identity\Application\DeleteAccount;
 use App\Modules\Identity\Http\Requests\UpdateProfileRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
 
 class MeController extends Controller
 {
@@ -23,6 +22,8 @@ class MeController extends Controller
         return response()->json(['data' => [
             'id' => $user->id,
             'email' => $user->email,
+            'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+            'email_verification_required' => $user->email_verification_required,
             'xp_total' => $user->xp_total,
             'level' => intdiv($user->xp_total, 100) + 1,
             'profile' => $user->profile,
@@ -47,14 +48,9 @@ class MeController extends Controller
         return response()->json(['data' => $profile->fresh()]);
     }
 
-    public function destroy(Request $request, GroupService $groups): Response
+    public function destroy(Request $request, DeleteAccount $deleteAccount): Response
     {
-        DB::transaction(function () use ($request, $groups): void {
-            $user = $request->user();
-            $groups->leave($user);
-            $user->tokens()->delete();
-            $user->delete();
-        }, 3);
+        $deleteAccount->handle($request->user());
 
         return response()->noContent();
     }

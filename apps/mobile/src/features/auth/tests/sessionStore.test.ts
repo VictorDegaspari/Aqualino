@@ -9,6 +9,7 @@ import {authRepository} from '../data/authRepository';
 
 const mockRememberAccount = jest.fn();
 const mockForgetAccount = jest.fn();
+const mockAccounts = [{id: 'user-1', email: 'ana@example.com'}, {id: 'user-2', email: 'bia@example.com'}];
 
 jest.mock('../../../shared/security/secureTokenStore', () => ({
   secureTokenStore: {
@@ -49,7 +50,7 @@ jest.mock('../../widget/data/widgetBridge', () => ({
 
 jest.mock('../application/rememberedAccountsStore', () => ({
   useRememberedAccountsStore: {
-    getState: jest.fn(() => ({remember: mockRememberAccount, forget: mockForgetAccount})),
+    getState: jest.fn(() => ({remember: mockRememberAccount, forget: mockForgetAccount, accounts: mockAccounts})),
   },
 }));
 
@@ -100,6 +101,44 @@ describe('sessionStore', () => {
     expect(tokenStore.clear).not.toHaveBeenCalled();
     expect(userStore.clear).not.toHaveBeenCalled();
     expect(reloadWidgetState).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the widget locked for a new account awaiting email confirmation', async () => {
+    tokenStore.set.mockResolvedValue();
+    await useSessionStore.getState().authenticate({token: 'new-token', token_type: 'Bearer',
+      user: {...user, email_verification_required: true, email_verified_at: null}});
+    expect(setWidgetAuthentication).toHaveBeenCalledWith(false);
+  });
+
+  it('discards the revoked password-reset token without saving it again', async () => {
+    useSessionStore.setState({status: 'signedIn', user});
+    await useSessionStore.getState().clearPasswordResetCredentials(' ANA@EXAMPLE.COM ');
+    expect(rememberedTokenStore.clear).toHaveBeenCalledWith('user-1');
+    expect(rememberedTokenStore.clear).not.toHaveBeenCalledWith('user-2');
+    expect(rememberedTokenStore.set).not.toHaveBeenCalled();
+    expect(useSessionStore.getState().status).toBe('signedOut');
+    expect(tokenStore.clear).toHaveBeenCalled();
+  });
+
+  it('preserves the active account when resetting another remembered account', async () => {
+    useSessionStore.setState({status: 'signedIn', user});
+    await useSessionStore.getState().clearPasswordResetCredentials('bia@example.com');
+    expect(rememberedTokenStore.clear).toHaveBeenCalledWith('user-2');
+    expect(tokenStore.clear).not.toHaveBeenCalled();
+    expect(useSessionStore.getState().user).toBe(user);
+  });
+
+  it('ignores a verification refresh that finishes after switching accounts', async () => {
+    useSessionStore.setState({status: 'signedIn', user});
+    let finish!: (value: User) => void;
+    repository.me.mockReturnValueOnce(new Promise(resolve => {finish = resolve;}));
+    const refresh = useSessionStore.getState().refreshUser();
+    const other = {...user, id: 'user-2', email: 'bia@example.com'};
+    useSessionStore.setState({user: other});
+    finish({...user, email_verified_at: '2026-09-04T12:00:00Z'});
+    await refresh;
+    expect(useSessionStore.getState().user).toBe(other);
+    expect(userStore.set).not.toHaveBeenCalled();
   });
 
   it('clears the local session only when the server rejects the token', async () => {

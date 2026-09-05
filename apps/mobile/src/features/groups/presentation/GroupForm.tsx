@@ -1,10 +1,11 @@
 import React, {useState} from 'react';
-import {KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import type {GroupInvitePreview} from '@aqualino/contracts';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {GroupButton} from './GroupButton';
 import type {GroupsCopy} from './groupsCopy';
+import {AppModal} from '../../../shared/components/AppModal';
 
 export function GroupForm({mode, copy, busy, error, onClose, onClearError, onCreate, onPreview, onAccept}: {
   mode: 'create' | 'join'; copy: GroupsCopy; busy: boolean; error?: string;
@@ -31,7 +32,7 @@ export function GroupForm({mode, copy, busy, error, onClose, onClearError, onCre
   };
 
   return (
-    <Modal animationType="slide" transparent onRequestClose={() => { if (!busy) onClose(); }} statusBarTranslucent>
+    <AppModal onRequestClose={onClose} dismissible={!busy}>
       <View style={styles.backdrop}>
         <SafeAreaView style={styles.safeArea}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboard}>
@@ -70,7 +71,7 @@ export function GroupForm({mode, copy, busy, error, onClose, onClearError, onCre
           </KeyboardAvoidingView>
         </SafeAreaView>
       </View>
-    </Modal>
+    </AppModal>
   );
 }
 

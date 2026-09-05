@@ -32,7 +32,7 @@ class UpdateProfileRequest extends FormRequest
                 'sometimes',
                 'string',
                 'regex:/^[a-z0-9_]{3,24}$/',
-                Rule::unique('user_profiles', 'username')->ignore($this->user()->id, 'user_id'),
+                Rule::unique('user_profiles', 'username')->withoutTrashed()->ignore($this->user()->id, 'user_id'),
             ],
             'timezone' => ['sometimes', 'string', Rule::in(DateTimeZone::listIdentifiers())],
             'locale' => ['sometimes', 'string', Rule::in(['pt-BR', 'en-US'])],

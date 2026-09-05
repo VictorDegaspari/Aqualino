@@ -7,12 +7,13 @@ type ApiOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
   authenticated?: boolean;
   timeoutMs?: number;
+  unwrapData?: boolean;
 };
 
 export async function apiRequest<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const token = secureTokenStore.getCached();
   const headers = new Headers(options.headers);
-  const {authenticated, body, signal, timeoutMs, ...requestOptions} = options;
+  const {authenticated, body, signal, timeoutMs, unwrapData = true, ...requestOptions} = options;
   const timeoutController = timeoutMs ? new AbortController() : undefined;
   let didTimeout = false;
   const abortFromCaller = () => timeoutController?.abort();
@@ -69,5 +70,5 @@ export async function apiRequest<T>(path: string, options: ApiOptions = {}): Pro
     throw new AppError('A resposta do servidor é inválida.', 'INVALID_RESPONSE');
   }
 
-  return payload.data;
+  return unwrapData ? payload.data : payload as T;
 }

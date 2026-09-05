@@ -3,17 +3,19 @@ import NetInfo from '@react-native-community/netinfo';
 import {useQueryClient} from '@tanstack/react-query';
 import {secureTokenStore} from '../../../shared/security/secureTokenStore';
 import {useSessionStore} from '../../auth/application/sessionStore';
+import {requiresEmailVerification} from '../../auth/application/emailVerification';
 import {hydrationService} from '../application/hydrationService';
 import {useSyncStatusStore} from '../application/syncStatusStore';
 
 export function OfflineSyncProvider({children}: React.PropsWithChildren): React.JSX.Element {
   const queryClient = useQueryClient();
   const sessionStatus = useSessionStore(state => state.status);
+  const verificationRequired = useSessionStore(state => requiresEmailVerification(state.user));
   const setSyncing = useSyncStatusStore(state => state.setSyncing);
   const setPending = useSyncStatusStore(state => state.setPending);
 
   useEffect(() => {
-    if (sessionStatus !== 'signedIn') return;
+    if (sessionStatus !== 'signedIn' || verificationRequired) return;
 
     let active = true;
     let unsubscribe: (() => void) | undefined;
@@ -29,11 +31,12 @@ export function OfflineSyncProvider({children}: React.PropsWithChildren): React.
         }
         setSyncing(true);
         hydrationService.flush()
-          .then(async count => {
-            setPending(await hydrationService.pendingCount());
-            if (count > 0) {
-              await queryClient.invalidateQueries({queryKey: ['hydration', 'home']});
+          .then(async ({synced, rejected}) => {
+            if (synced > 0 || rejected > 0) {
+              queryClient.invalidateQueries({queryKey: ['achievements']});
+              await queryClient.invalidateQueries({queryKey: ['hydration']});
             }
+            setPending(await hydrationService.pendingCount());
           })
           .catch(() => undefined)
           .finally(() => setSyncing(false));
@@ -52,7 +55,7 @@ export function OfflineSyncProvider({children}: React.PropsWithChildren): React.
       if (backgroundTimer) clearTimeout(backgroundTimer);
       unsubscribe?.();
     };
-  }, [queryClient, sessionStatus, setPending, setSyncing]);
+  }, [queryClient, sessionStatus, verificationRequired, setPending, setSyncing]);
 
   return <>{children}</>;
 }

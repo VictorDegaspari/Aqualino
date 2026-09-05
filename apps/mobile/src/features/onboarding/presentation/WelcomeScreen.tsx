@@ -1,4 +1,6 @@
 import React, {useCallback, useRef, useState} from 'react';
+import type {NativeStackScreenProps} from '@react-navigation/native-stack';
+import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
 import {Image, Pressable, ScrollView, StyleSheet, Text, TextInput, type GestureResponderEvent, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {mascotImages} from '../../../assets/mascot/mascotImages';
@@ -51,7 +53,7 @@ function OnboardingContinueButton({label, disabled, onPress}: ContinueButtonProp
   );
 }
 
-export function WelcomeScreen(): React.JSX.Element {
+export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootStackParamList, 'Welcome'>> = {}): React.JSX.Element {
   const hasCompletedWelcome = useOnboardingPreferencesStore(state => state.hasCompletedWelcome);
   const locale = useOnboardingPreferencesStore(state => state.locale);
   const selectLocale = useOnboardingPreferencesStore(state => state.selectLocale);
@@ -196,6 +198,7 @@ export function WelcomeScreen(): React.JSX.Element {
               selectedAccount={selectedAccount}
               onManageAccounts={manageAccounts}
               onAuthenticated={finishWelcome}
+              onForgotPassword={email => navigation?.navigate('ForgotPassword', {email})}
               onRemoveAccount={removeAccount}
               onResumeAccount={resumeAccount}
               onReturnToAccounts={returnToAccounts}
@@ -314,6 +317,7 @@ export function WelcomeScreen(): React.JSX.Element {
                 selectedAccount={selectedAccount}
                 onManageAccounts={manageAccounts}
                 onAuthenticated={finishWelcome}
+                onForgotPassword={email => navigation?.navigate('ForgotPassword', {email})}
                 onRemoveAccount={removeAccount}
                 onResumeAccount={resumeAccount}
                 onReturnToAccounts={returnToAccounts}

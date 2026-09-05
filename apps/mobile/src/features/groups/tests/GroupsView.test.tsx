@@ -3,6 +3,7 @@ import {fireEvent, render} from '@testing-library/react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import type {PrivateGroup} from '@aqualino/contracts';
 import {GroupsView} from '../presentation/GroupsView';
+import {AppModalProvider} from '../../../shared/components/AppModal';
 
 const safeAreaMetrics = {
   frame: {x: 0, y: 0, width: 375, height: 812},
@@ -26,7 +27,7 @@ function props(overrides: Partial<React.ComponentProps<typeof GroupsView>> = {})
 }
 
 function renderGroups(options = props()) {
-  return render(<SafeAreaProvider initialMetrics={safeAreaMetrics}><GroupsView {...options} /></SafeAreaProvider>);
+  return render(<SafeAreaProvider initialMetrics={safeAreaMetrics}><AppModalProvider><GroupsView {...options} /></AppModalProvider></SafeAreaProvider>);
 }
 
 test('presents the empty group state and the signed-in member', async () => {

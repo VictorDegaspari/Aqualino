@@ -8,14 +8,17 @@ import {useOnboardingPreferencesStore} from '../../onboarding/application/onboar
 import {useSessionStore} from '../application/sessionStore';
 import {authRepository} from '../data/authRepository';
 import {AuthButton, AuthField} from './AuthScaffold';
+import {accountSecurityCopy} from './accountSecurityCopy';
+import {SecurityLink} from './AccountSecurityParts';
 
 interface LoginFormProps {
   initialEmail?: string;
   onAuthenticated?: () => void;
   onCreateAccount?: () => void;
+  onForgotPassword?: (email: string) => void;
 }
 
-export function LoginForm({initialEmail = '', onAuthenticated, onCreateAccount}: LoginFormProps): React.JSX.Element {
+export function LoginForm({initialEmail = '', onAuthenticated, onCreateAccount, onForgotPassword}: LoginFormProps): React.JSX.Element {
   const authenticate = useSessionStore(state => state.authenticate);
   const refreshUser = useSessionStore(state => state.refreshUser);
   const locale = useOnboardingPreferencesStore(state => state.locale);
@@ -64,6 +67,8 @@ export function LoginForm({initialEmail = '', onAuthenticated, onCreateAccount}:
         autoComplete="current-password"
       />
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+      {onForgotPassword ? <SecurityLink label={accountSecurityCopy[locale].forgotLink}
+        onPress={() => onForgotPassword(email.trim().toLowerCase())} disabled={loading} /> : null}
       <AuthButton label={copy.signIn} onPress={submit} loading={loading} disabled={!email || !password} />
 
       {onCreateAccount ? (

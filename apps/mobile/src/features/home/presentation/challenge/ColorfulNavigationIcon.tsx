@@ -1,5 +1,5 @@
-import React from 'react';
-import Svg, {Circle, Path, Rect} from 'react-native-svg';
+import React, {useId} from 'react';
+import Svg, {Circle, Defs, LinearGradient, Path, Rect, Stop} from 'react-native-svg';
 
 export type ColorfulNavigationIconName = 'home' | 'group' | 'reminders' | 'history' | 'profile';
 
@@ -15,6 +15,12 @@ type Palette = {
   highlight: string;
 };
 
+interface IconPaint {
+  palette: Palette;
+  bodyFill: string;
+  accentFill: string;
+}
+
 const palettes: Record<ColorfulNavigationIconName, Palette> = {
   home: {primary: '#3AA8CD', secondary: '#8DE0E8', highlight: '#E6FBF8'},
   group: {primary: '#9B7BE0', secondary: '#F2A0CD', highlight: '#FCE0F0'},
@@ -25,77 +31,96 @@ const palettes: Record<ColorfulNavigationIconName, Palette> = {
 
 export function ColorfulNavigationIcon({name, size, active}: Props): React.JSX.Element {
   const palette = palettes[name];
+  const id = useId();
+  const paint = {palette, bodyFill: `url(#${id}-body)`, accentFill: `url(#${id}-accent)`};
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 64 64" opacity={active ? 1 : 0.62}>
+    <Svg width={size} height={size} viewBox="0 0 64 64" opacity={active ? 1 : 0.62} accessible={false} pointerEvents="none">
+      <Defs>
+        <LinearGradient id={`${id}-body`} x1="0" y1="0" x2="0.8" y2="1">
+          <Stop stopColor={palette.secondary} />
+          <Stop offset="0.55" stopColor={palette.primary} />
+          <Stop offset="1" stopColor={palette.primary} />
+        </LinearGradient>
+        <LinearGradient id={`${id}-accent`} x1="0" y1="0" x2="0.8" y2="1">
+          <Stop stopColor={palette.highlight} />
+          <Stop offset="0.65" stopColor={palette.secondary} />
+          <Stop offset="1" stopColor={palette.secondary} />
+        </LinearGradient>
+      </Defs>
       {active ? <Circle cx="32" cy="32" r="30" fill={palette.primary} opacity="0.14" /> : null}
-      {name === 'home' ? <HomeIcon palette={palette} /> : null}
-      {name === 'group' ? <GroupIcon palette={palette} /> : null}
-      {name === 'reminders' ? <ReminderIcon palette={palette} /> : null}
-      {name === 'history' ? <HistoryIcon palette={palette} /> : null}
-      {name === 'profile' ? <ProfileIcon palette={palette} /> : null}
+      {name === 'home' ? <HomeIcon {...paint} /> : null}
+      {name === 'group' ? <GroupIcon {...paint} /> : null}
+      {name === 'reminders' ? <ReminderIcon {...paint} /> : null}
+      {name === 'history' ? <HistoryIcon {...paint} /> : null}
+      {name === 'profile' ? <ProfileIcon {...paint} /> : null}
     </Svg>
   );
 }
 
-function HomeIcon({palette}: {palette: Palette}): React.JSX.Element {
+function HomeIcon({palette, bodyFill, accentFill}: IconPaint): React.JSX.Element {
   return (
     <>
-      <Path d="m8 30 24-19 24 19v23a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4V30Z" fill={palette.primary} />
-      <Path d="m13 30 19-15 19 15v4H13v-4Z" fill={palette.secondary} />
-      <Path d="M24 57V39h16v18H24Z" fill={palette.highlight} />
-      <Path d="M30 21c-4 5-6 9-6 13a8 8 0 0 0 16 0c0-4-2-8-6-13l-2-3-2 3Z" fill={palette.secondary} />
+      <Path d="M13 28 32 13l19 15v22a6 6 0 0 1-6 6H19a6 6 0 0 1-6-6V28Z" fill={bodyFill} />
+      <Path d="M7 29 28.9 10.7a5 5 0 0 1 6.2 0L57 29" fill="none" stroke={palette.primary} strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="m9 27 20.5-17a4 4 0 0 1 5 0L55 27" fill="none" stroke={palette.secondary} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M26 56V43a6 6 0 0 1 12 0v13H26Z" fill={accentFill} />
+      <Rect x="19" y="29" width="7" height="7" rx="2" fill={palette.highlight} opacity="0.88" />
+      <Rect x="38" y="29" width="7" height="7" rx="2" fill={palette.highlight} opacity="0.88" />
+      <Path d="M17 39v10a3 3 0 0 0 3 3" fill="none" stroke={palette.secondary} strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
     </>
   );
 }
 
-function GroupIcon({palette}: {palette: Palette}): React.JSX.Element {
+function GroupIcon({palette, bodyFill, accentFill}: IconPaint): React.JSX.Element {
   return (
     <>
-      <Circle cx="32" cy="19" r="10" fill={palette.primary} />
-      <Circle cx="14" cy="26" r="7" fill={palette.secondary} />
-      <Circle cx="50" cy="26" r="7" fill={palette.secondary} />
-      <Path d="M13 55c1-14 8-22 19-22s18 8 19 22H13Z" fill={palette.primary} />
-      <Path d="M1 55c1-10 5-16 13-16 4 0 8 2 10 6-3 3-4 7-4 10H1Z" fill={palette.secondary} />
-      <Path d="M63 55c-1-10-5-16-13-16-4 0-8 2-10 6 3 3 4 7 4 10h19Z" fill={palette.secondary} />
-      <Path d="M27 46h10v11H27z" fill={palette.highlight} opacity="0.86" />
+      <Circle cx="13" cy="25" r="6.5" fill={accentFill} />
+      <Circle cx="51" cy="25" r="6.5" fill={accentFill} />
+      <Path d="M3 47c0-7 4-12 10-12s11 5 11 12v4H7a4 4 0 0 1-4-4Z" fill={accentFill} />
+      <Path d="M61 47c0-7-4-12-10-12s-11 5-11 12v4h17a4 4 0 0 0 4-4Z" fill={accentFill} />
+      <Circle cx="32" cy="18" r="10" fill={bodyFill} />
+      <Path d="M17 50c0-10 6-17 15-17s15 7 15 17v2a4 4 0 0 1-4 4H21a4 4 0 0 1-4-4v-2Z" fill={bodyFill} />
+      <Path d="M26 15a7 7 0 0 1 7-4" fill="none" stroke={palette.highlight} strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+      <Path d="M22 46c1-5 4-8 8-9" fill="none" stroke={palette.highlight} strokeWidth="2.5" strokeLinecap="round" opacity="0.6" />
     </>
   );
 }
 
-function ReminderIcon({palette}: {palette: Palette}): React.JSX.Element {
+function ReminderIcon({palette, bodyFill, accentFill}: IconPaint): React.JSX.Element {
   return (
     <>
-      <Path d="M47 27a15 15 0 0 0-30 0c0 16-7 17-7 20h44c0-3-7-4-7-20Z" fill={palette.primary} />
-      <Path d="M22 28a10 10 0 0 1 19-4" fill="none" stroke={palette.highlight} strokeWidth="4" strokeLinecap="round" />
-      <Path d="M25 54c2 3 4 4 7 4s6-1 8-4H25Z" fill={palette.secondary} />
-      <Circle cx="47" cy="17" r="8" fill={palette.secondary} />
-      <Path d="M47 13v8m-4-4h8" stroke={palette.highlight} strokeWidth="2.8" strokeLinecap="round" />
+      <Path d="M32 7v6" stroke={palette.secondary} strokeWidth="6" strokeLinecap="round" />
+      <Circle cx="32" cy="52" r="6" fill={accentFill} />
+      <Path d="M16 28a16 16 0 0 1 32 0c0 10 2 13 5 16a3 3 0 0 1-2 5H13a3 3 0 0 1-2-5c3-3 5-6 5-16Z" fill={bodyFill} />
+      <Path d="M22 28c0-6 3-10 8-11" fill="none" stroke={palette.highlight} strokeWidth="3.5" strokeLinecap="round" opacity="0.88" />
+      <Path d="M17 44h30" stroke={palette.secondary} strokeWidth="3" strokeLinecap="round" />
+      <Path d="M11 14a24 24 0 0 0-4 12m46-12a24 24 0 0 1 4 12" fill="none" stroke={palette.secondary} strokeWidth="3.5" strokeLinecap="round" />
     </>
   );
 }
 
-function HistoryIcon({palette}: {palette: Palette}): React.JSX.Element {
+function HistoryIcon({palette, bodyFill, accentFill}: IconPaint): React.JSX.Element {
   return (
     <>
-      <Rect x="8" y="35" width="12" height="21" rx="4" fill={palette.secondary} />
-      <Rect x="26" y="23" width="12" height="33" rx="4" fill={palette.primary} />
-      <Rect x="44" y="9" width="12" height="47" rx="4" fill={palette.highlight} />
-      <Path d="M10 20c8-8 17-4 23 2 7 6 13 5 21-5" fill="none" stroke={palette.primary} strokeWidth="4" strokeLinecap="round" />
-      <Circle cx="54" cy="17" r="3" fill={palette.secondary} />
+      <Rect x="8" y="8" width="48" height="48" rx="10" fill={palette.primary} opacity="0.12" />
+      <Rect x="8" y="8" width="48" height="48" rx="10" fill="none" stroke={palette.primary} strokeWidth="3" />
+      <Rect x="16" y="34" width="8" height="14" rx="3" fill={palette.secondary} />
+      <Rect x="28" y="26" width="8" height="22" rx="3" fill={bodyFill} />
+      <Rect x="40" y="17" width="8" height="31" rx="3" fill={accentFill} />
+      <Path d="M13 23v-5a5 5 0 0 1 5-5h6" fill="none" stroke={palette.highlight} strokeWidth="2.5" strokeLinecap="round" opacity="0.65" />
     </>
   );
 }
 
-function ProfileIcon({palette}: {palette: Palette}): React.JSX.Element {
+function ProfileIcon({palette, bodyFill, accentFill}: IconPaint): React.JSX.Element {
   return (
     <>
-      <Circle cx="32" cy="22" r="14" fill={palette.secondary} />
-      <Path d="M8 57c2-16 11-25 24-25s22 9 24 25H8Z" fill={palette.primary} />
-      <Circle cx="27" cy="20" r="2" fill={palette.highlight} />
-      <Circle cx="37" cy="20" r="2" fill={palette.highlight} />
-      <Path d="M25 27c4 4 10 4 14 0" fill="none" stroke={palette.highlight} strokeWidth="2.5" strokeLinecap="round" />
-      <Path d="M17 54c3-7 8-11 15-11s12 4 15 11H17Z" fill={palette.secondary} opacity="0.75" />
+      <Circle cx="32" cy="19" r="11" fill={accentFill} />
+      <Path d="M11 51c0-10 9-17 21-17s21 7 21 17v1a4 4 0 0 1-4 4H15a4 4 0 0 1-4-4v-1Z" fill={bodyFill} />
+      <Path d="M24 35c2 6 14 6 16 0" fill={palette.secondary} />
+      <Path d="M26 17a7 7 0 0 1 7-5" fill="none" stroke={palette.highlight} strokeWidth="3" strokeLinecap="round" opacity="0.85" />
+      <Path d="M17 48c1-4 4-7 8-8" fill="none" stroke={palette.highlight} strokeWidth="3" strokeLinecap="round" opacity="0.55" />
     </>
   );
 }

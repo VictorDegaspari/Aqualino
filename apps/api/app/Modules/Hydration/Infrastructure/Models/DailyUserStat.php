@@ -3,9 +3,12 @@
 namespace App\Modules\Hydration\Infrastructure\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DailyUserStat extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'user_id',
         'local_date',

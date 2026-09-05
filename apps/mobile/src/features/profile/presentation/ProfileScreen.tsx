@@ -1,6 +1,9 @@
 import React, {useCallback, useState} from 'react';
-import {Alert, Image, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {Image, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import type {NativeStackScreenProps} from '@react-navigation/native-stack';
+import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
+import {ProfileAchievements} from '../../achievements/presentation/ProfileAchievements';
 import {avatarIds, defaultAvatarId, getAvatarSource, type AvatarId} from '../../../shared/avatars/avatarOptions';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
 import {PencilIcon} from '../../../shared/components/PencilIcon';
@@ -10,16 +13,21 @@ import {useSessionStore} from '../../auth/application/sessionStore';
 import {authRepository} from '../../auth/data/authRepository';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {AvatarPicker} from './AvatarPicker';
+import {HydrationFlame} from '../../hydration/presentation/HydrationFlame';
+import {useHydrationHomeData} from '../../hydration/presentation/useHydrationHome';
+import {AppDialog} from '../../../shared/components/AppDialog';
 
-export function ProfileScreen(): React.JSX.Element {
+export function ProfileScreen({navigation}: NativeStackScreenProps<RootStackParamList, 'Profile'>): React.JSX.Element {
   const user = useSessionStore(state => state.user);
   const refreshUser = useSessionStore(state => state.refreshUser);
   const signOut = useSessionStore(state => state.signOut);
+  const hydration = useHydrationHomeData();
   const savedAvatar = user?.profile.avatar_url;
   const currentAvatar = isAvatarId(savedAvatar) ? savedAvatar : defaultAvatarId;
   const [selectedAvatar, setSelectedAvatar] = useState<AvatarId>(currentAvatar);
   const [editingAvatar, setEditingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [avatarError, setAvatarError] = useState<string>();
 
   const openAvatarEditor = useCallback(() => {
     if (saving) return;
@@ -47,7 +55,7 @@ export function ProfileScreen(): React.JSX.Element {
       haptics.success();
     } catch (error) {
       setSelectedAvatar(previousAvatar);
-      Alert.alert('Não foi possível salvar seu avatar', error instanceof Error ? error.message : 'Tente novamente.');
+      setAvatarError(error instanceof Error ? error.message : 'Tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -92,7 +100,7 @@ export function ProfileScreen(): React.JSX.Element {
               </View>
               <View style={styles.statDivider} />
               <View style={styles.stat}>
-                <AqualinoIcon name="flame" size={18} color={challengeTheme.colors.cyanStrong} />
+                <HydrationFlame totalMl={hydration.data?.data.today.total_ml ?? 0} size={18} />
                 <Text style={styles.statValue}>{user?.streak ?? 0}</Text>
                 <Text style={styles.statLabel}>dias</Text>
               </View>
@@ -124,20 +132,7 @@ export function ProfileScreen(): React.JSX.Element {
             <Text style={styles.collectionNotice}>Conclua desafios de grupo para conquistar medalhas.</Text>
           </View>
 
-          <View style={styles.collectionPanel}>
-            <View style={styles.collectionHeader}>
-              <View>
-                <Text style={styles.collectionTitle}>Conquistas</Text>
-                <Text style={styles.collectionSubtitle}>Marcos importantes da sua jornada.</Text>
-              </View>
-              <AqualinoIcon name="star" size={28} color={challengeTheme.colors.gold} />
-            </View>
-            <View style={styles.achievements}>
-              <Achievement label="Primeira gota" description="Faça seu primeiro registro de água." />
-              <Achievement label="Em ritmo" description="Mantenha três dias de hidratação." />
-              <Achievement label="Semana azul" description="Complete sete dias de sequência." />
-            </View>
-          </View>
+          <ProfileAchievements onOpen={() => navigation.navigate('Achievements')} />
 
           <Pressable
             accessibilityRole="button"
@@ -149,6 +144,7 @@ export function ProfileScreen(): React.JSX.Element {
           </Pressable>
         </ScrollView>
       </SafeAreaView>
+      {avatarError ? <AppDialog title="Não foi possível salvar seu avatar" message={avatarError} icon="profile" onClose={() => setAvatarError(undefined)} /> : null}
     </View>
   );
 }
@@ -162,18 +158,6 @@ function Medal({name, label}: {name: 'medalGold' | 'medalSilver' | 'medalBronze'
     <View style={styles.medal}>
       <View style={styles.medalIcon}><AqualinoIcon name={name} size={35} /></View>
       <Text style={styles.medalLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function Achievement({label, description}: {label: string; description: string}): React.JSX.Element {
-  return (
-    <View style={styles.achievement}>
-      <View style={styles.achievementIcon}><AqualinoIcon name="lock" size={17} color={challengeTheme.colors.muted} /></View>
-      <View style={styles.achievementContent}>
-        <Text style={styles.achievementLabel}>{label}</Text>
-        <Text style={styles.achievementDescription}>{description}</Text>
-      </View>
     </View>
   );
 }
@@ -210,12 +194,6 @@ const styles = StyleSheet.create({
   medalIcon: {width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center', backgroundColor: challengeTheme.colors.panelSoft, borderWidth: 1, borderColor: challengeTheme.colors.border},
   medalLabel: {fontSize: 12, lineHeight: 16, fontWeight: '800', color: challengeTheme.colors.muted},
   collectionNotice: {marginTop: 13, textAlign: 'center', fontSize: 12, lineHeight: 17, color: '#B4D5E7'},
-  achievements: {gap: 8, marginTop: 16},
-  achievement: {minHeight: 57, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 11, paddingVertical: 9, borderRadius: 14, borderWidth: 1, borderColor: challengeTheme.colors.border, backgroundColor: challengeTheme.colors.panelSoft},
-  achievementIcon: {width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(141, 171, 200, 0.12)'},
-  achievementContent: {flex: 1},
-  achievementLabel: {fontSize: 14, lineHeight: 19, fontWeight: '800', color: challengeTheme.colors.text},
-  achievementDescription: {fontSize: 12, lineHeight: 16, color: challengeTheme.colors.muted},
   signOutButton: {minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, borderRadius: challengeTheme.radius.pill, borderWidth: 1, borderColor: 'rgba(255, 119, 137, 0.54)', backgroundColor: 'rgba(166, 42, 63, 0.16)'},
   signOutButtonPressed: {opacity: 0.76, transform: [{scale: 0.985}]},
   signOutLabel: {fontSize: 15, lineHeight: 20, fontWeight: '900', color: challengeTheme.colors.danger},

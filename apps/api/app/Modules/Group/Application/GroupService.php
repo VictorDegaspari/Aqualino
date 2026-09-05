@@ -3,14 +3,19 @@
 namespace App\Modules\Group\Application;
 
 use App\Models\User;
+use App\Modules\Achievement\Application\AchievementService;
 use App\Modules\Group\Domain\GroupException;
 use App\Modules\Group\Infrastructure\Models\Group;
 use App\Modules\Group\Infrastructure\Models\GroupMembership;
+use App\Modules\Hydration\Infrastructure\Models\HydrationChallenge;
+use App\Modules\Inventory\Infrastructure\Models\PotionUsageBlock;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class GroupService
 {
+    public function __construct(private readonly AchievementService $achievements) {}
+
     public function current(User $user): ?array
     {
         return DB::transaction(function () use ($user): ?array {
@@ -36,6 +41,7 @@ final class GroupService
                 ...$this->newInvite(),
             ]);
             $group->memberships()->create(['user_id' => $user->id, 'slot' => '1']);
+            $this->achievements->grant($user, 'team_player');
 
             return $this->payload($group, $user);
         }, 3);
@@ -73,6 +79,14 @@ final class GroupService
                 throw new GroupException('GROUP_FULL', 'Este grupo já tem cinco integrantes.');
             }
             $group->memberships()->create(['user_id' => $user->id, 'slot' => $slot]);
+            $challenge = HydrationChallenge::query()->where('group_id', $group->id)->where('ends_at', '>', now())->first();
+            if ($challenge) {
+                PotionUsageBlock::query()->create([
+                    'user_id' => $user->id, 'reason' => 'group_challenge', 'context_id' => $challenge->id,
+                    'starts_at' => $challenge->starts_at, 'ends_at' => $challenge->ends_at->subSecond(),
+                ]);
+            }
+            $this->achievements->grant($user, 'team_player');
 
             return $this->payload($group, $user);
         }, 3);

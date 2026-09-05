@@ -1,0 +1,60 @@
+import type {AchievementCode} from '@aqualino/contracts';
+import type {AppLocale} from '../../../shared/i18n/appLocale';
+
+const pt = {
+  title: 'Conquistas', subtitle: 'Pequenos passos. Grandes marés.', highlights: 'Seus destaques',
+  all: 'Ver todas as conquistas', profileHint: 'Abre sua coleção completa de conquistas',
+  earned: 'Conquistadas', earnedBadge: 'Conquistada', allFilter: 'Todas', lockedFilter: 'A conquistar', locked: 'Ainda por conquistar',
+  beginnings: 'Primeiros passos', consistency: 'Constância', goals: 'Suas metas',
+  newAchievement: 'NOVA CONQUISTA', congratulations: 'Você fez acontecer!',
+  saved: 'Mais um marco na sua jornada.', continue: 'Continuar', close: 'Fechar',
+  back: 'Voltar ao perfil', swipeHint: 'Deslize para a direita para voltar',
+  loading: 'Carregando sua coleção…', error: 'Não foi possível atualizar as conquistas.', retry: 'Tentar novamente',
+  offline: 'Exibindo a coleção salva neste aparelho.', empty: 'Sua primeira conquista está a um pequeno passo.',
+  noLocked: 'Você conquistou toda esta coleção!', progress: 'Progresso',
+  collectionCount: (earned: number, total: number) => `${earned} de ${total} conquistas`,
+  unlockedOn: (date: string) => `Conquistada em ${date}`,
+  progressLabel: (progress: number, target: number) => `${progress} de ${target}`,
+  items: {
+    first_drop: {title: 'Primeira gota', description: 'Faça seu primeiro registro de água.', celebration: 'O primeiro gole de uma nova jornada. Seu Aqualino está com você!'},
+    first_reminder: {title: 'Na hora certa', description: 'Crie seu primeiro lembrete de hidratação.', celebration: 'Um carinho para o seu eu do futuro. Seu primeiro lembrete está pronto!'},
+    first_goal: {title: 'Dia completo', description: 'Alcance sua meta diária pela primeira vez.', celebration: 'Você chegou à sua meta. Celebre o cuidado de hoje, no seu ritmo!'},
+    team_player: {title: 'Em equipe', description: 'Crie ou entre no seu primeiro grupo.', celebration: 'Cuidar de si também pode ser uma jornada compartilhada!'},
+    streak_3: {title: 'Em ritmo', description: 'Alcance uma sequência de 3 dias de hidratação.', celebration: 'Três dias de constância. Seu hábito está ganhando ritmo!'},
+    streak_7: {title: 'Semana azul', description: 'Alcance uma sequência de 7 dias de hidratação.', celebration: 'Uma semana de cuidado, uma gota de cada vez!'},
+    streak_14: {title: 'Maré constante', description: 'Alcance uma sequência de 14 dias de hidratação.', celebration: 'Duas semanas de constância. Seu cuidado já deixa marcas bonitas!'},
+    streak_30: {title: 'Guardião das gotas', description: 'Alcance uma sequência de 30 dias de hidratação.', celebration: 'Trinta dias de jornada. Um hábito construído por você!'},
+    goals_7: {title: 'Sete dias de cuidado', description: 'Alcance sua meta em 7 dias, seguidos ou não.', celebration: 'Sete metas atingidas. Cada dia de cuidado merece ser celebrado!'},
+    goals_30: {title: 'Oceano de cuidado', description: 'Alcance sua meta em 30 dias, seguidos ou não.', celebration: 'Trinta metas atingidas. Seu oceano é feito de pequenos cuidados!'},
+  } satisfies Record<AchievementCode, {title: string; description: string; celebration: string}>,
+};
+export type AchievementCopy = typeof pt;
+export const achievementCopy: Record<AppLocale, AchievementCopy> = {
+  'pt-BR': pt,
+  'en-US': {
+    title: 'Achievements', subtitle: 'Small steps. Great waves.', highlights: 'Your highlights',
+    all: 'View all achievements', profileHint: 'Opens your complete achievement collection',
+    earned: 'Earned', earnedBadge: 'Earned', allFilter: 'All', lockedFilter: 'To earn', locked: 'Still to earn',
+    beginnings: 'First steps', consistency: 'Consistency', goals: 'Your goals',
+    newAchievement: 'NEW ACHIEVEMENT', congratulations: 'You made it happen!',
+    saved: 'Another milestone on your journey.', continue: 'Continue', close: 'Close',
+    back: 'Back to profile', swipeHint: 'Swipe right to go back',
+    loading: 'Loading your collection…', error: 'We could not refresh your achievements.', retry: 'Try again',
+    offline: 'Showing the collection saved on this device.', empty: 'Your first achievement is one small step away.',
+    noLocked: 'You have earned this entire collection!', progress: 'Progress',
+    collectionCount: (earned, total) => `${earned} of ${total} achievements`,
+    unlockedOn: date => `Earned on ${date}`, progressLabel: (progress, target) => `${progress} of ${target}`,
+    items: {
+      first_drop: {title: 'First drop', description: 'Record water for the first time.', celebration: 'The first sip of a new journey. Aqualino is here with you!'},
+      first_reminder: {title: 'Right on time', description: 'Create your first hydration reminder.', celebration: 'A little care for your future self. Your first reminder is ready!'},
+      first_goal: {title: 'A complete day', description: 'Reach your daily goal for the first time.', celebration: 'You reached your goal. Celebrate today’s care, at your own pace!'},
+      team_player: {title: 'Better together', description: 'Create or join your first group.', celebration: 'Taking care of yourself can be a shared journey too!'},
+      streak_3: {title: 'Finding your rhythm', description: 'Reach a 3-day hydration streak.', celebration: 'Three days of consistency. Your habit is finding its rhythm!'},
+      streak_7: {title: 'Blue week', description: 'Reach a 7-day hydration streak.', celebration: 'A week of care, one drop at a time!'},
+      streak_14: {title: 'Steady tide', description: 'Reach a 14-day hydration streak.', celebration: 'Two weeks of consistency. Your care is making a difference!'},
+      streak_30: {title: 'Keeper of drops', description: 'Reach a 30-day hydration streak.', celebration: 'Thirty days on your journey. A habit built by you!'},
+      goals_7: {title: 'Seven days of care', description: 'Reach your goal on 7 days, consecutive or not.', celebration: 'Seven goals reached. Every day of care deserves a celebration!'},
+      goals_30: {title: 'Ocean of care', description: 'Reach your goal on 30 days, consecutive or not.', celebration: 'Thirty goals reached. Your ocean is made of small acts of care!'},
+    },
+  },
+};

@@ -25,7 +25,7 @@ class HydrationWeekTest extends TestCase
             ->assertJsonPath('error.code', 'AUTHENTICATION_REQUIRED');
     }
 
-    public function test_returns_seven_days_with_progress_states_and_trophy(): void
+    public function test_returns_seven_days_with_progress_states_without_a_podium_trophy(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-09-02T15:00:00Z'));
         $user = $this->authenticatedUser('UTC');
@@ -59,7 +59,7 @@ class HydrationWeekTest extends TestCase
             ->assertJsonPath('data.week.days.2.state', 'in_progress')
             ->assertJsonPath('data.week.days.2.is_today', true)
             ->assertJsonPath('data.week.days.3.state', 'future')
-            ->assertJsonPath('data.week.days.6.is_trophy', true);
+            ->assertJsonPath('data.week.days.6.is_trophy', false);
     }
 
     public function test_week_boundaries_use_the_profile_timezone(): void
@@ -76,7 +76,7 @@ class HydrationWeekTest extends TestCase
             ->assertJsonPath('data.week.current_date', '2026-09-06')
             ->assertJsonPath('data.week.timezone', 'America/Sao_Paulo')
             ->assertJsonPath('data.week.days.6.is_today', true)
-            ->assertJsonPath('data.week.days.6.is_trophy', true);
+            ->assertJsonPath('data.week.days.6.is_trophy', false);
     }
 
     private function authenticatedUser(string $timezone): User

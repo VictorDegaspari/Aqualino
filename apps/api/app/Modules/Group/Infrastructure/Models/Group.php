@@ -2,13 +2,15 @@
 
 namespace App\Modules\Group\Infrastructure\Models;
 
+use App\Modules\Hydration\Infrastructure\Models\HydrationChallenge;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Group extends Model
 {
-    use HasUlids;
+    use HasUlids, SoftDeletes;
 
     protected $fillable = ['owner_id', 'name', 'timezone', 'invite_code', 'invite_code_hash', 'invite_expires_at'];
 
@@ -22,5 +24,15 @@ class Group extends Model
     public function memberships(): HasMany
     {
         return $this->hasMany(GroupMembership::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Group $group): void {
+            if (! $group->isForceDeleting()) {
+                $group->memberships()->delete();
+                HydrationChallenge::query()->where('group_id', $group->id)->delete();
+            }
+        });
     }
 }

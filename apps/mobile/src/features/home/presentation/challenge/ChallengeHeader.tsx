@@ -4,6 +4,7 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {AqualinoIcon, type AqualinoIconName} from '../../../../shared/components/AqualinoIcon';
 import {AqualinoMascot} from '../AqualinoMascot';
 import {challengeTheme} from './challengeTheme';
+import {HydrationFlame} from '../../../hydration/presentation/HydrationFlame';
 
 interface Props {
   condition: MascotCondition;
@@ -19,7 +20,10 @@ export const ChallengeHeader = memo(function ChallengeHeaderView({condition, str
       <View style={styles.topRow}>
         <AqualinoMascot condition={condition} compact />
         <View style={styles.statsPanel}>
-          <Stat icon="flame" label={`${streak} dias`} />
+          <View style={styles.stat}>
+            <HydrationFlame totalMl={waterMl} size={22} />
+            <Text numberOfLines={1} style={styles.statLabel}>{streak} dias</Text>
+          </View>
           <View style={styles.divider} />
           <Stat icon="water" label={`${formatNumber(waterMl)} ml`} />
           <View style={styles.divider} />

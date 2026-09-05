@@ -3,6 +3,7 @@
 namespace App\Modules\Hydration\Application;
 
 use App\Models\User;
+use App\Modules\Achievement\Application\AchievementService;
 use App\Modules\Gamification\Application\StreakCalculator;
 use App\Modules\Hydration\Infrastructure\Models\DailyUserStat;
 use App\Modules\Hydration\Infrastructure\Models\HydrationLog;
@@ -20,6 +21,7 @@ class RecordWaterIntake
         private readonly HydrationGoalService $goals,
         private readonly StreakCalculator $streaks,
         private readonly ApplyArmedHydrationStreakFreeze $applyStreakFreeze,
+        private readonly AchievementService $achievements,
     ) {}
 
     public function handle(User $user, array $input): array
@@ -33,14 +35,15 @@ class RecordWaterIntake
             $this->applyStreakFreeze->handle($user, $existing->local_date->toDateString());
             $this->streaks->recalculate($user);
 
-            return ['log' => $existing, 'idempotent_replay' => true];
+            return ['log' => $existing, 'idempotent_replay' => true, 'new_achievements' => $this->achievements->reconcile($user)];
         }
 
+        $receivedAt = CarbonImmutable::now('UTC');
         $occurredAt = isset($input['occurred_at'])
             ? CarbonImmutable::parse($input['occurred_at'])->utc()
-            : CarbonImmutable::now('UTC');
+            : $receivedAt;
 
-        if ($occurredAt->isAfter(CarbonImmutable::now('UTC')->addMinutes(5))) {
+        if ($occurredAt->isAfter($receivedAt)) {
             throw ValidationException::withMessages([
                 'occurred_at' => ['O horário não pode estar no futuro.'],
             ]);
@@ -108,6 +111,8 @@ class RecordWaterIntake
 
         $this->applyStreakFreeze->handle($user, $result['log']->local_date->toDateString());
         $this->streaks->recalculate($user);
+
+        $result['new_achievements'] = $this->achievements->reconcile($user);
 
         return $result;
     }

@@ -50,6 +50,8 @@ export function useGroups(userId: string | undefined, copy: GroupsCopy) {
       if (updatesGroup) await queryClient.cancelQueries({queryKey: groupKey(userId)});
       if (useSessionStore.getState().user?.id !== userId) return null;
       if (updatesGroup) queryClient.setQueryData(groupKey(userId), value);
+      if (updatesGroup) queryClient.invalidateQueries({queryKey: ['achievements', userId]});
+      if (updatesGroup) queryClient.invalidateQueries({queryKey: ['hydration']});
       return {value};
     } catch (cause) {
       if (useSessionStore.getState().user?.id === userId) {

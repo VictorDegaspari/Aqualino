@@ -59,7 +59,7 @@ class WeeklyHydrationQuery
                 'goal_ml' => $goalMl,
                 'percentage' => min(100, (int) round(($totalMl / max(1, $goalMl)) * 100)),
                 'is_today' => $date->isSameDay($today),
-                'is_trophy' => $position === 6,
+                'is_trophy' => false,
                 'protection' => $effect?->item_code->value,
             ];
         }

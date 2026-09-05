@@ -3,9 +3,12 @@
 namespace App\Modules\Gamification\Infrastructure\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class UserStreak extends Model
 {
+    use SoftDeletes;
+
     public $timestamps = false;
 
     protected $primaryKey = 'user_id';

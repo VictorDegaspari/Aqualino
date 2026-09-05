@@ -2,32 +2,53 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Modules\Achievement\Infrastructure\Models\UserAchievement;
 use App\Modules\Gamification\Infrastructure\Models\UserStreak;
+use App\Modules\Hydration\Infrastructure\Models\DailyUserStat;
 use App\Modules\Hydration\Infrastructure\Models\HydrationGoal;
 use App\Modules\Hydration\Infrastructure\Models\HydrationLog;
 use App\Modules\Identity\Infrastructure\Models\UserProfile;
+use App\Modules\Identity\Notifications\ResetAccountPassword;
+use App\Modules\Identity\Notifications\VerifyAccountEmail;
 use App\Modules\Inventory\Infrastructure\Models\InventoryBalance;
 use App\Modules\Inventory\Infrastructure\Models\InventoryTransaction;
 use App\Modules\Inventory\Infrastructure\Models\PotionUsageBlock;
 use App\Modules\Inventory\Infrastructure\Models\StreakPotionEffect;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['email', 'password', 'terms_version', 'terms_accepted_at', 'xp_total'])]
 #[Hidden(['password'])]
-class User extends Authenticatable
+class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasUlids, Notifiable;
+    use HasApiTokens, HasFactory, HasUlids, Notifiable, SoftDeletes;
+
+    public function preferredLocale(): string
+    {
+        return $this->profile?->locale === 'en-US' ? 'en-US' : 'pt-BR';
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyAccountEmail($this));
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetAccountPassword($token, $this));
+    }
 
     public function profile(): HasOne
     {
@@ -47,6 +68,16 @@ class User extends Authenticatable
     public function streak(): HasOne
     {
         return $this->hasOne(UserStreak::class);
+    }
+
+    public function dailyStats(): HasMany
+    {
+        return $this->hasMany(DailyUserStat::class);
+    }
+
+    public function achievements(): HasMany
+    {
+        return $this->hasMany(UserAchievement::class);
     }
 
     public function inventoryBalances(): HasMany
@@ -78,6 +109,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'email_verification_required' => 'boolean',
             'terms_accepted_at' => 'immutable_datetime',
             'password' => 'hashed',
         ];

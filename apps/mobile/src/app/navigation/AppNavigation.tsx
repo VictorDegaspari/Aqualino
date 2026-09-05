@@ -4,19 +4,25 @@ import {NavigationContainer, StackActions, useNavigationContainerRef} from '@rea
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {AppLoadingScreen} from '../presentation/AppLoadingScreen';
 import {useSessionStore} from '../../features/auth/application/sessionStore';
+import {requiresEmailVerification} from '../../features/auth/application/emailVerification';
 import {challengeTheme} from '../../features/home/presentation/challenge/challengeTheme';
 import {ChallengeBottomNavigation, type ChallengeBottomTab} from '../../features/home/presentation/challenge/ChallengeBottomNavigation';
 import {linking} from './linking';
 
 export type RootStackParamList = {
   Welcome: undefined;
+  SignIn: {email?: string} | undefined;
+  ForgotPassword: {email?: string} | undefined;
+  ResetPassword: {email?: string; token?: string; locale?: string} | undefined;
+  VerifyEmail: undefined;
   Onboarding: undefined;
-  Home: undefined;
+  Home: {recordedAmountMl?: number} | undefined;
   Groups: undefined;
   Reminders: undefined;
   Inventory: undefined;
   History: undefined;
   Profile: undefined;
+  Achievements: undefined;
   QuickHydration: {source?: string; photoUri?: string} | undefined;
 };
 
@@ -30,7 +36,12 @@ const getRemindersScreen = () => require('../../features/reminders/presentation/
 const getInventoryScreen = () => require('../../features/inventory/presentation/InventoryScreen').InventoryScreen;
 const getHistoryScreen = () => require('../../features/hydration/presentation/HydrationHistoryScreen').HydrationHistoryScreen;
 const getProfileScreen = () => require('../../features/profile/presentation/ProfileScreen').ProfileScreen;
+const getAchievementsScreen = () => require('../../features/achievements/presentation/AchievementsScreen').AchievementsScreen;
 const getQuickHydrationRoute = () => require('./QuickHydrationRoute').QuickHydrationRoute;
+const getSignInScreen = () => require('../../features/auth/presentation/SignInScreen').SignInScreen;
+const getForgotPasswordScreen = () => require('../../features/auth/presentation/ForgotPasswordScreen').ForgotPasswordScreen;
+const getResetPasswordScreen = () => require('../../features/auth/presentation/ResetPasswordScreen').ResetPasswordScreen;
+const getVerifyEmailScreen = () => require('../../features/auth/presentation/VerifyEmailScreen').VerifyEmailScreen;
 
 export function AppNavigation(): React.JSX.Element {
   const status = useSessionStore(state => state.status);
@@ -46,11 +57,12 @@ export function AppNavigation(): React.JSX.Element {
   }
 
   const activeTab = tabForRoute(activeRoute);
-  const showBottomNavigation = status === 'signedIn' && Boolean(user?.profile.onboarding_completed_at) && Boolean(activeTab);
+  const verificationRequired = requiresEmailVerification(user);
+  const showBottomNavigation = status === 'signedIn' && !verificationRequired && Boolean(user?.profile.onboarding_completed_at) && Boolean(activeTab);
   const sessionNavigationKey = status === 'signedOut'
     ? 'signed-out'
-    : user?.profile.onboarding_completed_at
-      ? 'signed-in'
+    : verificationRequired ? `verify:${user?.id}` : user?.profile.onboarding_completed_at
+      ? `signed-in:${user.id}`
       : 'onboarding';
   const replaceTab = (route: TabRouteName) => {
     if (!navigationRef.isReady() || navigationRef.getCurrentRoute()?.name === route) {
@@ -71,6 +83,8 @@ export function AppNavigation(): React.JSX.Element {
           <Stack.Group navigationKey={sessionNavigationKey}>
             {status === 'signedOut' ? (
               <Stack.Screen name="Welcome" getComponent={getWelcomeScreen} options={{headerShown: false}} />
+            ) : verificationRequired ? (
+              <Stack.Screen name="VerifyEmail" getComponent={getVerifyEmailScreen} options={{headerShown: false}} />
             ) : !user?.profile.onboarding_completed_at ? (
               <Stack.Screen name="Onboarding" getComponent={getOnboardingScreen} options={{headerShown: false}} />
             ) : (
@@ -87,17 +101,24 @@ export function AppNavigation(): React.JSX.Element {
                 }} />
                 <Stack.Screen name="History" getComponent={getHistoryScreen} options={tabScreenOptions} />
                 <Stack.Screen name="Profile" getComponent={getProfileScreen} options={tabScreenOptions} />
+                <Stack.Screen name="Achievements" getComponent={getAchievementsScreen} options={{
+                  headerShown: false, presentation: 'transparentModal', animation: 'none', gestureEnabled: false,
+                  contentStyle: {backgroundColor: 'transparent'},
+                }} />
               </>
             )}
             <Stack.Screen name="QuickHydration" getComponent={getQuickHydrationRoute}
               options={{
-                presentation: 'modal',
-                title: 'Bebi água',
-                headerStyle: {backgroundColor: challengeTheme.colors.background},
-                headerTintColor: challengeTheme.colors.text,
-                headerTitleStyle: {fontWeight: '900'},
-                contentStyle: {backgroundColor: challengeTheme.colors.background},
+                presentation: 'transparentModal',
+                animation: 'fade',
+                headerShown: false,
+                contentStyle: {backgroundColor: 'transparent'},
               }} />
+          </Stack.Group>
+          <Stack.Group screenOptions={{headerShown: false, contentStyle: {backgroundColor: challengeTheme.colors.background}}}>
+            <Stack.Screen name="ForgotPassword" getComponent={getForgotPasswordScreen} />
+            <Stack.Screen name="ResetPassword" getComponent={getResetPasswordScreen} />
+            <Stack.Screen name="SignIn" getComponent={getSignInScreen} />
           </Stack.Group>
         </Stack.Navigator>
       </NavigationContainer>

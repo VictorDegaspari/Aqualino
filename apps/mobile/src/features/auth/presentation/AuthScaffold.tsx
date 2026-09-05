@@ -3,7 +3,8 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
-  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +12,7 @@ import {
   type TextInputProps,
   View,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {mascotImages} from '../../../assets/mascot/mascotImages';
 import {typography} from '../../../shared/theme/typography';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
@@ -33,20 +35,22 @@ export function AuthScaffold({eyebrow, title, subtitle, children}: AuthScaffoldP
       />
       <View pointerEvents="none" style={styles.backgroundOverlay} />
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
-          <View style={styles.hero}>
-            <View style={styles.mascotOrb}>
-              <Image source={mascotImages.empty} resizeMode="contain" style={styles.mascot} />
+        <KeyboardAvoidingView style={styles.safeArea} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <View style={styles.hero}>
+              <View style={styles.mascotOrb}>
+                <Image source={mascotImages.empty} resizeMode="contain" style={styles.mascot} />
+              </View>
+              <Text style={styles.eyebrow}>{eyebrow}</Text>
+              <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+              <Text style={styles.subtitle}>{subtitle}</Text>
             </View>
-            <Text style={styles.eyebrow}>{eyebrow}</Text>
-            <Text accessibilityRole="header" style={styles.title}>{title}</Text>
-            <Text style={styles.subtitle}>{subtitle}</Text>
-          </View>
-          <View style={styles.panel}>{children}</View>
-        </ScrollView>
+            <View style={styles.panel}>{children}</View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );
@@ -82,7 +86,7 @@ export function AuthButton({label, onPress, loading, disabled}: AuthButtonProps)
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{disabled: Boolean(disabled), busy: Boolean(loading)}}
+      accessibilityState={{disabled: Boolean(disabled || loading), busy: Boolean(loading)}}
       disabled={disabled || loading}
       onPress={onPress}
       style={({pressed}) => [styles.button, (disabled || loading) && styles.buttonDisabled, pressed && !loading && styles.buttonPressed]}>
