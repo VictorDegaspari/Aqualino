@@ -49,7 +49,7 @@ export function HomeView({motionEnabled = true, homeThemeId = defaultHomeThemeId
   const [rewardOpen, setRewardOpen] = useState(false);
 
   if (props.loading && !props.data) {
-    return <HomeLoading motionEnabled={motionEnabled} />;
+    return <HomeLoading />;
   }
 
   if (props.error && !props.data) {

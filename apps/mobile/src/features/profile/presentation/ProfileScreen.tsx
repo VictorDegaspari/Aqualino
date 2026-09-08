@@ -124,9 +124,7 @@ export function ProfileScreen({navigation}: NativeStackScreenProps<RootStackPara
               onPress={openAvatarEditor}
               style={({pressed}) => [styles.avatarEditor, pressed && !saving && styles.avatarEditorPressed]}>
               <View style={[styles.heroAvatarRing, !selectedAvatar && styles.emptyAvatarRing]}>
-                <UserAvatar avatarId={selectedAvatar} style={styles.heroAvatar}>
-                  <Text style={styles.chooseAvatarLabel}>{t("Escolher avatar", "Choose avatar", "Elegir avatar")}</Text>
-                </UserAvatar>
+                <UserAvatar avatarId={selectedAvatar} style={styles.heroAvatar} />
               </View>
               <View style={styles.pencilBadge}><PencilIcon size={17} color={challengeTheme.colors.backgroundDeep} /></View>
             </Pressable>
@@ -225,8 +223,7 @@ const styles = StyleSheet.create({
     shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.6, shadowRadius: 20, shadowOffset: {width: 0, height: 2}, elevation: 10,
   },
   heroAvatar: {width: '100%', height: '100%', borderRadius: 52},
-  emptyAvatarRing: {backgroundColor: challengeTheme.colors.panelSoft, borderWidth: 1, borderStyle: 'dashed', borderColor: challengeTheme.colors.borderStrong, shadowOpacity: 0, elevation: 0},
-  chooseAvatarLabel: {maxWidth: 76, textAlign: 'center', fontSize: 13, lineHeight: 18, fontWeight: '700', color: challengeTheme.colors.cyanStrong},
+  emptyAvatarRing: {backgroundColor: challengeTheme.colors.panelSoft, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, shadowOpacity: 0, elevation: 0},
   pencilBadge: {position: 'absolute', right: -4, bottom: -2, width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: challengeTheme.colors.cyanStrong, borderWidth: 3, borderColor: challengeTheme.colors.background, shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.5, shadowRadius: 8, shadowOffset: {width: 0, height: 2}, elevation: 7},
   name: {marginTop: 13, fontSize: 27, lineHeight: 34, fontWeight: '900', color: challengeTheme.colors.text},
   username: {marginTop: 2, fontSize: 14, lineHeight: 20, color: challengeTheme.colors.muted},

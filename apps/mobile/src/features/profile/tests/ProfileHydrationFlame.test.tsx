@@ -42,7 +42,7 @@ test('keeps the flame off before drinking today even with an existing streak', a
   expect(view.getByText('9')).toBeTruthy();
   expect(view.getByRole('progressbar')).toHaveAccessibilityValue({min: 0, max: 125, now: 25});
   expect(view.getByText('Próximo nível: 3')).toBeTruthy();
-  expect(view.getByText('Sequência: 1,9× XP · +10% por dia seguido, até 2×.')).toBeTruthy();
+  expect(view.getByText('Bônus da sequência: +90% de XP.')).toBeTruthy();
 });
 
 test('lights the profile flame from the same updated daily total as Home and resets for the next day', async () => {

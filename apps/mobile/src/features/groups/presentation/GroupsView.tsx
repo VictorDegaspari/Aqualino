@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   membersPreview: {width: '100%', flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, marginBottom: 18},
   memberPreview: {flex: 1, minWidth: 0, alignItems: 'center', gap: 5},
   avatarRing: {
-    width: 52, height: 52, borderRadius: 26, padding: 3, overflow: 'hidden',
+    width: 52, height: 52, borderRadius: 26, overflow: 'hidden',
     borderWidth: 2, borderColor: challengeTheme.colors.cyanStrong, backgroundColor: challengeTheme.colors.cyanStrong,
   },
   avatar: {width: '100%', height: '100%', borderRadius: 23},

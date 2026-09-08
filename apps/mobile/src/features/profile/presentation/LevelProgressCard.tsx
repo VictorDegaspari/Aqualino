@@ -8,6 +8,7 @@ import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 export function LevelProgressCard({level, progress, multiplier = 1}: {level: number; progress: LevelProgress; multiplier?: number}): React.JSX.Element {
   const {locale, t} = useTranslation();
   const color = levelColor(level);
+  const bonus = (multiplier - 1).toLocaleString(locale, {style: 'percent', maximumFractionDigits: 0});
   return <View style={styles.card}>
     <View style={styles.row}>
       <Text style={styles.title}>{t(`Próximo nível: ${level + 1}`, `Next level: ${level + 1}`, `Próximo nivel: ${level + 1}`)}</Text>
@@ -16,8 +17,8 @@ export function LevelProgressCard({level, progress, multiplier = 1}: {level: num
     <View accessible accessibilityRole="progressbar" accessibilityLabel={t("Progresso de nível", "Level progress", "Progreso de nivel")} accessibilityValue={{min: 0, max: progress.required_xp, now: progress.current_xp}} style={styles.track}>
       <View style={[styles.fill, {width: `${progress.percentage}%`, backgroundColor: color}]} />
     </View>
-    <Text style={styles.hint}>{t(`Seu nível é permanente. Faltam ${progress.remaining_xp.toLocaleString(locale)} XP para subir.`, `Your level is permanent. ${progress.remaining_xp.toLocaleString(locale)} XP to level up.`, `Tu nivel es permanente. Faltan ${progress.remaining_xp.toLocaleString(locale)} XP para subir.`)}</Text>
-    <Text style={styles.hint}>{t(`Sequência: ${multiplier.toLocaleString(locale)}× XP · +10% por dia seguido, até 2×.`, `Streak: ${multiplier.toLocaleString(locale)}× XP · +10% per consecutive day, up to 2×.`, `Racha: ${multiplier.toLocaleString(locale)}× XP · +10% por día consecutivo, hasta 2×.`)}</Text>
+    <Text style={styles.hint}>{t(`Faltam ${progress.remaining_xp.toLocaleString(locale)} XP para subir.`, `${progress.remaining_xp.toLocaleString(locale)} XP to level up.`, `Faltan ${progress.remaining_xp.toLocaleString(locale)} XP para subir.`)}</Text>
+    <Text style={styles.hint}>{t(`Bônus da sequência: +${bonus} de XP.`, `Streak bonus: +${bonus} XP.`, `Bono de racha: +${bonus} de XP.`)}</Text>
   </View>;
 }
 

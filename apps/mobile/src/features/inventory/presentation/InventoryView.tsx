@@ -211,7 +211,6 @@ function InventoryItemCard(props: ItemCardProps): React.JSX.Element {
         </View>
         <View style={styles.quantityBadge}>
           <Text style={styles.quantityValue}>{item.available_quantity}</Text>
-          <Text style={styles.quantityLabel}>x</Text>
         </View>
       </View>
 
@@ -353,7 +352,6 @@ const styles = StyleSheet.create({
   itemName: {color: challengeTheme.colors.text, fontSize: 17, lineHeight: 22, fontWeight: '900'},
   quantityBadge: {minWidth: 43, minHeight: 43, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 7, borderRadius: 14, backgroundColor: 'rgba(11, 225, 236, 0.13)', borderWidth: 1, borderColor: 'rgba(51, 243, 250, 0.3)'},
   quantityValue: {color: challengeTheme.colors.cyanStrong, fontSize: 20, lineHeight: 22, fontWeight: '900'},
-  quantityLabel: {marginTop: -2, color: '#BAEFF4', fontSize: 11, lineHeight: 12, fontWeight: '900'},
   description: {color: '#C0D9E9', fontSize: 13, lineHeight: 19},
   reservedPill: {flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 5, paddingHorizontal: 8, paddingVertical: 5, borderRadius: challengeTheme.radius.pill, backgroundColor: 'rgba(11, 225, 236, 0.1)'},
   reserved: {color: '#AEEBF0', fontSize: 11, lineHeight: 15, fontWeight: '700'},

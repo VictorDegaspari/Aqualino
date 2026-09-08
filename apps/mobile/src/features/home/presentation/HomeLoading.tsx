@@ -1,20 +1,22 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Image, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
+import {useTranslation} from '../../../shared/i18n/useTranslation';
 import {challengeTheme} from './challenge/challengeTheme';
 
-export function HomeLoading({motionEnabled}: {motionEnabled: boolean}): React.JSX.Element {
+export function HomeLoading(): React.JSX.Element {
+  const {t} = useTranslation();
   return <SafeAreaView style={styles.page}>
-    <View accessible accessibilityRole="progressbar" accessibilityLabel="Carregando hidratação" accessibilityState={{busy: true}} style={styles.content}>
-      <LoadingWaterDrop size={148} motionEnabled={motionEnabled} />
-      <Text style={styles.label}>Carregando sua hidratação…</Text>
+    <View accessible accessibilityRole="progressbar" accessibilityLabel={t('Carregando hidratação', 'Loading hydration', 'Cargando hidratación')} accessibilityState={{busy: true}} style={styles.content}>
+      <Image source={require('../../../assets/mascot/static/loading_aqualino.webp')} resizeMode="contain" accessible={false} style={styles.mascot} />
+      <Text style={styles.label}>{t('Carregando sua hidratação…', 'Loading your hydration…', 'Cargando tu hidratación…')}</Text>
     </View>
   </SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
   page: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: challengeTheme.colors.background},
-  content: {alignItems: 'center', gap: 22},
+  content: {alignItems: 'center', gap: 16},
+  mascot: {width: 220, height: 220},
   label: {fontSize: 14, lineHeight: 20, fontWeight: '600', color: challengeTheme.colors.muted, textAlign: 'center'},
 });
