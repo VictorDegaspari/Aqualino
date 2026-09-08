@@ -421,7 +421,7 @@ paths:
     post:
       operationId: createHydrationLog
       summary: Registra água de forma idempotente
-      description: Repetir o mesmo `client_event_id` para o mesmo usuário devolve o mesmo resultado lógico sem criar outro registro.
+      description: Repetir o mesmo `client_event_id` para o mesmo usuário devolve o mesmo resultado lógico sem criar outro registro. Limite de 15 marcações por dia civil no fuso do perfil e intervalo mínimo de 900 segundos, incluindo registros anulados ou excluídos. Fotos obrigatórias se houver votação habilitada e mais de dois integrantes no grupo.
       tags: [Hydration]
       requestBody:
         required: true
@@ -448,6 +448,131 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /v1/groups/current/settings:
+    patch:
+      operationId: updateGroupSettings
+      summary: Líder habilita ou desabilita a votação de novos envios
+      tags: [Groups]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [photo_review_enabled]
+              properties:
+                photo_review_enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Configuração salva; votações existentes permanecem inalteradas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /v1/groups/current/reviews:
+    get:
+      operationId: getGroupHydrationReviews
+      summary: Lista marcações próprias e elegíveis para revisão no grupo atual
+      tags: [Groups]
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Página de até 20 marcações, mais recentes primeiro.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HydrationReviewPage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/hydration/logs/{logId}/votes:
+    post:
+      operationId: voteHydrationPhoto
+      summary: Vota uma única vez na marcação de outro integrante
+      description: Votação por 12 horas após o recebimento do registro, em grupos com mais de duas pessoas e votação habilitada. O autor não vota. O elenco elegível é fixado conforme o grupo na data do registro. Exige maioria estrita de todos os outros elegíveis para anular; empates e abstenções mantêm válido. Sair impede novos votos, sem reduzir o denominador. Repetir o mesmo voto é idempotente; alterar o voto é proibido.
+      tags: [Hydration]
+      parameters:
+        - in: path
+          name: logId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vote]
+              properties:
+                vote:
+                  type: string
+                  enum: [valid, invalid]
+      responses:
+        '200':
+          description: Revisão atualizada; anular recalcula volume, XP, sequência e pontos. Prêmios aguardam votações abertas.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/HydrationReview'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Marcação inexistente ou sem acesso.
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /v1/hydration/logs/{logId}/photo:
+    get:
+      operationId: getHydrationPhoto
+      summary: Lê foto privada como autor ou integrante elegível do grupo atual
+      tags: [Hydration]
+      parameters:
+        - in: path
+          name: logId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Imagem privada com Cache-Control no-store e X-Content-Type-Options nosniff.
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Foto inexistente ou sem acesso.
   /v1/hydration/goals/current:
     get:
       operationId: getCurrentHydrationGoal
@@ -517,6 +642,8 @@ paths:
                       level:
                         type: integer
                         minimum: 1
+                      group_medals:
+                        $ref: '#/components/schemas/GroupMedalCounts'
                       level_progress:
                         $ref: '#/components/schemas/LevelProgress'
                       xp_multiplier:
@@ -1071,6 +1198,10 @@ components:
       type: object
       required: [id, name, timezone, owner_id, max_members, members, invite]
       properties:
+        photo_review_enabled:
+          type: boolean
+          default: true
+          description: Alterável somente pelo líder; afeta novos envios, preservando votações abertas.
         id:
           type: string
         name:
@@ -1088,6 +1219,16 @@ components:
           maxItems: 5
           items:
             $ref: '#/components/schemas/GroupMember'
+        challenge:
+          oneOf:
+            - $ref: '#/components/schemas/HydrationChallenge'
+            - type: 'null'
+        previous_challenge:
+          oneOf:
+            - $ref: '#/components/schemas/HydrationChallenge'
+            - type: 'null'
+        challenge_rules:
+          $ref: '#/components/schemas/GroupChallengeRules'
         invite:
           description: Apenas o responsável recebe o código. Outros integrantes recebem null.
           oneOf:
@@ -1163,7 +1304,7 @@ components:
           example: America/Sao_Paulo
         locale:
           type: string
-          enum: [pt-BR, en-US]
+          enum: [pt-BR, en-US, es-ES]
           default: pt-BR
         terms_accepted:
           type: boolean
@@ -1209,7 +1350,7 @@ components:
           type: string
         locale:
           type: string
-          enum: [pt-BR, en-US]
+          enum: [pt-BR, en-US, es-ES]
         favorite_volumes_ml:
           type: array
           minItems: 1
@@ -1240,6 +1381,10 @@ components:
       type: object
       required: [id, email, email_verified_at, email_verification_required, profile, xp_total, level, level_progress, xp_multiplier, streak]
       properties:
+        hydration_penalty_count:
+          type: integer
+          minimum: 0
+          description: Contador monotônico de anulações para distinguir redução de XP de respostas antigas.
         id:
           type: string
         email:
@@ -1258,6 +1403,8 @@ components:
           minimum: 0
         level:
           $ref: '#/components/schemas/UserLevel'
+        group_medals:
+          $ref: '#/components/schemas/GroupMedalCounts'
         level_progress:
           $ref: '#/components/schemas/LevelProgress'
         xp_multiplier:
@@ -1301,7 +1448,7 @@ components:
           type: string
         locale:
           type: string
-          enum: [pt-BR, en-US]
+          enum: [pt-BR, en-US, es-ES]
         favorite_volumes_ml:
           type: array
           items:
@@ -1337,10 +1484,102 @@ components:
           oneOf:
             - $ref: '#/components/schemas/HydrationGoal'
             - type: 'null'
+    HydrationRecordingLimits:
+      type: object
+      required: [daily_limit, minimum_interval_seconds, recorded_today, remaining_today, next_allowed_at, server_now]
+      properties:
+        daily_limit:
+          type: integer
+          const: 15
+        minimum_interval_seconds:
+          type: integer
+          const: 900
+        recorded_today:
+          type: integer
+          minimum: 0
+        remaining_today:
+          type: integer
+          minimum: 0
+        next_allowed_at:
+          type: [string, 'null']
+          format: date-time
+        server_now:
+          type: string
+          format: date-time
+    HydrationReview:
+      type: object
+      required: [id, user_id, display_name, avatar_url, amount_ml, occurred_at, photo_path, expires_at, invalidated_at, status, eligible_voters, invalid_votes_required, valid_votes, invalid_votes, abstentions, your_vote, can_vote]
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: [string, 'null']
+        amount_ml:
+          type: integer
+        occurred_at:
+          type: string
+          format: date-time
+        photo_path:
+          type: [string, 'null']
+          description: Rota autenticada relativa à base da API, nunca um caminho físico do disco.
+        expires_at:
+          type: [string, 'null']
+          format: date-time
+        invalidated_at:
+          type: [string, 'null']
+          format: date-time
+        status:
+          type: string
+          enum: [pending, valid, invalid]
+        eligible_voters:
+          type: integer
+          minimum: 2
+          maximum: 4
+        invalid_votes_required:
+          type: integer
+          minimum: 2
+          maximum: 3
+        valid_votes:
+          type: integer
+          minimum: 0
+        invalid_votes:
+          type: integer
+          minimum: 0
+        abstentions:
+          type: integer
+          minimum: 0
+        your_vote:
+          enum: [null, valid, invalid]
+        can_vote:
+          type: boolean
+    HydrationReviewPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HydrationReview'
+        meta:
+          type: object
+          required: [current_page, last_page, total]
+          properties:
+            current_page:
+              type: integer
+            last_page:
+              type: integer
+            total:
+              type: integer
     HydrationToday:
       type: object
       required: [local_date, timezone, total_ml, goal_ml, percentage, goal_achieved, log_count]
       properties:
+        recording_limits:
+          $ref: '#/components/schemas/HydrationRecordingLimits'
         local_date:
           type: string
           format: date
@@ -1433,11 +1672,109 @@ components:
       properties:
         state:
           type: string
-          enum: [locked, available, claimed]
+          enum: [locked, reviewing, available, claimed]
         type:
           enum: [null, xp, streak_freeze, streak_revive]
         amount:
           type: [integer, 'null']
+    GroupMedalCounts:
+      type: object
+      additionalProperties: false
+      required: [gold, silver, bronze]
+      properties:
+        gold:
+          type: integer
+          minimum: 0
+        silver:
+          type: integer
+          minimum: 0
+        bronze:
+          type: integer
+          minimum: 0
+    GroupChallengeRules:
+      type: object
+      required: [version, ranking, daily_points_cap, total_points_cap, points_decimals, goal_policy, minimum_reward_points, sync_grace_minutes, rewards]
+      properties:
+        version:
+          type: string
+          example: group-v1
+        ranking:
+          type: string
+          const: competition
+        daily_points_cap:
+          type: integer
+          const: 100
+        total_points_cap:
+          type: integer
+          const: 700
+        points_decimals:
+          type: integer
+          const: 2
+        goal_policy:
+          type: string
+          const: frozen_at_start
+        minimum_reward_points:
+          type: number
+          const: 0.01
+        sync_grace_minutes:
+          type: integer
+          const: 15
+        rewards:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            type: object
+            required: [type, amount, probability]
+            properties:
+              type:
+                type: string
+                enum: [xp, streak_freeze, streak_revive]
+              amount:
+                type: integer
+                minimum: 1
+              probability:
+                type: integer
+                minimum: 1
+                maximum: 100
+    GroupLeaderboardEntry:
+      type: object
+      additionalProperties: false
+      required: [user_id, display_name, avatar_url, is_you, total_ml, goal_ml, percentage, points, rank, tied, medal]
+      properties:
+        user_id:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: [string, 'null']
+        is_you:
+          type: boolean
+        total_ml:
+          type: integer
+          minimum: 0
+        goal_ml:
+          type: integer
+          minimum: 1
+        percentage:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Percentual dos 700 pontos da rodada.
+        points:
+          type: number
+          minimum: 0
+          maximum: 700
+          description: Soma dos sete percentuais diários, arredondados individualmente a duas casas decimais.
+        rank:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 5
+          description: Classificação de competição (1, 1, 3). Zero pontos não concede posição ou medalha.
+        tied:
+          type: boolean
+        medal:
+          enum: [gold, silver, bronze, null]
     HydrationChallenge:
       type: object
       required: [id, mode, status, starts_at, ends_at, progress, reward]
@@ -1449,7 +1786,7 @@ components:
           enum: [solo, group]
         status:
           type: string
-          enum: [scheduled, active, completed]
+          enum: [scheduled, active, settling, completed, cancelled]
         starts_at:
           type: string
           format: date-time
@@ -1457,6 +1794,28 @@ components:
           type: string
           format: date-time
           description: Limite exclusivo, à meia-noite após o sétimo dia.
+        group_id:
+          type: string
+        participating:
+          type: boolean
+          description: Quem entra após o início acompanha o placar e compete somente na próxima rodada.
+        rules:
+          $ref: '#/components/schemas/GroupChallengeRules'
+        review_deadline_at:
+          type: string
+          format: date-time
+          description: Prazo de apuração, incluindo votações ainda abertas.
+        sync_deadline_at:
+          type: string
+          format: date-time
+        finalized_at:
+          type: [string, 'null']
+          format: date-time
+        leaderboard:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/GroupLeaderboardEntry'
         progress:
           $ref: '#/components/schemas/HydrationWeek'
         reward:
@@ -1475,6 +1834,13 @@ components:
           oneOf:
             - $ref: '#/components/schemas/HydrationChallenge'
             - type: 'null'
+        group_result:
+          oneOf:
+            - $ref: '#/components/schemas/HydrationChallenge'
+            - type: 'null'
+          description: Última rodada em apuração ou concluída, preservada enquanto a próxima está ativa.
+        group_rules:
+          $ref: '#/components/schemas/GroupChallengeRules'
         group_name:
           type: [string, 'null']
         can_start_group:
@@ -1483,6 +1849,12 @@ components:
       type: object
       required: [id, amount_ml, occurred_at, local_date, source, client_event_id]
       properties:
+        invalidated_at:
+          type: [string, 'null']
+          format: date-time
+        review_expires_at:
+          type: [string, 'null']
+          format: date-time
         id:
           type: string
         amount_ml:
@@ -1506,6 +1878,10 @@ components:
       additionalProperties: false
       required: [amount_ml, source, client_event_id]
       properties:
+        photo_base64:
+          type: string
+          maxLength: 1800000
+          description: Bytes em base64 de JPEG, PNG ou WebP, sem prefixo data URI; até 1.350.000 bytes e dimensões de 32 a 4096 pixels. Foto privada, preservada no retry offline.
         amount_ml:
           type: integer
           minimum: 50
@@ -1540,6 +1916,9 @@ components:
           type: object
           required: [xp_awarded, xp_total, level, level_progress, xp_multiplier, awarded_xp_multiplier, streak, new_achievements]
           properties:
+            hydration_penalty_count:
+              type: integer
+              minimum: 0
             xp_awarded:
               type: integer
               minimum: 0

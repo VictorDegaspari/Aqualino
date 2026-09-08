@@ -1,3 +1,4 @@
+jest.mock('../presentation/HydrationReviews', () => ({HydrationReviews: () => null}));
 import React from 'react';
 import {fireEvent, render, waitFor} from '@testing-library/react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';

@@ -12,7 +12,7 @@ export function levelColor(level: number): string {
 }
 
 export function LevelBadge({level, locale = 'pt-BR'}: {level: number; locale?: AppLocale}): React.JSX.Element {
-  const label = `${locale === 'en-US' ? 'Level' : 'Nível'} ${level}`;
+  const label = `${locale === 'es-ES' ? 'Nivel' : locale === 'en-US' ? 'Level' : 'Nível'} ${level}`;
   return <View accessible accessibilityLabel={label} style={[styles.badge, {borderColor: levelColor(level)}]}>
     <Text numberOfLines={1} style={[styles.label, {color: levelColor(level)}]}>{label}</Text>
   </View>;

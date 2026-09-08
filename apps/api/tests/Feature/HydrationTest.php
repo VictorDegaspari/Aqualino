@@ -70,6 +70,7 @@ class HydrationTest extends TestCase
             'client_event_id' => '9a2442f7-dac4-4655-b7c6-4b22f2a8bb8e',
         ])->assertCreated()->assertJsonPath('data.gamification.xp_awarded', 10);
 
+        CarbonImmutable::setTestNow('2026-09-02T15:15:00Z');
         $this->postJson('/api/v1/hydration/logs', [
             'amount_ml' => 200,
             'client_event_id' => '5c1768a6-45ae-4237-a31d-b7c2ec53e2c4',

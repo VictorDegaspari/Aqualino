@@ -1,9 +1,9 @@
 import React, {useEffect, useRef} from 'react';
 import {Animated, Easing, Image, StyleSheet, Text, View} from 'react-native';
 import {challengeTheme} from '../../features/home/presentation/challenge/challengeTheme';
+import {LoadingWaterDrop} from '../../shared/components/LoadingWaterDrop';
 
 const background = require('../../assets/challenge/static/ocean-background.webp');
-const loadingMascot = require('../../assets/mascot/static/loading_aqualino.webp');
 
 export function AppLoadingScreen(): React.JSX.Element {
   const openingCircle = useRef(new Animated.Value(0.01)).current;
@@ -42,11 +42,9 @@ export function AppLoadingScreen(): React.JSX.Element {
       <View pointerEvents="none" style={styles.overlay} />
       <Animated.View pointerEvents="none" style={[styles.openingCircle, {transform: [{scale: openingCircle}]}]} />
       <View style={styles.content}>
-        <Animated.Image
-          source={loadingMascot}
-          resizeMode="contain"
-          style={[styles.mascot, {transform: [{translateY: mascotOffset}, {scale: mascotScale}]}]}
-        />
+        <Animated.View style={[styles.drop, {transform: [{translateY: mascotOffset}, {scale: mascotScale}]}]}>
+          <LoadingWaterDrop size={172} />
+        </Animated.View>
         <Text style={styles.label}>Preparando seu oceano</Text>
         <View style={styles.waveTrack}><Animated.View style={[styles.wave, {transform: [{scaleX: openingCircle.interpolate({inputRange: [0, 4.6], outputRange: [0.08, 1]})}]}]} /></View>
       </View>
@@ -60,7 +58,7 @@ const styles = StyleSheet.create({
   overlay: {position: 'absolute', width: '100%', height: '100%', backgroundColor: 'rgba(0, 13, 32, 0.6)'},
   openingCircle: {position: 'absolute', width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(11, 225, 236, 0.2)', borderWidth: 1, borderColor: 'rgba(51, 243, 250, 0.45)'},
   content: {alignItems: 'center'},
-  mascot: {width: 230, height: 230, shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.72, shadowRadius: 23, shadowOffset: {width: 0, height: 7}},
+  drop: {shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.72, shadowRadius: 23, shadowOffset: {width: 0, height: 7}},
   label: {marginTop: 20, color: challengeTheme.colors.text, fontSize: 17, lineHeight: 23, fontWeight: '800'},
   waveTrack: {width: 130, height: 5, marginTop: 15, overflow: 'hidden', borderRadius: 3, backgroundColor: 'rgba(141, 171, 200, 0.28)'},
   wave: {width: '100%', height: '100%', borderRadius: 3, backgroundColor: challengeTheme.colors.cyanStrong},

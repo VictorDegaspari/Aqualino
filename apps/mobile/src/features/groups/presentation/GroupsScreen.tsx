@@ -6,6 +6,7 @@ import {GroupsView} from './GroupsView';
 import {groupsCopy} from './groupsCopy';
 import {useGroups} from './useGroups';
 import {AppDialog} from '../../../shared/components/AppDialog';
+import {HydrationReviews} from './HydrationReviews';
 
 export function GroupsScreen(): React.JSX.Element {
   const user = useSessionStore(state => state.user);
@@ -31,13 +32,14 @@ export function GroupsScreen(): React.JSX.Element {
   return (
     <>
       <GroupsView
+        reviews={groups.group ? <HydrationReviews key={groups.group.id} locale={locale} groupId={groups.group.id} memberCount={groups.group.members.length} reviewEnabled={groups.group.photo_review_enabled ?? true} /> : undefined}
         displayName={user?.profile.display_name ?? copy.you} avatarId={user?.profile.avatar_url}
         userId={user?.id} locale={locale} group={groups.group}
         loading={groups.loading} refreshing={groups.refreshing} busy={groups.busy}
         loadError={groups.loadError} error={shareError ? copy.actionError : groups.error}
         onRefresh={groups.refresh} onClearError={() => {groups.clearError(); setShareError(false);}}
         onCreateGroup={groups.create} onPreviewInvite={groups.preview} onJoinGroup={groups.accept}
-        onShare={share} onRenewInvite={renew} onLeave={leave}
+        onShare={share} onRenewInvite={renew} onLeave={leave} onPhotoReviewChange={groups.updatePhotoReview}
       />
       {confirmation ? <AppDialog
         title={confirmation === 'renew' ? copy.renewTitle : copy.leaveTitle}

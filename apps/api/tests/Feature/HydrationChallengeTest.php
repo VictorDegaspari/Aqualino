@@ -54,7 +54,10 @@ class HydrationChallengeTest extends TestCase
         $this->travelTo(CarbonImmutable::parse('2026-09-07T02:50:00Z'));
         $owner = $this->authenticatedUser();
         $group = $this->postJson('/api/v1/groups', ['name' => 'Amigos'])->assertCreated()->json('data');
-        $this->drink('2026-09-07T02:45:00Z');
+        $guest = $this->authenticatedUser('Asia/Tokyo');
+        $this->postJson('/api/v1/groups/invites/accept', ['code' => $group['invite']['code'], 'accept' => true])->assertOk();
+        Sanctum::actingAs($owner, ['mobile']);
+        $this->drink('2026-09-07T02:30:00Z');
         $response = $this->postJson('/api/v1/hydration/challenges', ['mode' => 'group']);
         $response->assertOk()->assertJsonPath('data.group.status', 'scheduled')
             ->assertJsonPath('data.group.starts_at', '2026-09-07T03:00:00+00:00')
@@ -65,7 +68,7 @@ class HydrationChallengeTest extends TestCase
         $id = $response->json('data.group.id');
         $this->postJson('/api/v1/hydration/challenges', ['mode' => 'group'])->assertOk()->assertJsonPath('data.group.id', $id);
 
-        $this->authenticatedUser('Asia/Tokyo');
+        Sanctum::actingAs($guest, ['mobile']);
         $this->postJson('/api/v1/groups/invites/accept', ['code' => $group['invite']['code'], 'accept' => true])->assertOk();
         $this->postJson('/api/v1/hydration/challenges', ['mode' => 'group'])->assertForbidden();
         $this->getJson('/api/v1/hydration/today')->assertJsonPath('data.challenges.group.id', $id)
@@ -74,7 +77,7 @@ class HydrationChallengeTest extends TestCase
 
         Sanctum::actingAs($owner, ['mobile']);
         $this->travelTo(CarbonImmutable::parse('2026-09-07T03:01:00Z'));
-        $this->drink('2026-09-07T02:59:00Z');
+        $this->drink('2026-09-07T02:45:00Z');
         $this->getJson('/api/v1/hydration/today')->assertJsonPath('data.challenges.group.status', 'active')
             ->assertJsonPath('data.challenges.group.progress.total_ml', 0);
         $this->drink('2026-09-07T03:00:00Z');

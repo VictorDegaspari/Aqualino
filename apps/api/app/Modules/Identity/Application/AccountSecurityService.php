@@ -12,7 +12,7 @@ final class AccountSecurityService
 {
     public function sendVerification(User $user): void
     {
-        if ($user->hasVerifiedEmail()) {
+        if (! $user->requiresEmailVerification() || $user->hasVerifiedEmail()) {
             return;
         }
         RateLimiter::attempt('email-verification:'.$user->id, 1, function () use ($user): void {

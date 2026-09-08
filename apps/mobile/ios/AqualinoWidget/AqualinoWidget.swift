@@ -346,24 +346,24 @@ struct AqualinoWidgetView: View {
   }
 
   private var visibleDays: [WidgetDay] {
-    let initials = ["D", "S", "T", "Q", "Q", "S", "S"]
-    let todayHasWater = entry.snapshot.todayTotalMl >= 50
-    let firstCompletedDaysAgo = todayHasWater ? 0 : 1
+    let initials = ["S", "T", "Q", "Q", "S", "S", "D"]
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = TimeZone(identifier: entry.snapshot.userTimezone) ?? .current
-    let todayIndex = calendar.component(.weekday, from: entry.date) - 1
+    let today = calendar.startOfDay(for: entry.date)
+    let todayIndex = (calendar.component(.weekday, from: today) + 5) % 7
+    let firstVisibleIndex = max(0, todayIndex - 4)
+    let snapshotDay = calendar.startOfDay(for: entry.snapshot.generatedAt)
+    let completedEnd = calendar.date(byAdding: .day, value: entry.snapshot.todayTotalMl >= 50 ? 0 : -1, to: snapshotDay)!
+    let completedDates = Set((0..<min(max(entry.snapshot.currentStreak, 0), 7)).compactMap { offset in
+      calendar.date(byAdding: .day, value: -offset, to: completedEnd)
+    })
 
     return (0..<5).map { index in
-      let daysAgo = 4 - index
-      let dayIndex = (todayIndex - daysAgo + initials.count) % initials.count
-      let completed = daysAgo >= 0
-        && entry.snapshot.currentStreak > 0
-        && daysAgo >= firstCompletedDaysAgo
-        && daysAgo < firstCompletedDaysAgo + entry.snapshot.currentStreak
+      let day = calendar.date(byAdding: .day, value: firstVisibleIndex + index - todayIndex, to: today)!
       return WidgetDay(
         id: index,
-        label: initials[dayIndex],
-        completed: completed
+        label: initials[firstVisibleIndex + index],
+        completed: day <= today && completedDates.contains(day)
       )
     }
   }

@@ -1,3 +1,4 @@
+import {useTranslation} from '../../../../shared/i18n/useTranslation';
 import React, {useEffect} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import Animated, {Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming} from 'react-native-reanimated';
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function WaterProgress({current, goal, percentage, compact = false}: Props): React.JSX.Element {
+  const {locale, t} = useTranslation();
   const safePercentage = Math.min(100, Math.max(0, percentage));
   const animatedPercentage = useSharedValue(safePercentage);
 
@@ -28,8 +30,8 @@ export function WaterProgress({current, goal, percentage, compact = false}: Prop
 
   return (
     <View style={[styles.container, compact && styles.compact]}>
-      <Text numberOfLines={1} style={styles.amount}>{formatNumber(current)} ml</Text>
-      <Text numberOfLines={1} style={styles.goal}>meta de {formatNumber(goal)} ml</Text>
+      <Text numberOfLines={1} style={styles.amount}>{current.toLocaleString(locale)} ml</Text>
+      <Text numberOfLines={1} style={styles.goal}>{t(`meta de ${goal.toLocaleString(locale)} ml`, `goal of ${goal.toLocaleString(locale)} ml`, `meta de ${goal.toLocaleString(locale)} ml`)}</Text>
       <View style={styles.track}>
         <Animated.View style={[styles.fill, fillStyle]} />
       </View>
@@ -38,9 +40,6 @@ export function WaterProgress({current, goal, percentage, compact = false}: Prop
   );
 }
 
-function formatNumber(value: number): string {
-  return value.toLocaleString('pt-BR');
-}
 
 const styles = StyleSheet.create({
   container: {

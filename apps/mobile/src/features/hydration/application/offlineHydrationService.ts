@@ -8,12 +8,15 @@ import {updateHydrationWeek} from './updateHydrationWeek';
 import {mergeHydrationLogs, pendingHydrationLog} from './hydrationHistory';
 import {TrustedHydrationClock} from './trustedHydrationClock';
 import {projectPendingChallenges} from './projectPendingChallenges';
+import {projectRecordingLimits} from './projectRecordingLimits';
+import {hydrationLogDate} from './hydrationHistory';
 
 export type RecordOutcome =
   | {kind: 'synced'; result: RecordWaterResult}
   | {kind: 'queued'; event: PendingHydration};
 
 export class OfflineHydrationService {
+  private creating = false;
   constructor(
     private readonly store: OutboxStore,
     private readonly remote: HydrationRemoteRepository,
@@ -41,6 +44,7 @@ export class OfflineHydrationService {
       await this.writeWidgetSafely(projected.mascot);
       return {data: projected, offline: false};
     } catch (error) {
+      if (error instanceof AppError && error.code === 'ACCOUNT_CHANGED') throw error;
       const cached = await this.store.loadHome();
       if (cached) {
         const migrated = {...cached, mascot: migrateWidgetSnapshot(cached.mascot)};
@@ -57,15 +61,26 @@ export class OfflineHydrationService {
     amountMl: number,
     source: PendingHydration['source'],
     isConnected: boolean,
+    photoBase64?: string,
   ): Promise<RecordOutcome> {
-    const event: PendingHydration = {
-      clientEventId: createUuid(),
-      amountMl,
-      occurredAt: await this.recordedAt(isConnected),
-      source,
-      attempts: 0,
-    };
-    await this.store.enqueue(event);
+    if (this.creating) throw new AppError('Aguarde a marcação atual.', 'HYDRATION_RECORD_BUSY');
+    this.creating = true;
+    let event: PendingHydration;
+    try {
+      const occurredAt = await this.recordedAt(isConnected);
+      await this.assertLocalLimits(occurredAt);
+      event = {
+        clientEventId: createUuid(),
+        amountMl,
+        occurredAt,
+        source,
+        attempts: 0,
+        photoBase64,
+      };
+      await this.store.enqueue(event);
+    } finally {
+      this.creating = false;
+    }
     await this.refreshCachedWidget();
 
     if (!isConnected) {
@@ -92,6 +107,7 @@ export class OfflineHydrationService {
       if (!isConnected) throw new AppError('Sem conexão', 'NETWORK_UNAVAILABLE');
       remoteLogs = await this.fetchRemoteLogs(localDate);
     } catch (error) {
+      if (error instanceof AppError && error.code === 'ACCOUNT_CHANGED') throw error;
       fetchError = error;
     }
 
@@ -114,7 +130,7 @@ export class OfflineHydrationService {
         counts.synced++;
       } catch (error) {
         if (isPermanentRejection(error)) counts.rejected++;
-        if (error instanceof AppError && error.code === 'NETWORK_UNAVAILABLE') {
+        if (error instanceof AppError && ['NETWORK_UNAVAILABLE', 'ACCOUNT_CHANGED'].includes(error.code)) {
           break;
         }
       }
@@ -147,6 +163,7 @@ export class OfflineHydrationService {
         occurred_at: event.occurredAt,
         source: event.source,
         client_event_id: event.clientEventId,
+        ...(event.photoBase64 ? {photo_base64: event.photoBase64} : {}),
       });
       this.clock.synchronize(result.widget.generated_at);
       await this.store.remove(event.clientEventId);
@@ -180,7 +197,28 @@ export class OfflineHydrationService {
       if (!isConnected) throw error;
       const data = await this.remote.getHome();
       this.clock.synchronize(data.mascot.generated_at);
+      await this.store.saveHome(data);
       return this.clock.recordedAt();
+    }
+  }
+
+  private async assertLocalLimits(occurredAt: string): Promise<void> {
+    const cached = await this.store.loadHome();
+    const pending = await this.store.pending();
+    const timestamp = Date.parse(occurredAt);
+    const timezone = cached?.today.timezone ?? 'UTC';
+    const date = hydrationLogDate(new Date(timestamp), timezone);
+    const limits = cached?.today.recording_limits;
+    const sameDay = date === cached?.today.local_date;
+    const confirmed = sameDay ? limits?.recorded_today ?? cached?.today.log_count ?? 0 : 0;
+    const queuedToday = pending.filter(event => hydrationLogDate(new Date(event.occurredAt), timezone) === date).length;
+    if (confirmed + queuedToday >= (limits?.daily_limit ?? 15)) {
+      throw new AppError('Você atingiu o limite de 15 marcações neste dia. Novos registros estarão disponíveis no próximo dia.', 'HYDRATION_DAILY_LIMIT');
+    }
+    const lastConfirmed = cached?.mascot.last_log_at;
+    const next = limits?.next_allowed_at ? Date.parse(limits.next_allowed_at) : lastConfirmed ? Date.parse(lastConfirmed) + 900_000 : 0;
+    if (timestamp < next || pending.some(event => Math.abs(Date.parse(event.occurredAt) - timestamp) < 900_000)) {
+      throw new AppError('Aguarde 15 minutos entre marcações de água.', 'HYDRATION_COOLDOWN');
     }
   }
 
@@ -202,6 +240,7 @@ export class OfflineHydrationService {
       ...cached.today,
       total_ml: total,
       log_count: cached.today.log_count + pending.length,
+      recording_limits: projectRecordingLimits(cached.today.recording_limits, pending, cached.today.log_count),
       percentage: Math.round((total / Math.max(cached.today.goal_ml, 1)) * 100),
       goal_achieved: total >= cached.today.goal_ml,
     };

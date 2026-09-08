@@ -37,12 +37,21 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
 
     public function preferredLocale(): string
     {
-        return $this->profile?->locale === 'en-US' ? 'en-US' : 'pt-BR';
+        return in_array($this->profile?->locale, ['pt-BR', 'en-US', 'es-ES'], true) ? $this->profile->locale : 'pt-BR';
     }
 
     public function sendEmailVerificationNotification(): void
     {
         $this->notify(new VerifyAccountEmail($this));
+    }
+
+    public function requiresEmailVerification(): bool
+    {
+        if (app()->environment('local') && config('auth.skip_email_verification_locally')) {
+            return false;
+        }
+
+        return (bool) $this->email_verification_required;
     }
 
     public function sendPasswordResetNotification($token): void

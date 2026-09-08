@@ -4,8 +4,10 @@ namespace App\Modules\Identity\Application;
 
 use App\Models\User;
 use App\Modules\Group\Application\GroupService;
+use App\Modules\Group\Infrastructure\Models\GroupChallengeParticipant;
 use App\Modules\Group\Infrastructure\Models\GroupMembership;
 use App\Modules\Hydration\Infrastructure\Models\HydrationChallenge;
+use App\Modules\Hydration\Infrastructure\Models\HydrationLogVote;
 use App\Shared\Infrastructure\Models\OutboxEvent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
@@ -25,6 +27,8 @@ final class DeleteAccount
             $user->profile()->delete();
             $user->hydrationGoals()->delete();
             $user->hydrationLogs()->delete();
+            HydrationLogVote::query()->where('user_id', $user->id)
+                ->orWhereIn('hydration_log_id', $user->hydrationLogs()->withTrashed()->select('id'))->delete();
             $user->dailyStats()->delete();
             $user->streak()->delete();
             $user->inventoryBalances()->delete();
@@ -33,6 +37,7 @@ final class DeleteAccount
             $user->potionUsageBlocks()->delete();
             $user->achievements()->delete();
             HydrationChallenge::query()->where('user_id', $user->id)->delete();
+            GroupChallengeParticipant::query()->where('user_id', $user->id)->delete();
             GroupMembership::query()->where('user_id', $user->id)->delete();
             OutboxEvent::query()->where('payload->user_id', $user->id)->delete();
 

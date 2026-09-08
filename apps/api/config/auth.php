@@ -4,6 +4,8 @@ use App\Models\User;
 
 return [
 
+    'skip_email_verification_locally' => env('LOCAL_SKIP_EMAIL_VERIFICATION', false),
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Defaults

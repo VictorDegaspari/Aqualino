@@ -4,6 +4,8 @@ namespace App\Modules\Hydration\Application;
 
 use App\Models\User;
 use App\Modules\Achievement\Application\AchievementService;
+use App\Modules\Group\Application\GroupChallengeScoring;
+use App\Modules\Group\Application\GroupChallengeService;
 use App\Modules\Group\Infrastructure\Models\Group;
 use App\Modules\Group\Infrastructure\Models\GroupMembership;
 use App\Modules\Hydration\Infrastructure\Models\HydrationChallenge;
@@ -12,7 +14,6 @@ use App\Modules\Hydration\Infrastructure\Models\HydrationLog;
 use App\Modules\Inventory\Application\CreditInventoryItem;
 use App\Modules\Inventory\Domain\InventoryItemCode;
 use App\Modules\Inventory\Domain\InventoryTransactionSource;
-use App\Modules\Inventory\Infrastructure\Models\PotionUsageBlock;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -24,6 +25,7 @@ class HydrationChallengeService
         private readonly CreditInventoryItem $inventory,
         private readonly Randomizer $random,
         private readonly AchievementService $achievements,
+        private readonly GroupChallengeService $groups,
     ) {}
 
     public function current(User $user): array
@@ -31,13 +33,15 @@ class HydrationChallengeService
         $membership = GroupMembership::query()->where('user_id', $user->id)->first();
         $group = $membership ? Group::query()->find($membership->group_id) : null;
         $solo = HydrationChallenge::query()->where('user_id', $user->id)->where('mode', 'solo')->latest('starts_at')->latest('id')->first();
-        $shared = $group ? HydrationChallenge::query()->where('group_id', $group->id)->latest('starts_at')->latest('id')->first() : null;
+        $shared = $group ? $this->groups->current($group, $user) : [
+            'group' => null, 'group_result' => null, 'group_rules' => GroupChallengeScoring::RULES,
+        ];
 
         return [
             'solo' => $solo ? $this->payload($solo, $user) : null,
-            'group' => $shared ? $this->payload($shared, $user) : null,
+            ...$shared,
             'group_name' => $group?->name,
-            'can_start_group' => $group?->owner_id === $user->id,
+            'can_start_group' => $group?->owner_id === $user->id && $group->memberships()->count() >= 2,
         ];
     }
 
@@ -50,10 +54,12 @@ class HydrationChallengeService
                 $membership = GroupMembership::query()->where('user_id', $user->id)->first();
                 $group = $membership ? Group::query()->whereKey($membership->group_id)->lockForUpdate()->first() : null;
                 abort_unless($group && $group->owner_id === $user->id, 403, 'Somente o responsável pode iniciar o desafio do grupo.');
+
+                return $this->groups->start($group);
             }
             $now = CarbonImmutable::now('UTC');
             $existing = HydrationChallenge::query()->where('mode', $mode)
-                ->when($group, fn ($query) => $query->where('group_id', $group->id), fn ($query) => $query->where('user_id', $user->id))
+                ->where('user_id', $user->id)
                 ->where('ends_at', '>', $now)->first();
             if ($existing) {
                 return $existing;
@@ -64,24 +70,15 @@ class HydrationChallengeService
                     throw ValidationException::withMessages(['challenge' => ['Abra seu baú antes de iniciar outro desafio.']]);
                 }
             }
-            $timezone = $group?->timezone ?? $user->profile->timezone;
-            $startsAt = $mode === 'group' ? $now->setTimezone($timezone)->addDay()->startOfDay() : $now->setTimezone($timezone);
+            $timezone = $user->profile->timezone;
+            $startsAt = $now->setTimezone($timezone);
             $challenge = HydrationChallenge::query()->create([
                 'mode' => $mode,
-                'user_id' => $group ? null : $user->id,
-                'group_id' => $group?->id,
+                'user_id' => $user->id,
                 'timezone' => $timezone,
                 'starts_at' => $startsAt->utc(),
                 'ends_at' => $startsAt->startOfDay()->addDays(7)->utc(),
             ]);
-            if ($group) {
-                foreach ($group->memberships()->get() as $member) {
-                    PotionUsageBlock::query()->create([
-                        'user_id' => $member->user_id, 'reason' => 'group_challenge', 'context_id' => $challenge->id,
-                        'starts_at' => $challenge->starts_at, 'ends_at' => $challenge->ends_at->subSecond(),
-                    ]);
-                }
-            }
 
             return $challenge;
         }, 3);
@@ -98,6 +95,9 @@ class HydrationChallengeService
             }
             if ($this->progress($challenge, $user)['completed_goal_days'] !== 7) {
                 throw ValidationException::withMessages(['challenge' => ['Cumpra as 7 metas diárias para abrir o baú.']]);
+            }
+            if ($this->awaitingReview($challenge, $user)) {
+                throw ValidationException::withMessages(['challenge' => ['Aguarde o encerramento das votações das suas marcações para abrir o baú.']]);
             }
             $type = ['xp', 'streak_freeze', 'streak_revive'][$this->random->getInt(0, 2)];
             $amount = $type === 'xp' ? 100 : 1;
@@ -126,7 +126,7 @@ class HydrationChallengeService
             'ends_at' => $challenge->ends_at->utc()->toIso8601String(),
             'progress' => $progress,
             'reward' => $challenge->mode === 'solo' ? [
-                'state' => $challenge->reward_claimed_at ? 'claimed' : ($progress['completed_goal_days'] === 7 ? 'available' : 'locked'),
+                'state' => $challenge->reward_claimed_at ? 'claimed' : ($progress['completed_goal_days'] === 7 ? ($this->awaitingReview($challenge, $user) ? 'reviewing' : 'available') : 'locked'),
                 'type' => $challenge->reward_type,
                 'amount' => $challenge->reward_amount,
             ] : null,
@@ -144,7 +144,7 @@ class HydrationChallengeService
             ->latest('starts_on')->get();
         // A solo challenge includes today's hydration; group logs only count
         // from midnight tomorrow in the group's timezone.
-        $logs = HydrationLog::query()->where('user_id', $user->id)
+        $logs = HydrationLog::query()->valid()->where('user_id', $user->id)
             ->where('occurred_at', '>=', $startsOn->utc())
             ->where('occurred_at', '<', $challenge->ends_at)
             ->where('occurred_at', '<=', CarbonImmutable::now('UTC'))->get()
@@ -169,5 +169,12 @@ class HydrationChallengeService
             'completed_goal_days' => collect($days)->where('state', 'goal_achieved')->count(),
             'total_ml' => collect($days)->sum('total_ml'), 'days' => $days,
         ];
+    }
+
+    private function awaitingReview(HydrationChallenge $challenge, User $user): bool
+    {
+        return HydrationLog::query()->awaitingReview()->where('user_id', $user->id)
+            ->where('occurred_at', '>=', $challenge->starts_at->setTimezone($challenge->timezone)->startOfDay()->utc())
+            ->where('occurred_at', '<', $challenge->ends_at)->exists();
     }
 }

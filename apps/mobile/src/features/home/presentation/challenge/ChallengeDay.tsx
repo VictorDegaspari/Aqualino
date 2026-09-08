@@ -1,3 +1,4 @@
+import {useTranslation} from '../../../../shared/i18n/useTranslation';
 import type {HydrationWeekDay} from '@aqualino/contracts';
 import React, {memo, useMemo} from 'react';
 import {Pressable, StyleSheet, Text, View, type ImageStyle, type ViewStyle} from 'react-native';
@@ -5,7 +6,8 @@ import {AqualinoIcon} from '../../../../shared/components/AqualinoIcon';
 import {ChallengeAsset, type ChallengeAssetName} from './ChallengeAsset';
 import {CurrentWaterDrop} from './CurrentWaterDrop';
 import {WaterProgress} from './WaterProgress';
-import {dayNodes, dayStateLabels, timelineLayout, weekdayLabels} from './challengeTheme';
+import {dayStateLabel, weekdayLabel} from './challengeLocale';
+import {dayNodes, timelineLayout} from './challengeTheme';
 
 interface Props {
   day: HydrationWeekDay;
@@ -24,31 +26,33 @@ const stateAssets: Record<HydrationWeekDay['state'], ChallengeAssetName> = {
 };
 
 export const ChallengeDay = memo(function ChallengeDayView({day, index, scale, motionEnabled = true, onPress}: Props): React.JSX.Element {
-  const content = dayStateLabels[day.state];
+  const {locale, t} = useTranslation();
+  const content = dayStateLabel(day.state, locale);
   const dayProgress = day.total_ml > 0
-    ? `${formatNumber(day.total_ml)} de ${formatNumber(day.goal_ml)} ml`
+    ? t(`${day.total_ml.toLocaleString(locale)} de ${day.goal_ml.toLocaleString(locale)} ml`, `${day.total_ml.toLocaleString(locale)} of ${day.goal_ml.toLocaleString(locale)} ml`, `${day.total_ml.toLocaleString(locale)} de ${day.goal_ml.toLocaleString(locale)} ml`)
     : content;
   const protection = day.protection === 'streak_freeze'
-    ? 'Protegido por congelamento'
+    ? t("Protegido por congelamento", "Protected by streak freeze", "Protegido por congelamiento")
     : day.protection === 'streak_revive'
-      ? 'Recuperado por poção'
+      ? t("Recuperado por poção", "Recovered by potion", "Recuperado por una poción")
       : undefined;
-  const accessibilityLabel = `${weekdayLabels[day.weekday - 1]}, ${formatDate(day.date)}: ${content}, ${dayProgress}${protection ? `, ${protection}` : ''}`;
+  const accessibilityLabel = `${weekdayLabel(day.weekday, locale)}, ${formatDate(day.date)}: ${content}, ${dayProgress}${protection ? `, ${protection}` : ''}`;
   const layout = useMemo(() => createLayout(index, scale, day), [day, index, scale]);
 
   return (
     <View pointerEvents="box-none" style={[styles.layer, layout.layer]}>
       <View pointerEvents="none" style={layout.label}>
         <View style={styles.dayLabel}>
-          <Text style={[styles.weekday, day.is_today && styles.todayLabel]}>{weekdayLabels[day.weekday - 1]}</Text>
+          <Text style={[styles.weekday, day.is_today && styles.todayLabel]}>{weekdayLabel(day.weekday, locale)}</Text>
           {day.is_today ? <AqualinoIcon name="play" size={12} color="#B9F3F5" /> : null}
         </View>
       </View>
 
       <Pressable
+        testID={`challenge-day-${day.date}`}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
-        accessibilityHint="Abre os detalhes de hidratação deste dia"
+        accessibilityHint={t("Abre os detalhes de hidratação deste dia", "Opens hydration details for this day", "Abre los detalles de hidratación de este día")}
         onPress={() => onPress(day, index)}
         style={({pressed}) => [layout.nodeTouch, pressed && styles.pressed]}>
         {day.is_today ? (
@@ -112,9 +116,6 @@ function formatDate(date: string): string {
   return `${day}/${month}`;
 }
 
-function formatNumber(value: number): string {
-  return value.toLocaleString('pt-BR');
-}
 
 const styles = StyleSheet.create({
   layer: {position: 'absolute', top: 0, right: 0, bottom: 0, left: 0},

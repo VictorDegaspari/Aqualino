@@ -13,7 +13,9 @@ use App\Modules\Inventory\Application\ApplyArmedHydrationStreakFreeze;
 use App\Shared\Infrastructure\Models\OutboxEvent;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class RecordWaterIntake
 {
@@ -26,6 +28,9 @@ class RecordWaterIntake
         private readonly AchievementService $achievements,
         private readonly UserLevelService $levels,
         private readonly HydrationXpService $xp,
+        private readonly HydrationRecordLimits $limits,
+        private readonly HydrationReviewService $reviews,
+        private readonly HydrationPhotoStorage $photos,
     ) {}
 
     public function handle(User $user, array $input): array
@@ -36,7 +41,9 @@ class RecordWaterIntake
             ->first();
 
         if ($existing) {
-            $this->applyStreakFreeze->handle($user, $existing->local_date->toDateString());
+            if (! $existing->invalidated_at) {
+                $this->applyStreakFreeze->handle($user, $existing->local_date->toDateString());
+            }
             $this->streaks->recalculate($user);
 
             return ['log' => $existing, 'idempotent_replay' => true, 'new_achievements' => $this->achievements->reconcile($user)];
@@ -56,76 +63,95 @@ class RecordWaterIntake
         $timezone = $user->profile->timezone;
         $localDate = $occurredAt->setTimezone($timezone)->toDateString();
 
-        $result = DB::transaction(function () use ($user, $input, $occurredAt, $timezone, $localDate): array {
-            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
-            $existing = HydrationLog::query()->where('user_id', $user->id)->where('client_event_id', $input['client_event_id'])->first();
-            if ($existing) {
-                return ['log' => $existing, 'idempotent_replay' => true];
-            }
-            $this->applyStreakFreeze->handle($user, $localDate);
-            $goal = $this->goals->forDate($user, $localDate);
-            $goalMl = $goal?->daily_goal_ml ?? 2000;
-            $stat = DailyUserStat::query()
-                ->where('user_id', $user->id)
-                ->whereDate('local_date', $localDate)
-                ->lockForUpdate()
-                ->first();
+        $photo = [];
+        try {
+            $result = DB::transaction(function () use ($user, $input, $occurredAt, $timezone, $localDate, &$photo): array {
+                if (isset($photo['photo_path'])) {
+                    Storage::disk('local')->delete($photo['photo_path']);
+                    $photo = [];
+                }
+                User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+                $existing = HydrationLog::query()->where('user_id', $user->id)->where('client_event_id', $input['client_event_id'])->first();
+                if ($existing) {
+                    return ['log' => $existing, 'idempotent_replay' => true];
+                }
+                $this->limits->assertCanRecord($user, $occurredAt);
+                $review = $this->reviews->snapshot($user, $occurredAt);
+                if ($review && empty($input['photo_base64'])) {
+                    throw ValidationException::withMessages(['photo_base64' => ['Tire uma foto do copo para que os outros membros do grupo possam conferir o volume.']]);
+                }
+                $photo = $this->photos->save($input['photo_base64'] ?? null);
+                $this->applyStreakFreeze->handle($user, $localDate);
+                $goal = $this->goals->forDate($user, $localDate);
+                $goalMl = $goal?->daily_goal_ml ?? 2000;
+                $stat = DailyUserStat::query()
+                    ->where('user_id', $user->id)
+                    ->whereDate('local_date', $localDate)
+                    ->lockForUpdate()
+                    ->first();
 
-            $beforeTotal = $stat?->total_ml ?? 0;
-            $beforeCount = $stat?->log_count ?? 0;
-            $recordXpBefore = $stat?->record_xp_earned ?? 0;
-            $baseXp = $beforeCount === 0 ? 10 : 5;
-            $recordXp = min($baseXp, max(0, self::DAILY_RECORD_XP_CAP - $recordXpBefore));
-            $afterTotal = $beforeTotal + $input['amount_ml'];
-            $goalBonus = $beforeTotal < $goalMl && $afterTotal >= $goalMl ? 25 : 0;
-            $multiplier = $stat?->xp_multiplier ?? $this->xp->percentageForDate($user, $localDate);
-            $xpAwarded = $this->xp->multiply($recordXpBefore + $recordXp, $multiplier)
-                - $this->xp->multiply($recordXpBefore, $multiplier)
-                + $this->xp->multiply($goalBonus, $multiplier);
+                $beforeTotal = $stat?->total_ml ?? 0;
+                $beforeCount = $stat?->log_count ?? 0;
+                $recordXpBefore = $stat?->record_xp_earned ?? 0;
+                $baseXp = $beforeCount === 0 ? 10 : 5;
+                $recordXp = min($baseXp, max(0, self::DAILY_RECORD_XP_CAP - $recordXpBefore));
+                $afterTotal = $beforeTotal + $input['amount_ml'];
+                $goalBonus = $beforeTotal < $goalMl && $afterTotal >= $goalMl ? 25 : 0;
+                $multiplier = $stat?->xp_multiplier ?? $this->xp->percentageForDate($user, $localDate);
+                $xpAwarded = $this->xp->multiply($recordXpBefore + $recordXp, $multiplier)
+                    - $this->xp->multiply($recordXpBefore, $multiplier)
+                    + $this->xp->multiply($goalBonus, $multiplier);
 
-            $log = HydrationLog::query()->create([
-                'user_id' => $user->id,
-                'amount_ml' => $input['amount_ml'],
-                'occurred_at' => $occurredAt,
-                'local_date' => $localDate,
-                'timezone_at_event' => $timezone,
-                'source' => $input['source'],
-                'client_event_id' => $input['client_event_id'],
-                'xp_awarded' => $xpAwarded,
-                'xp_multiplier' => $multiplier,
-                'metadata' => $input['metadata'] ?? null,
-            ]);
-
-            $stat ??= new DailyUserStat(['user_id' => $user->id, 'local_date' => $localDate]);
-            $stat->fill([
-                'total_ml' => $afterTotal,
-                'goal_ml_snapshot' => $stat->exists ? $stat->goal_ml_snapshot : $goalMl,
-                'goal_achieved_at' => $stat->goal_achieved_at ?? ($goalBonus > 0 ? now() : null),
-                'xp_earned' => ($stat->xp_earned ?? 0) + $xpAwarded,
-                'xp_multiplier' => $multiplier,
-                'record_xp_earned' => $recordXpBefore + $recordXp,
-                'log_count' => $beforeCount + 1,
-            ]);
-            $stat->save();
-
-            $user->increment('xp_total', $xpAwarded);
-            $this->levels->snapshot($user);
-
-            OutboxEvent::query()->create([
-                'type' => 'hydration.log.created.v1',
-                'aggregate_id' => $log->id,
-                'payload' => [
+                $log = HydrationLog::query()->create([
+                    ...$photo, ...$review,
                     'user_id' => $user->id,
-                    'log_id' => $log->id,
+                    'amount_ml' => $input['amount_ml'],
+                    'occurred_at' => $occurredAt,
                     'local_date' => $localDate,
-                ],
-                'available_at' => now(),
-            ]);
+                    'timezone_at_event' => $timezone,
+                    'source' => $input['source'],
+                    'client_event_id' => $input['client_event_id'],
+                    'xp_awarded' => $xpAwarded,
+                    'xp_multiplier' => $multiplier,
+                    'metadata' => $input['metadata'] ?? null,
+                ]);
 
-            return ['log' => $log, 'idempotent_replay' => false];
-        });
+                $stat ??= new DailyUserStat(['user_id' => $user->id, 'local_date' => $localDate]);
+                $stat->fill([
+                    'total_ml' => $afterTotal,
+                    'goal_ml_snapshot' => $stat->exists ? $stat->goal_ml_snapshot : $goalMl,
+                    'goal_achieved_at' => $stat->goal_achieved_at ?? ($goalBonus > 0 ? now() : null),
+                    'xp_earned' => ($stat->xp_earned ?? 0) + $xpAwarded,
+                    'xp_multiplier' => $multiplier,
+                    'record_xp_earned' => $recordXpBefore + $recordXp,
+                    'log_count' => $beforeCount + 1,
+                ]);
+                $stat->save();
 
-        if ($result['idempotent_replay']) {
+                $user->increment('xp_total', $xpAwarded);
+                $this->levels->snapshot($user);
+
+                OutboxEvent::query()->create([
+                    'type' => 'hydration.log.created.v1',
+                    'aggregate_id' => $log->id,
+                    'payload' => [
+                        'user_id' => $user->id,
+                        'log_id' => $log->id,
+                        'local_date' => $localDate,
+                    ],
+                    'available_at' => now(),
+                ]);
+
+                return ['log' => $log, 'idempotent_replay' => false];
+            }, 3);
+        } catch (Throwable $error) {
+            if (isset($photo['photo_path'])) {
+                Storage::disk('local')->delete($photo['photo_path']);
+            }
+            throw $error;
+        }
+
+        if ($result['idempotent_replay'] && ! $result['log']->invalidated_at) {
             $this->applyStreakFreeze->handle($user, $result['log']->local_date->toDateString());
         }
         $this->streaks->recalculate($user);

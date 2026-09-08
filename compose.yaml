@@ -7,6 +7,8 @@ x-api: &api
     target: development
   env_file:
     - .env
+  volumes:
+    - hydration_photos:/app/storage/app/private/hydration
   environment:
     APP_ENV: ${APP_ENV:-local}
     APP_DEBUG: ${APP_DEBUG:-true}
@@ -25,9 +27,13 @@ x-api: &api
     CACHE_STORE: redis
     QUEUE_CONNECTION: redis
     SESSION_DRIVER: database
-    MAIL_MAILER: smtp
-    MAIL_HOST: mailpit
-    MAIL_PORT: 1025
+    MAIL_MAILER: ${MAIL_MAILER:-smtp}
+    MAIL_HOST: ${MAIL_HOST:-mailpit}
+    MAIL_PORT: ${MAIL_PORT:-1025}
+    MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@example.com}
+    MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Aqualino}
+    RESEND_API_KEY: ${RESEND_API_KEY:-}
+    LOCAL_SKIP_EMAIL_VERIFICATION: ${LOCAL_SKIP_EMAIL_VERIFICATION:-false}
     LOG_CHANNEL: stderr
   depends_on:
     postgres:
@@ -119,6 +125,6 @@ services:
     restart: unless-stopped
 
 volumes:
+  hydration_photos:
   postgres_data:
   redis_data:
-

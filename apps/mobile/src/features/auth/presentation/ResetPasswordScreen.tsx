@@ -18,7 +18,7 @@ export function ResetPasswordScreen(props: Props): React.JSX.Element {
 
 function ResetPasswordForm({navigation, route}: Props): React.JSX.Element {
   const preference = useOnboardingPreferencesStore(state => state.locale);
-  const locale = route.params?.locale === 'en-US' || route.params?.locale === 'pt-BR' ? route.params.locale : preference;
+  const locale = normalizeAppLocale(route.params?.locale, preference);
   const copy = accountSecurityCopy[locale];
   const clearCredentials = useSessionStore(state => state.clearPasswordResetCredentials);
   const email = typeof route.params?.email === 'string' ? route.params.email.trim().toLowerCase() : '';
@@ -76,3 +76,4 @@ function ResetPasswordForm({navigation, route}: Props): React.JSX.Element {
     {!complete ? <SecurityLink label={copy.backToLogin} disabled={busy} onPress={() => navigation.replace('SignIn', {email})} /> : null}
   </AuthScaffold>;
 }
+import {normalizeAppLocale} from '../../../shared/i18n/appLocale';

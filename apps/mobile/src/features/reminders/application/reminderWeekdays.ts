@@ -28,8 +28,27 @@ export function normalizeReminderWeekdays(value: unknown): ReminderWeekday[] {
   return ALL_REMINDER_WEEKDAYS.filter(weekday => selected.has(weekday));
 }
 
-export function formatReminderWeekdays(value: readonly ReminderWeekday[]): string {
+export function reminderWeekdayOptions(locale: AppLocale): readonly ReminderWeekdayOption[] {
+  if (locale === 'pt-BR') return REMINDER_WEEKDAY_OPTIONS;
+  return REMINDER_WEEKDAY_OPTIONS.map(option => {
+    const date = new Date(Date.UTC(2026, 8, 6 + option.value));
+    return {
+      value: option.value,
+      shortLabel: new Intl.DateTimeFormat(locale, {weekday: 'short', timeZone: 'UTC'}).format(date),
+      accessibilityLabel: new Intl.DateTimeFormat(locale, {weekday: 'long', timeZone: 'UTC'}).format(date),
+    };
+  });
+}
+
+export function formatReminderWeekdays(value: readonly ReminderWeekday[], locale: AppLocale = 'pt-BR'): string {
   const weekdays = normalizeReminderWeekdays(value);
+  if (locale !== 'pt-BR') {
+    if (weekdays.length === 0) return locale === 'es-ES' ? 'Ningún día' : 'No days';
+    if (weekdays.length === 7) return locale === 'es-ES' ? 'Todos los días' : 'Every day';
+    if (sameWeekdays(weekdays, [1, 2, 3, 4, 5])) return locale === 'es-ES' ? 'Lun a vie' : 'Mon to Fri';
+    if (sameWeekdays(weekdays, [6, 0])) return locale === 'es-ES' ? 'Sáb y dom' : 'Sat and Sun';
+    return reminderWeekdayOptions(locale).filter(option => weekdays.includes(option.value)).map(option => option.shortLabel).join(', ');
+  }
   if (weekdays.length === 0) return 'Nenhum dia';
   if (weekdays.length === ALL_REMINDER_WEEKDAYS.length) return 'Todos os dias';
   if (sameWeekdays(weekdays, [1, 2, 3, 4, 5])) return 'Seg a Sex';
@@ -50,3 +69,4 @@ function isReminderWeekday(value: unknown): value is ReminderWeekday {
 function sameWeekdays(left: readonly ReminderWeekday[], right: readonly ReminderWeekday[]): boolean {
   return left.length === right.length && left.every((weekday, index) => weekday === right[index]);
 }
+import type {AppLocale} from '../../../shared/i18n/appLocale';

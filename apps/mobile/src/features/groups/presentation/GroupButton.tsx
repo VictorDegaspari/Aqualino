@@ -1,5 +1,6 @@
 import React from 'react';
-import {ActivityIndicator, Pressable, StyleSheet, Text} from 'react-native';
+import {Pressable, StyleSheet, Text} from 'react-native';
+import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 
 export function GroupButton({label, onPress, disabled, busy, secondary}: {
@@ -10,7 +11,7 @@ export function GroupButton({label, onPress, disabled, busy, secondary}: {
       accessibilityState={{disabled: Boolean(disabled || busy), busy: Boolean(busy)}}
       disabled={disabled || busy} onPress={onPress}
       style={({pressed}) => [styles.button, secondary && styles.secondary, (disabled || busy) && styles.disabled, pressed && styles.pressed]}>
-      {busy ? <ActivityIndicator color={secondary ? challengeTheme.colors.cyanStrong : challengeTheme.colors.backgroundDeep} /> : null}
+      {busy ? <LoadingWaterDrop size={23} /> : null}
       <Text style={[styles.label, secondary && styles.secondaryLabel]}>{label}</Text>
     </Pressable>
   );

@@ -1,9 +1,11 @@
 import React from 'react';
 import {act, fireEvent, render, waitFor} from '@testing-library/react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import type {HydrationHomeData} from '../../hydration/data/hydrationRemoteRepository';
 import {HomeView} from '../presentation/HomeView';
 import {AppModalProvider} from '../../../shared/components/AppModal';
+import {defaultHomeThemeId, type HomeThemeId} from '../domain/homeThemes';
 
 const data: HydrationHomeData = {
   today: {
@@ -43,8 +45,11 @@ const safeAreaMetrics = {
 };
 
 function renderHome(view: React.ReactElement) {
-  return render(<SafeAreaProvider initialMetrics={safeAreaMetrics}><AppModalProvider>{view}</AppModalProvider></SafeAreaProvider>);
+  return render(<SafeAreaProvider initialMetrics={safeAreaMetrics}><AppModalProvider>{view}</AppModalProvider></SafeAreaProvider>, {wrapper: GestureHandlerRootView});
 }
+
+beforeEach(() => jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-02T12:00:00Z')));
+afterEach(() => jest.restoreAllMocks());
 
 test('renders loading state', async () => {
   expect((await renderHome(<HomeView {...props} data={undefined} loading />)).getByLabelText('Carregando hidratação')).toBeTruthy();
@@ -87,6 +92,8 @@ test('offers the group start only when a real group is available', async () => {
 
   expect(view.getByRole('tab', {name: 'Grupo'}).props.accessibilityState.disabled).toBe(false);
   await fireEvent.press(view.getByRole('tab', {name: 'Grupo'}));
+  expect(view.queryByRole('button', {name: 'Bebi água'})).toBeNull();
+  expect(view.queryByText('Sua primeira gota de hoje está a um toque.')).toBeNull();
 
   await fireEvent.press(view.getByRole('button', {name: 'Iniciar desafio do grupo'}));
   expect(onStartChallenge).toHaveBeenCalledWith('group');
@@ -120,6 +127,27 @@ test('removes animated home decorations while its tab is inactive', async () => 
   expect(view.queryByTestId('challenge-scene-decoration')).toBeNull();
   expect(view.queryAllByTestId('challenge-bubble')).toHaveLength(0);
   expect(view.getByTestId('current-water-drop')).toBeTruthy();
+});
+
+test('updates the home scenery when the theme changes through the inventory', async () => {
+  let selectTheme!: (themeId: HomeThemeId) => void;
+  function ThemedHome() {
+    const [themeId, setThemeId] = React.useState<HomeThemeId>(defaultHomeThemeId);
+    selectTheme = setThemeId;
+    return <HomeView {...props} homeThemeId={themeId} />;
+  }
+  const view = await renderHome(<ThemedHome />);
+  expect(view.getByTestId('challenge-scene-decoration')).toBeTruthy();
+  expect(view.queryByRole('button', {name: 'Alterar tema da Home'})).toBeNull();
+
+  await act(() => selectTheme('open-ocean'));
+  expect(view.getByTestId('home-scene-open-ocean')).toBeTruthy();
+  expect(view.queryByTestId('challenge-scene-decoration')).toBeNull();
+  expect(view.getByTestId('current-water-drop')).toBeTruthy();
+  expect(view.getByRole('button', {name: 'Bebi água'})).toBeTruthy();
+
+  await act(() => selectTheme('coral-reef'));
+  expect(view.getByTestId('challenge-scene-decoration')).toBeTruthy();
 });
 
 test('opens the inventory from the XP status', async () => {
@@ -158,6 +186,7 @@ test('fills only the current day drop using that day\'s consumed amount and goal
 });
 
 test('shows the current day drop on Sunday and empties it for the new day', async () => {
+  jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-06T12:00:00Z'));
   const sunday: HydrationHomeData = {
     ...data,
     today: {...data.today, local_date: '2026-09-06', total_ml: 2000, percentage: 100, goal_achieved: true},
@@ -188,6 +217,7 @@ test('shows the current day drop on Sunday and empties it for the new day', asyn
       })),
     },
   };
+  jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-07T12:00:00Z'));
   await view.rerender(<SafeAreaProvider initialMetrics={safeAreaMetrics}><HomeView {...props} data={activeData(nextWeek)} /></SafeAreaProvider>);
 
   expect(view.getAllByTestId('current-water-drop')).toHaveLength(1);
@@ -230,6 +260,7 @@ test('shows the scheduled group start instead of allowing today to advance its p
   expect(view.queryByLabelText(/QUA, 02\/09:/)).toBeNull();
   expect(view.queryByRole('button', {name: 'Iniciar desafio do grupo'})).toBeNull();
   expect(view.queryByRole('button', {name: 'Ver baú do desafio solo'})).toBeNull();
+  expect(view.queryByRole('button', {name: 'Bebi água'})).toBeNull();
 });
 
 test('opens the chest once and displays the confirmed item without offering another draw', async () => {
@@ -261,3 +292,15 @@ function activeData(home: HydrationHomeData): HydrationHomeData {
     group: null, group_name: null, can_start_group: false,
   }};
 }
+
+test('lets a late group member follow the standings without displaying a personal challenge drop', async () => {
+  const home = activeData(data);
+  home.challenges!.group_name = 'Amigos';
+  home.challenges!.group = {...home.challenges!.solo!, mode: 'group', participating: false, reward: null};
+  const view = await renderHome(<HomeView {...props} data={home} />);
+  await fireEvent.press(view.getByRole('tab', {name: 'Grupo'}));
+  expect(view.getByText('Você entra na próxima rodada')).toBeTruthy();
+  expect(view.queryByTestId('current-water-drop')).toBeNull();
+  expect(view.queryByRole('button', {name: 'Iniciar desafio do grupo'})).toBeNull();
+  expect(view.queryByRole('button', {name: 'Bebi água'})).toBeNull();
+});

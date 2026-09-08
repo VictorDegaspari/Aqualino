@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Modules\Gamification\Application\HydrationXpService;
 use App\Modules\Gamification\Application\UserLevelService;
+use App\Modules\Group\Application\GroupChallengeService;
 use App\Modules\Hydration\Infrastructure\Models\HydrationGoal;
 use App\Modules\Identity\Application\AccountSecurityService;
 use App\Modules\Identity\Http\Requests\LoginRequest;
@@ -20,7 +21,7 @@ use Throwable;
 
 class AuthController extends Controller
 {
-    public function __construct(private readonly UserLevelService $levels, private readonly HydrationXpService $xp) {}
+    public function __construct(private readonly UserLevelService $levels, private readonly HydrationXpService $xp, private readonly GroupChallengeService $challenges) {}
 
     public function usernameAvailability(Request $request): JsonResponse
     {
@@ -113,10 +114,11 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'email' => $user->email,
                 'email_verified_at' => $user->email_verified_at?->toIso8601String(),
-                'email_verification_required' => $user->email_verification_required,
+                'email_verification_required' => $user->requiresEmailVerification(),
                 'profile' => $user->profile,
                 ...$this->levels->snapshot($user),
                 'xp_multiplier' => $this->xp->todayMultiplier($user),
+                'group_medals' => $this->challenges->medalCounts($user),
                 'streak' => $user->streak?->current_streak ?? 0,
             ],
         ];

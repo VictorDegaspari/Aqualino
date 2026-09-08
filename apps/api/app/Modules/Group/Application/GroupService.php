@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 
 final class GroupService
 {
-    public function __construct(private readonly AchievementService $achievements) {}
+    public function __construct(private readonly AchievementService $achievements, private readonly GroupChallengeService $challenges) {}
 
     public function current(User $user): ?array
     {
@@ -65,6 +65,7 @@ final class GroupService
         return DB::transaction(function () use ($user, $code): array {
             $this->lockUser($user);
             $group = $this->invitedGroup($code, true);
+            $this->challenges->advance($group);
             $membership = GroupMembership::query()->where('user_id', $user->id)->first();
             if ($membership) {
                 if ($membership->group_id === $group->id) {
@@ -79,7 +80,7 @@ final class GroupService
                 throw new GroupException('GROUP_FULL', 'Este grupo já tem cinco integrantes.');
             }
             $group->memberships()->create(['user_id' => $user->id, 'slot' => $slot]);
-            $challenge = HydrationChallenge::query()->where('group_id', $group->id)->where('ends_at', '>', now())->first();
+            $challenge = HydrationChallenge::query()->where('group_id', $group->id)->where('starts_at', '>', now())->whereNull('cancelled_at')->first();
             if ($challenge) {
                 PotionUsageBlock::query()->create([
                     'user_id' => $user->id, 'reason' => 'group_challenge', 'context_id' => $challenge->id,
@@ -106,6 +107,20 @@ final class GroupService
         }, 3);
     }
 
+    public function updatePhotoReview(User $user, bool $enabled): array
+    {
+        return DB::transaction(function () use ($user, $enabled): array {
+            $this->lockUser($user);
+            $group = $this->currentGroup($user);
+            if (! $group || $group->owner_id !== $user->id) {
+                throw new GroupException('GROUP_OWNER_REQUIRED', 'Somente o líder pode alterar a votação de marcações.', 403);
+            }
+            $group->update(['photo_review_enabled' => $enabled]);
+
+            return $this->payload($group, $user);
+        }, 3);
+    }
+
     public function leave(User $user): void
     {
         DB::transaction(function () use ($user): void {
@@ -114,6 +129,9 @@ final class GroupService
             if (! $group) {
                 return;
             }
+            $this->challenges->advance($group);
+            $scheduledIds = HydrationChallenge::query()->where('group_id', $group->id)->where('starts_at', '>', now())->pluck('id');
+            PotionUsageBlock::query()->where('user_id', $user->id)->whereIn('context_id', $scheduledIds)->delete();
             $group->memberships()->where('user_id', $user->id)->delete();
             $nextOwner = $group->memberships()->oldest('id')->first();
             if (! $nextOwner) {
@@ -163,6 +181,7 @@ final class GroupService
 
     private function payload(Group $group, User $viewer): array
     {
+        $challenges = $this->challenges->current($group, $viewer);
         $members = $group->memberships()->with('user.profile')->orderBy('slot')->get();
 
         return [
@@ -171,6 +190,10 @@ final class GroupService
             'timezone' => $group->timezone,
             'owner_id' => $group->owner_id,
             'max_members' => 5,
+            'photo_review_enabled' => $group->photo_review_enabled ?? true,
+            'challenge' => $challenges['group'],
+            'previous_challenge' => $challenges['group_result'],
+            'challenge_rules' => $challenges['group_rules'],
             'members' => $members->map(fn (GroupMembership $member): array => [
                 'user_id' => $member->user_id,
                 'display_name' => $member->user->profile?->display_name ?? 'Aqualino',

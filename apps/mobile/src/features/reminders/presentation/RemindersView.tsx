@@ -1,5 +1,7 @@
+import {useTranslation} from '../../../shared/i18n/useTranslation';
 import React, {memo, useCallback, useState} from 'react';
-import {Image, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View} from 'react-native';
+import {Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {AppSwitch} from '../../../shared/components/AppSwitch';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {BellIcon} from '../../../shared/components/BellIcon';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
@@ -11,7 +13,7 @@ import {
   ALL_REMINDER_WEEKDAYS,
   formatReminderWeekdays,
   normalizeReminderWeekdays,
-  REMINDER_WEEKDAY_OPTIONS,
+  reminderWeekdayOptions,
   type ReminderWeekday,
 } from '../application/reminderWeekdays';
 
@@ -21,7 +23,7 @@ interface Props {
   feedback?: {kind: 'success' | 'error'; message: string};
   permissionIssue?: ReminderPermissionIssue;
   onAdd: (hour: number, minute: number, weekdays: readonly ReminderWeekday[]) => Promise<boolean>;
-  onToggle: (id: string, enabled: boolean) => void;
+  onToggle: (id: string, enabled: boolean) => void | Promise<boolean>;
   onRemove: (reminder: HydrationReminder) => void;
   onOpenSettings: () => void;
 }
@@ -29,6 +31,7 @@ interface Props {
 const suggestedTimes = ['08:00', '12:00', '16:00', '20:00'] as const;
 
 export function RemindersView(props: Props): React.JSX.Element {
+  const {locale, t} = useTranslation();
   const [editing, setEditing] = useState(false);
   const [hour, setHour] = useState('08');
   const [minute, setMinute] = useState('00');
@@ -62,15 +65,15 @@ export function RemindersView(props: Props): React.JSX.Element {
     const parsedHour = Number(hour);
     const parsedMinute = Number(minute);
     if (!/^\d{1,2}$/.test(hour) || !Number.isInteger(parsedHour) || parsedHour < 0 || parsedHour > 23) {
-      setValidationError('Informe uma hora entre 00 e 23.');
+      setValidationError(t("Informe uma hora entre 00 e 23.", "Enter an hour between 00 and 23.", "Introduce una hora entre 00 y 23."));
       return;
     }
     if (!/^\d{1,2}$/.test(minute) || !Number.isInteger(parsedMinute) || parsedMinute < 0 || parsedMinute > 59) {
-      setValidationError('Informe minutos entre 00 e 59.');
+      setValidationError(t("Informe minutos entre 00 e 59.", "Enter minutes between 00 and 59.", "Introduce minutos entre 00 y 59."));
       return;
     }
     if (weekdays.length === 0) {
-      setValidationError('Selecione pelo menos um dia da semana.');
+      setValidationError(t("Selecione pelo menos um dia da semana.", "Select at least one day of the week.", "Selecciona al menos un día de la semana."));
       return;
     }
 
@@ -96,8 +99,8 @@ export function RemindersView(props: Props): React.JSX.Element {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
           <TabScreenHeader
-            title="Lembretes"
-            subtitle="Pequenas pausas ao longo do dia para manter o ritmo."
+            title={t("Lembretes", "Reminders", "Recordatorios")}
+            subtitle={t("Pequenas pausas ao longo do dia para manter o ritmo.", "Small breaks throughout the day to keep your rhythm.", "Pequeñas pausas durante el día para mantener el ritmo.")}
             icon={<BellIcon size={34} color={challengeTheme.colors.cyanStrong} />}
           />
 
@@ -107,11 +110,11 @@ export function RemindersView(props: Props): React.JSX.Element {
             </View>
             <View style={styles.summaryContent}>
               <Text style={styles.summaryValue}>{activeCount}</Text>
-              <Text style={styles.summaryLabel}>{activeCount === 1 ? 'lembrete ativo' : 'lembretes ativos'}</Text>
+              <Text style={styles.summaryLabel}>{activeCount === 1 ? t("lembrete ativo", "active reminder", "recordatorio activo") : t("lembretes ativos", "active reminders", "recordatorios activos")}</Text>
             </View>
             <View style={[styles.summaryStatus, activeCount > 0 && styles.summaryStatusActive]}>
               <Text style={[styles.summaryStatusText, activeCount > 0 && styles.summaryStatusTextActive]}>
-                {activeCount > 0 ? 'ATIVO' : 'PAUSADO'}
+                {activeCount > 0 ? t("ATIVO", "ACTIVE", "ACTIVO") : t("PAUSADO", "PAUSED", "EN PAUSA")}
               </Text>
             </View>
           </View>
@@ -121,15 +124,15 @@ export function RemindersView(props: Props): React.JSX.Element {
               <AqualinoIcon name="alert" size={22} color={challengeTheme.colors.gold} />
               <View style={styles.permissionContent}>
                 <Text style={styles.permissionTitle}>
-                  {props.permissionIssue === 'notifications' ? 'Notificações desativadas' : 'Horários exatos desativados'}
+                  {props.permissionIssue === 'notifications' ? t("Notificações desativadas", "Notifications disabled", "Notificaciones desactivadas") : t("Horários exatos desativados", "Exact alarms disabled", "Alarmas exactas desactivadas")}
                 </Text>
                 <Text style={styles.permissionText}>
                   {props.permissionIssue === 'notifications'
-                    ? 'Libere as notificações do Aqualino para receber seus lembretes.'
-                    : 'Libere alarmes e lembretes para os avisos chegarem no horário escolhido.'}
+                    ? t("Libere as notificações do Aqualino para receber seus lembretes.", "Allow Aqualino notifications to receive your reminders.", "Permite las notificaciones de Aqualino para recibir tus recordatorios.")
+                    : t("Libere alarmes e lembretes para os avisos chegarem no horário escolhido.", "Allow alarms and reminders to receive alerts at your chosen time.", "Permite las alarmas y los recordatorios para recibir los avisos a la hora elegida.")}
                 </Text>
                 <Pressable accessibilityRole="button" onPress={props.onOpenSettings} style={styles.settingsButton}>
-                  <Text style={styles.settingsButtonLabel}>Abrir ajustes</Text>
+                  <Text style={styles.settingsButtonLabel}>{t("Abrir ajustes", "Open settings", "Abrir ajustes")}</Text>
                 </Pressable>
               </View>
             </View>
@@ -143,25 +146,25 @@ export function RemindersView(props: Props): React.JSX.Element {
 
           <View style={styles.sectionHeading}>
             <View>
-              <Text style={styles.sectionTitle}>Seus horários</Text>
-              <Text style={styles.sectionSubtitle}>Configure os dias de cada lembrete.</Text>
+              <Text style={styles.sectionTitle}>{t("Seus horários", "Your schedule", "Tus horarios")}</Text>
+              <Text style={styles.sectionSubtitle}>{t("Configure os dias de cada lembrete.", "Set the days for each reminder.", "Configura los días de cada recordatorio.")}</Text>
             </View>
             {!editing ? (
               <Pressable testID="reminders-new" accessibilityRole="button" onPress={() => setEditing(true)} style={styles.addSmallButton}>
                 <AqualinoIcon name="plus" size={15} color={challengeTheme.colors.backgroundDeep} />
-                <Text style={styles.addSmallButtonLabel}>Novo</Text>
+                <Text style={styles.addSmallButtonLabel}>{t("Novo", "New", "Nuevo")}</Text>
               </Pressable>
             ) : null}
           </View>
 
           {editing ? (
             <View style={styles.editorCard}>
-              <Text style={styles.editorTitle}>Novo lembrete</Text>
-              <Text style={styles.editorSubtitle}>Escolha o horário e os dias em que deseja receber o aviso.</Text>
+              <Text style={styles.editorTitle}>{t("Novo lembrete", "New reminder", "Nuevo recordatorio")}</Text>
+              <Text style={styles.editorSubtitle}>{t("Escolha o horário e os dias em que deseja receber o aviso.", "Choose the time and days for your reminder.", "Elige la hora y los días en que quieres recibir el aviso.")}</Text>
 
               <View style={styles.timeEditor}>
                 <View>
-                  <Text style={styles.inputLabel}>Hora</Text>
+                  <Text style={styles.inputLabel}>{t("Hora", "Hour", "Hora")}</Text>
                   <TextInput
                     accessibilityLabel="Hora do lembrete"
                     keyboardType="number-pad"
@@ -174,7 +177,7 @@ export function RemindersView(props: Props): React.JSX.Element {
                 </View>
                 <Text accessibilityElementsHidden style={styles.timeSeparator}>:</Text>
                 <View>
-                  <Text style={styles.inputLabel}>Minuto</Text>
+                  <Text style={styles.inputLabel}>{t("Minuto", "Minute", "Minuto")}</Text>
                   <TextInput
                     accessibilityLabel="Minuto do lembrete"
                     keyboardType="number-pad"
@@ -200,17 +203,17 @@ export function RemindersView(props: Props): React.JSX.Element {
               </View>
 
               <View style={styles.weekdaysHeading}>
-                <Text style={styles.weekdaysTitle}>Dias da semana</Text>
+                <Text style={styles.weekdaysTitle}>{t("Dias da semana", "Days of the week", "Días de la semana")}</Text>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={allWeekdaysSelected ? 'Limpar seleção de dias' : 'Selecionar todos os dias'}
                   onPress={toggleAllWeekdays}
                   style={({pressed}) => pressed && styles.buttonPressed}>
-                  <Text style={styles.weekdaysToggleLabel}>{allWeekdaysSelected ? 'Limpar' : 'Todos'}</Text>
+                  <Text style={styles.weekdaysToggleLabel}>{allWeekdaysSelected ? t("Limpar", "Clear", "Borrar") : t("Todos", "All", "Todos")}</Text>
                 </Pressable>
               </View>
               <View style={styles.weekdayOptions}>
-                {REMINDER_WEEKDAY_OPTIONS.map(option => {
+                {reminderWeekdayOptions(locale).map(option => {
                   const selected = weekdays.includes(option.value);
                   return (
                     <Pressable
@@ -240,7 +243,7 @@ export function RemindersView(props: Props): React.JSX.Element {
                   disabled={props.busyId === 'new'}
                   onPress={closeEditor}
                   style={styles.cancelButton}>
-                  <Text style={styles.cancelButtonLabel}>Cancelar</Text>
+                  <Text style={styles.cancelButtonLabel}>{t("Cancelar", "Cancel", "Cancelar")}</Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -248,7 +251,7 @@ export function RemindersView(props: Props): React.JSX.Element {
                   disabled={props.busyId === 'new'}
                   onPress={save}
                   style={({pressed}) => [styles.saveButton, pressed && styles.buttonPressed]}>
-                  <Text style={styles.saveButtonLabel}>{props.busyId === 'new' ? 'Salvando…' : 'Salvar lembrete'}</Text>
+                  <Text style={styles.saveButtonLabel}>{props.busyId === 'new' ? t("Salvando…", "Saving…", "Guardando…") : t("Salvar lembrete", "Save reminder", "Guardar recordatorio")}</Text>
                 </Pressable>
               </View>
             </View>
@@ -257,14 +260,14 @@ export function RemindersView(props: Props): React.JSX.Element {
           {props.reminders.length === 0 && !editing ? (
             <View style={styles.emptyCard}>
               <View style={styles.emptyIcon}><BellIcon size={28} color={challengeTheme.colors.muted} /></View>
-              <Text style={styles.emptyTitle}>Nenhum horário marcado</Text>
-              <Text style={styles.emptyText}>Crie seu primeiro lembrete. A permissão só será solicitada ao ativá-lo.</Text>
+              <Text style={styles.emptyTitle}>{t("Nenhum horário marcado", "No reminders scheduled", "Ningún recordatorio programado")}</Text>
+              <Text style={styles.emptyText}>{t("Crie seu primeiro lembrete. A permissão só será solicitada ao ativá-lo.", "Create your first reminder. Permission will be requested when you activate it.", "Crea tu primer recordatorio. El permiso se solicitará al activarlo.")}</Text>
               <Pressable
                 accessibilityRole="button"
                 onPress={() => setEditing(true)}
                 style={({pressed}) => [styles.primaryButton, pressed && styles.buttonPressed]}>
                 <AqualinoIcon name="plus" size={19} color={challengeTheme.colors.backgroundDeep} />
-                <Text style={styles.primaryButtonLabel}>Criar lembrete</Text>
+                <Text style={styles.primaryButtonLabel}>{t("Criar lembrete", "Create reminder", "Crear recordatorio")}</Text>
               </Pressable>
             </View>
           ) : (
@@ -283,7 +286,7 @@ export function RemindersView(props: Props): React.JSX.Element {
 
           <View style={styles.infoCard}>
             <AqualinoIcon name="check" size={19} color={challengeTheme.colors.cyanStrong} />
-            <Text style={styles.infoText}>Os horários ficam salvos neste aparelho e funcionam mesmo quando o Aqualino está fechado.</Text>
+            <Text style={styles.infoText}>{t("Os horários ficam salvos neste aparelho e funcionam mesmo quando o Aqualino está fechado.", "Reminders are saved on this device and work even when Aqualino is closed.", "Los horarios se guardan en este dispositivo y funcionan incluso cuando Aqualino está cerrado.")}</Text>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -294,9 +297,10 @@ export function RemindersView(props: Props): React.JSX.Element {
 const ReminderCard = memo(function ReminderCardView({reminder, busy, onToggle, onRemove}: {
   reminder: HydrationReminder;
   busy: boolean;
-  onToggle: (id: string, enabled: boolean) => void;
+  onToggle: (id: string, enabled: boolean) => void | Promise<boolean>;
   onRemove: (reminder: HydrationReminder) => void;
 }): React.JSX.Element {
+  const {locale, t} = useTranslation();
   const handleToggle = useCallback((enabled: boolean) => onToggle(reminder.id, enabled), [onToggle, reminder.id]);
   const handleRemove = useCallback(() => onRemove(reminder), [onRemove, reminder]);
 
@@ -304,23 +308,21 @@ const ReminderCard = memo(function ReminderCardView({reminder, busy, onToggle, o
     <View style={[styles.reminderCard, !reminder.enabled && styles.reminderCardDisabled]}>
       <View style={styles.reminderTimeContent}>
         <Text style={[styles.reminderTime, !reminder.enabled && styles.reminderTimeDisabled]}>{formatTime(reminder)}</Text>
-        <Text style={styles.reminderFrequency}>{formatReminderWeekdays(reminder.weekdays)}</Text>
+        <Text style={styles.reminderFrequency}>{formatReminderWeekdays(reminder.weekdays, locale)}</Text>
       </View>
-      <Switch
-        accessibilityLabel={`Lembrete das ${formatTime(reminder)}`}
+      <AppSwitch
+        accessibilityLabel={t(`Lembrete das ${formatTime(reminder)}`, `Reminder at ${formatTime(reminder)}`, `Recordatorio de las ${formatTime(reminder)}`)}
         disabled={busy}
         onValueChange={handleToggle}
-        thumbColor={reminder.enabled ? challengeTheme.colors.cyanStrong : '#7890A5'}
-        trackColor={{false: '#29465F', true: 'rgba(11, 225, 236, 0.45)'}}
         value={reminder.enabled}
       />
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Remover lembrete das ${formatTime(reminder)}`}
+        accessibilityLabel={t(`Remover lembrete das ${formatTime(reminder)}`, `Remove reminder at ${formatTime(reminder)}`, `Eliminar recordatorio de las ${formatTime(reminder)}`)}
         disabled={busy}
         onPress={handleRemove}
         style={({pressed}) => [styles.removeButton, pressed && styles.buttonPressed]}>
-        <Text style={styles.removeButtonLabel}>Remover</Text>
+        <Text style={styles.removeButtonLabel}>{t("Remover", "Remove", "Eliminar")}</Text>
       </Pressable>
     </View>
   );

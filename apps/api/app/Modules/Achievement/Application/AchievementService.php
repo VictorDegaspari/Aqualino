@@ -93,7 +93,7 @@ final class AchievementService
     {
         return [
             'level' => $user->level,
-            'records' => (int) HydrationLog::query()->where('user_id', $user->id)->exists(),
+            'records' => (int) HydrationLog::query()->valid()->where('user_id', $user->id)->exists(),
             'reminders' => (int) UserAchievement::query()->where('user_id', $user->id)->where('code', 'first_reminder')->exists(),
             'teams' => (int) GroupMembership::query()->where('user_id', $user->id)->exists(),
             'goals' => DailyUserStat::query()->where('user_id', $user->id)->whereNotNull('goal_achieved_at')->count(),

@@ -3,9 +3,9 @@ import {BackHandler, StyleSheet, useWindowDimensions} from 'react-native';
 import {GestureDetector, usePanGesture} from 'react-native-gesture-handler';
 import Animated, {cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming} from 'react-native-reanimated';
 import {scheduleOnRN} from 'react-native-worklets';
-import {shouldCompleteSwipe} from '../application/swipeBack';
+import {shouldCompleteSwipe} from '../navigation/swipeBack';
 
-export function SwipeBackScreen({children, onBack}: {children: (close: () => void) => React.ReactNode; onBack: () => void}): React.JSX.Element {
+export function SwipeBackScreen({children, onBack, testID}: {children: (close: () => void) => React.ReactNode; onBack: () => void; testID: string}): React.JSX.Element {
   const {width} = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const translation = useSharedValue(reducedMotion ? 0 : width);
@@ -29,7 +29,7 @@ export function SwipeBackScreen({children, onBack}: {children: (close: () => voi
   }, [close]);
 
   const gesture = usePanGesture({
-    testID: 'achievements-back-gesture',
+    testID: `${testID}-back-gesture`,
     activeOffsetX: 12, failOffsetY: [-16, 16], maxPointers: 1,
     onActivate: () => {
       if (closing.value) return;
@@ -55,7 +55,7 @@ export function SwipeBackScreen({children, onBack}: {children: (close: () => voi
     <>
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.dim, dimStyle]} />
       <GestureDetector gesture={gesture}>
-        <Animated.View testID="achievements-swipe-panel" style={[styles.panel, panelStyle]}>{children(close)}</Animated.View>
+        <Animated.View testID={`${testID}-swipe-panel`} style={[styles.panel, panelStyle]}>{children(close)}</Animated.View>
       </GestureDetector>
     </>
   );

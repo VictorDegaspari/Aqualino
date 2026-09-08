@@ -1,4 +1,4 @@
-export type AppLocale = 'pt-BR' | 'en-US';
+export type AppLocale = 'pt-BR' | 'en-US' | 'es-ES';
 
 export const localeOptions: ReadonlyArray<{
   value: AppLocale;
@@ -8,13 +8,74 @@ export const localeOptions: ReadonlyArray<{
 }> = [
   {value: 'pt-BR', flag: '🇧🇷', label: 'Português', country: 'Brasil'},
   {value: 'en-US', flag: '🇺🇸', label: 'English', country: 'United States'},
+  {value: 'es-ES', flag: '🇪🇸', label: 'Español', country: 'España'},
 ];
 
-export function normalizeAppLocale(value: string | undefined | null): AppLocale {
-  return value === 'en-US' ? 'en-US' : 'pt-BR';
+export function normalizeAppLocale(value: string | undefined | null, fallback: AppLocale = 'pt-BR'): AppLocale {
+  switch (value?.trim().toLowerCase().split(/[-_]/)[0]) {
+    case 'en': return 'en-US';
+    case 'es': return 'es-ES';
+    case 'pt': return 'pt-BR';
+    default: return fallback;
+  }
 }
 
 export const appCopy = {
+  'es-ES': {
+    welcome: {
+      eyebrow: 'TU COMPAÑERO DE HIDRATACIÓN',
+      title: 'Vamos a cuidarte, una gota a la vez.',
+      subtitle: 'Crea un hábito saludable con Aqualino a tu lado.',
+      languageTitle: 'Elige el idioma de la app',
+      languageSubtitle: 'Podrás cambiarlo después en las preferencias.',
+      goalTitle: '¿Cuál es tu meta diaria?',
+      goalSubtitle: 'Aqualino acompañará cada sorbo hasta alcanzarla.',
+      goalInputLabel: 'Meta diaria en mililitros',
+      accountTitle: '¿Cómo quieres continuar?',
+      accountSubtitle: 'Inicia sesión para retomar tu camino o crea una cuenta nueva.',
+      continue: 'Continuar', back: 'Volver', step: 'Paso', of: 'de',
+      createAccount: 'Crear mi cuenta', alreadyHaveAccount: 'Ya tengo una cuenta',
+      returningTitle: 'Qué bueno tenerte de vuelta.',
+      returningSubtitle: 'Inicia sesión de nuevo o prepara Aqualino para una cuenta nueva.',
+      savedAccounts: 'Tus cuentas', continueAs: 'Continuar como', signIn: 'Iniciar sesión', signingIn: 'Iniciando sesión',
+      manageAccounts: 'Administrar cuentas',
+      manageAccountsSubtitle: 'Elimina una cuenta de este dispositivo cuando ya no quieras acceso rápido.',
+      removeAccount: 'Eliminar cuenta', backToAccounts: 'Volver a las cuentas',
+      resumeAccountError: 'No se pudo retomar esta cuenta en este momento.',
+      removeAccountError: 'No se pudo eliminar esta cuenta en este momento.',
+      offlineAccountError: 'No tienes conexión a internet. Comprueba tu conexión e inténtalo de nuevo.',
+      addAccount: 'Añadir una cuenta nueva', addAccountSubtitle: 'Reiniciar idioma, meta y creación de la cuenta.',
+      savedAccountSecurity: 'Las cuentas guardadas usan una credencial protegida del dispositivo. Elimina una cuenta para cancelar el acceso rápido.',
+    },
+    auth: {
+      loginEyebrow: 'QUÉ BUENO VERTE', loginTitle: 'Entra en tu océano.',
+      loginSubtitle: 'Tu ritmo de hidratación te está esperando.',
+      registerEyebrow: 'EMPIEZA A TU RITMO', registerTitle: 'Crea tu cuenta.',
+      registerSubtitle: 'Aqualino solo necesita un momento para conocerte.',
+      email: 'Correo electrónico', password: 'Contraseña', displayName: '¿Cómo quieres que te llamemos?',
+      username: 'Nombre de usuario', usernamePlaceholder: 'ana_azul',
+      checkingUsername: 'Comprobando este @…', usernameAvailable: 'Este @ está disponible.',
+      usernameUnavailable: 'Este @ no está disponible.', passwordPlaceholder: '8+ caracteres, letras y números',
+      signIn: 'Iniciar sesión', createAccount: 'Crear mi cuenta', noAccount: 'Todavía no tengo una cuenta',
+      terms: 'He leído y acepto los Términos y la Política de Privacidad.', language: 'Idioma',
+      loginError: 'No se pudo iniciar sesión.', registerError: 'No se pudo crear la cuenta.',
+    },
+    setup: {
+      title: 'Prepara tu Aqualino', subtitle: 'Define tu ritmo. Podrás ajustarlo todo después.',
+      goalTitle: 'Tu meta diaria', goalSubtitle: 'Una meta es un apoyo para crear el hábito.',
+      goalMascotLabel: 'Aqualino está emocionado por acompañar tu meta',
+      quickVolumes: 'Cantidades rápidas', quickVolumesSubtitle: 'Elige los vasos y botellas que más usas.',
+      language: 'Idioma de la app', languageSubtitle: 'Elige cómo prefieres usar Aqualino.', timezone: 'Zona horaria',
+      notice: 'Si tienes una restricción de líquidos, sigue las indicaciones de tu profesional de salud.',
+      finish: 'Terminar y empezar', saveError: 'No se pudieron guardar tus preferencias.',
+      savingTitle: 'Preparando tu océano', savingSubtitle: 'Estamos guardando tu meta para que Aqualino empiece a acompañarte.',
+      retry: 'Intentar de nuevo',
+    },
+    goalGauge: {
+      eyebrow: 'TU META DIARIA', status: 'Meta elegida', comparison: 'Aqualino celebrará cada sorbo contigo.',
+      hint: 'El agua acompaña la meta elegida',
+    },
+  },
   'pt-BR': {
     welcome: {
       eyebrow: 'SEU COMPANHEIRO DE HIDRATAÇÃO',
@@ -38,6 +99,7 @@ export const appCopy = {
       savedAccounts: 'Suas contas',
       continueAs: 'Continuar como',
       signIn: 'Entrar',
+      signingIn: 'Entrando',
       manageAccounts: 'Gerenciar contas',
       manageAccountsSubtitle: 'Remova uma conta deste aparelho quando não quiser mais acesso rápido.',
       removeAccount: 'Remover conta',
@@ -121,6 +183,7 @@ export const appCopy = {
       savedAccounts: 'Your accounts',
       continueAs: 'Continue as',
       signIn: 'Sign in',
+      signingIn: 'Signing in',
       manageAccounts: 'Manage accounts',
       manageAccountsSubtitle: 'Remove an account from this device when you no longer want quick access.',
       removeAccount: 'Remove account',

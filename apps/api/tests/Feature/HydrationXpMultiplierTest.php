@@ -52,6 +52,7 @@ class HydrationXpMultiplierTest extends TestCase
         $this->history($user, $days);
         for ($i = 0; $i < 12; $i++) {
             $this->postJson('/api/v1/hydration/logs', $this->drink(200))->assertCreated();
+            $this->travel(15)->minutes();
         }
         $this->assertSame($total, $user->fresh()->xp_total);
         $this->postJson('/api/v1/hydration/logs', $this->drink(200))->assertCreated()->assertJsonPath('data.gamification.xp_awarded', 0);
@@ -93,10 +94,11 @@ class HydrationXpMultiplierTest extends TestCase
     public function test_local_midnight_increases_the_multiplier_once(): void
     {
         $this->member();
-        $this->travelTo(CarbonImmutable::parse('2026-09-11T02:59:00Z'));
+        $this->travelTo(CarbonImmutable::parse('2026-09-11T02:45:00Z'));
         $this->postJson('/api/v1/hydration/logs', $this->drink())->assertCreated()->assertJsonPath('data.gamification.xp_awarded', 10);
         $this->travelTo(CarbonImmutable::parse('2026-09-11T03:00:00Z'));
         $this->postJson('/api/v1/hydration/logs', $this->drink())->assertCreated()->assertJsonPath('data.gamification.xp_awarded', 11);
+        $this->travel(15)->minutes();
         $this->postJson('/api/v1/hydration/logs', $this->drink())->assertCreated()->assertJsonPath('data.gamification.awarded_xp_multiplier', 1.1);
     }
 
@@ -120,6 +122,7 @@ class HydrationXpMultiplierTest extends TestCase
         $this->postJson('/api/v1/hydration/logs', $today)->assertCreated()->assertJsonPath('data.gamification.xp_awarded', 10);
         $this->postJson('/api/v1/hydration/logs', [...$this->drink(), 'occurred_at' => '2026-09-11T12:00:00Z'])->assertCreated();
         $this->postJson('/api/v1/hydration/logs', $today)->assertOk()->assertJsonPath('data.gamification.xp_awarded', 10);
+        $this->travel(15)->minutes();
         $this->postJson('/api/v1/hydration/logs', $this->drink())->assertCreated()->assertJsonPath('data.gamification.xp_awarded', 5);
         $this->assertSame(25, $user->fresh()->xp_total);
     }

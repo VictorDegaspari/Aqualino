@@ -1,61 +1,48 @@
+import type {GroupLeaderboardEntry} from '@aqualino/contracts';
 import React, {memo} from 'react';
-import {StyleSheet, Text, View, type TextStyle, type ViewStyle} from 'react-native';
+import {StyleSheet, Text, View, type ViewStyle} from 'react-native';
 import {UserAvatar} from '../../../../shared/avatars/UserAvatar';
-import {AqualinoIcon} from '../../../../shared/components/AqualinoIcon';
-import {ChallengeAsset, type ChallengeAssetName} from './ChallengeAsset';
+import {ChallengeAsset} from './ChallengeAsset';
 import {challengeTheme} from './challengeTheme';
+import type {AppLocale} from '../../../../shared/i18n/appLocale';
 
-interface Props {
-  position: number;
-  active?: boolean;
-  medal?: ChallengeAssetName;
-  barColor: string;
-  avatarId?: string | null;
-}
+const medals = {gold: 'rankGold', silver: 'rankSilver', bronze: 'rankBronze'} as const;
 
-export const LeaderboardPlayer = memo(function LeaderboardPlayerView({position, active = false, medal, barColor, avatarId}: Props): React.JSX.Element {
-  const progressStyle: ViewStyle = {backgroundColor: barColor, width: active ? '78%' : position <= 3 ? '58%' : '34%'};
-  const rankLabelStyle: TextStyle = {color: barColor};
+export const LeaderboardPlayer = memo(function LeaderboardPlayerView({entry, locale = 'pt-BR'}: {entry: GroupLeaderboardEntry; locale?: AppLocale}): React.JSX.Element {
+  const english = locale === 'en-US';
+  const progressStyle: ViewStyle = {width: `${Math.min(100, Math.max(0, entry.percentage))}%`};
+  const rank = entry.rank === null ? (locale === 'es-ES' ? "Sin posición" : english ? 'Unranked' : 'Sem posição') : english ? `rank ${entry.rank}${entry.tied ? ', tied' : ''}` : `${entry.rank}º${entry.tied ? ' empatado' : ' lugar'}`;
 
   return (
-    <View style={styles.player}>
+    <View accessible accessibilityLabel={`${entry.display_name}${entry.is_you ? (locale === 'es-ES' ? ", tú" : english ? ', you' : ', você') : ''}, ${rank}, ${formatPoints(entry.points, locale)} ${locale === 'es-ES' ? "puntos" : english ? 'points' : 'pontos'}`} style={styles.player}>
       <View style={styles.rank}>
-        {medal ? (
-          <>
-            <ChallengeAsset name={medal} style={styles.medal} />
-            <Text numberOfLines={1} style={[styles.rankLabel, rankLabelStyle]}>
-              {position === 2 ? '2º lugar' : `${position}º`}
-            </Text>
-          </>
-        ) : <Text style={styles.position}>{position}º</Text>}
+        {entry.medal ? <ChallengeAsset name={medals[entry.medal]} style={styles.medal} /> : null}
+        <Text style={styles.position}>{entry.rank === null ? '—' : `${english ? '#' : ''}${entry.rank}${english ? '' : 'º'}${entry.tied ? ' =' : ''}`}</Text>
       </View>
-      <View style={[styles.avatarRing, active && styles.activeRing]}>
-        {active
-          ? <UserAvatar avatarId={avatarId} style={styles.avatar} />
-          : <AqualinoIcon name="plus" size={14} color="#E6F8FF" />}
+      <View style={[styles.avatarRing, entry.is_you && styles.activeRing]}>
+        <UserAvatar avatarId={entry.avatar_url} style={styles.avatar} />
       </View>
-      <View style={styles.track}>
-        <View style={[styles.progress, progressStyle]} />
-      </View>
+      <Text numberOfLines={1} style={styles.name}>{entry.is_you ? (locale === 'es-ES' ? "Tú" : english ? 'You' : 'Você') : entry.display_name}</Text>
+      <Text style={styles.points}>{formatPoints(entry.points, locale)}</Text>
+      <View style={styles.track}><View style={[styles.progress, progressStyle]} /></View>
     </View>
   );
 });
 
+export function formatPoints(value: number, locale: AppLocale = 'pt-BR'): string {
+  return value.toLocaleString(locale, {maximumFractionDigits: 2});
+}
+
 const styles = StyleSheet.create({
-  player: {flex: 1, minWidth: 0, alignItems: 'center'},
-  rank: {height: 27, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1},
-  medal: {width: 26, height: 29},
-  rankLabel: {maxWidth: 36, fontSize: 8, lineHeight: 11, fontWeight: '900'},
-  position: {fontSize: 14, lineHeight: 19, fontWeight: '900', color: challengeTheme.colors.muted},
-  avatarRing: {
-    width: 36, height: 36, borderRadius: 18, marginTop: 2, overflow: 'hidden', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#416782', backgroundColor: '#113652',
-  },
-  activeRing: {
-    borderColor: challengeTheme.colors.cyanStrong, shadowColor: challengeTheme.colors.cyan,
-    shadowOpacity: 0.9, shadowRadius: 9, shadowOffset: {width: 0, height: 0}, elevation: 7,
-  },
+  player: {flex: 1, minWidth: 0, alignItems: 'center', gap: 2},
+  rank: {height: 27, flexDirection: 'row', alignItems: 'center', justifyContent: 'center'},
+  medal: {width: 25, height: 28},
+  position: {fontSize: 12, lineHeight: 17, fontWeight: '900', color: challengeTheme.colors.text},
+  avatarRing: {width: 34, height: 34, borderRadius: 17, overflow: 'hidden', borderWidth: 2, borderColor: '#416782', backgroundColor: '#113652'},
+  activeRing: {borderColor: challengeTheme.colors.cyanStrong},
   avatar: {width: '100%', height: '100%'},
-  track: {width: '78%', height: 5, marginTop: 6, borderRadius: 4, overflow: 'hidden', backgroundColor: '#103754'},
-  progress: {height: '100%', borderRadius: 4},
+  name: {maxWidth: '95%', color: challengeTheme.colors.text, fontSize: 11},
+  points: {color: challengeTheme.colors.cyanStrong, fontSize: 12, fontWeight: '800'},
+  track: {width: '78%', height: 4, borderRadius: 4, overflow: 'hidden', backgroundColor: '#103754'},
+  progress: {height: '100%', borderRadius: 4, backgroundColor: challengeTheme.colors.cyan},
 });

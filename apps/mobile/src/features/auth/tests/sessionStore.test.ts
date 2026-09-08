@@ -353,4 +353,16 @@ describe('sessionStore', () => {
     expect(userStore.clear).not.toHaveBeenCalled();
     expect(useSessionStore.getState().user).toEqual(restored);
   });
+
+  test('accepts a confirmed penalty and rejects older responses that would restore invalid XP', async () => {
+    useSessionStore.setState({status: 'signedIn', user: {...user, xp_total: 40, hydration_penalty_count: 0}});
+    repository.me.mockResolvedValueOnce({...user, xp_total: 10, hydration_penalty_count: 1});
+    await useSessionStore.getState().refreshUser();
+    expect(useSessionStore.getState().user).toMatchObject({xp_total: 10, hydration_penalty_count: 1});
+    useSessionStore.getState().applyGamification(user.id, {xp_awarded: 30, xp_total: 40, level: 1, streak: 1, hydration_penalty_count: 0, new_achievements: []});
+    expect(useSessionStore.getState().user).toMatchObject({xp_total: 10, hydration_penalty_count: 1});
+    repository.me.mockResolvedValueOnce({...user, xp_total: 40, hydration_penalty_count: 0});
+    await useSessionStore.getState().refreshUser();
+    expect(useSessionStore.getState().user).toMatchObject({xp_total: 10, hydration_penalty_count: 1});
+  });
 });

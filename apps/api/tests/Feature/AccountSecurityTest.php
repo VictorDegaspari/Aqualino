@@ -9,6 +9,7 @@ use Illuminate\Auth\Events\Verified;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Mail\Transport\ResendTransport;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
@@ -23,6 +24,78 @@ use Tests\TestCase;
 class AccountSecurityTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_resend_mailer_resolves_with_the_configured_api_key(): void
+    {
+        config(['mail.default' => 'resend', 'services.resend.key' => 're_test_not_a_real_key']);
+
+        $this->assertInstanceOf(ResendTransport::class, Mail::mailer()->getSymfonyTransport());
+    }
+
+    public function test_local_registration_can_skip_confirmation_without_marking_the_email_verified(): void
+    {
+        $this->app['env'] = 'local';
+        config(['auth.skip_email_verification_locally' => true]);
+        Notification::fake();
+        Event::fake([Verified::class]);
+
+        $response = $this->postJson('/api/v1/auth/register', [
+            'email' => 'local@example.com', 'password' => 'segura123', 'password_confirmation' => 'segura123',
+            'display_name' => 'Ana', 'username' => 'ana_local', 'timezone' => 'America/Sao_Paulo',
+            'locale' => 'pt-BR', 'onboarding_completed' => true, 'terms_accepted' => true, 'terms_version' => '2026-09-02',
+        ])->assertCreated()->assertJsonPath('data.user.email_verification_required', false)
+            ->assertJsonPath('data.user.email_verified_at', null);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $response->json('data.user.id'), 'email_verification_required' => true, 'email_verified_at' => null,
+        ]);
+        Notification::assertNothingSent();
+        Event::assertNotDispatched(Verified::class);
+        $this->withToken($response->json('data.token'))->getJson('/api/v1/groups/current')->assertOk();
+
+        config(['auth.skip_email_verification_locally' => false]);
+        $this->getJson('/api/v1/groups/current')->assertForbidden()->assertJsonPath('error.code', 'EMAIL_VERIFICATION_REQUIRED');
+    }
+
+    #[TestWith(['local', true, false])]
+    #[TestWith(['local', false, true])]
+    #[TestWith(['production', true, true])]
+    #[TestWith(['staging', true, true])]
+    #[TestWith(['testing', true, true])]
+    public function test_confirmation_bypass_is_local_only_and_consistent_in_login_and_session(string $environment, bool $skip, bool $required): void
+    {
+        $this->app['env'] = $environment;
+        config(['auth.skip_email_verification_locally' => $skip]);
+        Notification::fake();
+        $user = $this->member();
+
+        $response = $this->postJson('/api/v1/auth/login', ['email' => $user->email, 'password' => 'oldSenha123'])
+            ->assertOk()->assertJsonPath('data.user.email_verification_required', $required);
+        $this->withToken($response->json('data.token'))->getJson('/api/v1/me')
+            ->assertOk()->assertJsonPath('data.email_verification_required', $required);
+        $this->getJson('/api/v1/groups/current')->assertStatus($required ? 403 : 200);
+        $this->postJson('/api/v1/auth/email/verification-notification')->assertAccepted();
+
+        if ($required) {
+            Notification::assertSentTo($user, VerifyAccountEmail::class);
+        } else {
+            Notification::assertNothingSent();
+        }
+        $this->assertNull($user->fresh()->email_verified_at);
+    }
+
+    public function test_queued_confirmation_is_not_delivered_when_the_local_bypass_is_enabled(): void
+    {
+        $user = $this->member();
+        $notification = new VerifyAccountEmail($user);
+        $this->app['env'] = 'local';
+        config(['auth.skip_email_verification_locally' => true]);
+        Mail::fake();
+
+        $user->notifyNow($notification);
+
+        Mail::assertNothingOutgoing();
+    }
 
     public function test_registration_sends_verification_and_protects_new_accounts_until_confirmed(): void
     {
@@ -202,6 +275,21 @@ class AccountSecurityTest extends TestCase
         $user = $this->member();
         $this->withHeader('Host', 'attacker.example')->postJson('/api/v1/auth/forgot-password', ['email' => $user->email])->assertAccepted();
         Notification::assertSentTo($user, ResetAccountPassword::class, fn ($notification) => str_starts_with($notification->url, 'https://aqualino.example/'));
+    }
+
+    public function test_spanish_account_emails_and_browser_actions_keep_the_selected_language(): void
+    {
+        $user = $this->member();
+        $user->profile->update(['locale' => 'es-ES']);
+        $user->refresh();
+        $verification = new VerifyAccountEmail($user);
+        $reset = new ResetAccountPassword(str_repeat('a', 64), $user);
+
+        $this->assertStringContainsString('Confirma tu correo', view('mail.account-action', $verification->toMail($user)->viewData)->render());
+        $this->assertStringContainsString('Restablece tu contraseña', view('mail.account-action', $reset->toMail($user)->viewData)->render());
+        $this->get($reset->url)->assertOk()->assertSee('Restablece tu contraseña')->assertSee('locale=es-ES');
+        $this->get($verification->url)->assertOk()->assertSee('¡Correo confirmado!');
+        $this->get('/email/verify/invalid/invalid?locale=es-ES')->assertForbidden()->assertSee('Vamos a probar otro enlace');
     }
 
     public function test_notifications_render_through_the_real_mail_channel_with_html_and_plain_text(): void

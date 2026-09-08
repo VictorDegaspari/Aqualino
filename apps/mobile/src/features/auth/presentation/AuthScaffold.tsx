@@ -1,11 +1,7 @@
 import React from 'react';
 import {
-  ActivityIndicator,
   Image,
   Pressable,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,8 +10,10 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {mascotImages} from '../../../assets/mascot/mascotImages';
+import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
 import {typography} from '../../../shared/theme/typography';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
+import {KeyboardAwareScrollView} from '../../../shared/components/KeyboardAwareScrollView';
 
 interface AuthScaffoldProps {
   eyebrow: string;
@@ -35,22 +33,20 @@ export function AuthScaffold({eyebrow, title, subtitle, children}: AuthScaffoldP
       />
       <View pointerEvents="none" style={styles.backgroundOverlay} />
       <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView style={styles.safeArea} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView
-            contentContainerStyle={styles.content}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
-            <View style={styles.hero}>
-              <View style={styles.mascotOrb}>
-                <Image source={mascotImages.empty} resizeMode="contain" style={styles.mascot} />
-              </View>
-              <Text style={styles.eyebrow}>{eyebrow}</Text>
-              <Text accessibilityRole="header" style={styles.title}>{title}</Text>
-              <Text style={styles.subtitle}>{subtitle}</Text>
+        <KeyboardAwareScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.hero}>
+            <View style={styles.mascotOrb}>
+              <Image source={mascotImages.empty} resizeMode="contain" style={styles.mascot} />
             </View>
-            <View style={styles.panel}>{children}</View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+            <Text style={styles.eyebrow}>{eyebrow}</Text>
+            <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
+          </View>
+          <View style={styles.panel}>{children}</View>
+        </KeyboardAwareScrollView>
       </SafeAreaView>
     </View>
   );
@@ -92,7 +88,7 @@ export function AuthButton({testID, label, onPress, loading, disabled}: AuthButt
       disabled={disabled || loading}
       onPress={onPress}
       style={({pressed}) => [styles.button, (disabled || loading) && styles.buttonDisabled, pressed && !loading && styles.buttonPressed]}>
-      {loading ? <ActivityIndicator color={challengeTheme.colors.backgroundDeep} /> : <Text style={styles.buttonLabel}>{label}</Text>}
+      {loading ? <LoadingWaterDrop size={25} /> : <Text style={styles.buttonLabel}>{label}</Text>}
     </Pressable>
   );
 }

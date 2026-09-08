@@ -91,12 +91,14 @@ flowchart TD
 | Lembretes | `open reminders` / `nav.reminders` | `reminders.new`, hora, minuto, dias, ativar e remover |
 | Histórico | `open history` / `nav.history` | Selecionar dia, consumo e marcações |
 | Perfil | `open profile` / `nav.profile` | `profile.avatar`, `profile.achievements`, sair |
-| Inventário | `open inventory` / `home.inventory` | Poções para congelar ou reviver sequência |
+| Inventário | `open inventory` / `home.inventory` | `inventory.potions` para poções; `inventory.themes` para temas; `inventory.back` ou arrasto da esquerda para a direita para voltar |
 | Conquistas | `open achievements` | Categorias, medalhas e detalhes |
 | Água | `open hydrate` / `home.camera` | Deep link abre a seleção; botão da Home abre a câmera; foto obrigatória |
 | Modais do app | `app-modal` em `inspect` | `back` respeita o estado ocupado e o fechamento permitido |
 
 O percurso `tour` visita Home → Grupos → Lembretes → Histórico → Perfil → Inventário → Conquistas → Home, verificando também os botões reais da navbar. `avatar-preview` abre e fecha o editor sem selecionar avatar; `water-preview` confere a exigência de foto sem registrar água.
+
+`inventory-back` abre o inventário pelo XP da Home e retorna pelo botão. O inventário e as conquistas compartilham `SwipeBackScreen`: o arrasto move a tela inteira, um movimento curto retorna à posição inicial e um movimento suficiente fecha a tela. O gesto também funciona em **Temas**, durante carregamentos e em estados de erro. Se o inventário for aberto por deep link sem uma tela anterior, voltar abre a Home.
 
 ## Evidências e diagnóstico
 

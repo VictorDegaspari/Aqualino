@@ -88,8 +88,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
   applyGamification(userId, snapshot) {
     const current = get().user;
-    if (get().status !== 'signedIn' || current?.id !== userId || snapshot.xp_total < (current.xp_total ?? 0) || snapshot.level < (current.level ?? 1)) return;
-    const user = {...current, xp_total: snapshot.xp_total, xp_multiplier: snapshot.xp_multiplier ?? current.xp_multiplier, level: snapshot.level, level_progress: snapshot.level_progress ?? current.level_progress, streak: snapshot.streak};
+    if (get().status !== 'signedIn' || current?.id !== userId || isOlderProgress(snapshot, current)) return;
+    const user = {...current, hydration_penalty_count: snapshot.hydration_penalty_count ?? 0, xp_total: snapshot.xp_total, xp_multiplier: snapshot.xp_multiplier ?? current.xp_multiplier, level: snapshot.level, level_progress: snapshot.level_progress ?? current.level_progress, streak: snapshot.streak};
     set({user});
     secureUserStore.set(user).catch(() => undefined);
   },
@@ -184,10 +184,17 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
 function preserveConfirmedProgress(incoming: User, current: User | null): User {
   if (!current || incoming.id !== current.id) return incoming;
-  if ((incoming.xp_total ?? 0) < (current.xp_total ?? 0) || (incoming.level ?? 1) < (current.level ?? 1)) {
-    return {...incoming, xp_total: current.xp_total, level: current.level, level_progress: current.level_progress, streak: current.streak, xp_multiplier: current.xp_multiplier};
+  if (isOlderProgress(incoming, current)) {
+    return {...incoming, hydration_penalty_count: current.hydration_penalty_count, xp_total: current.xp_total, level: current.level, level_progress: current.level_progress, streak: current.streak, xp_multiplier: current.xp_multiplier};
   }
   return incoming;
+}
+
+function isOlderProgress(incoming: Pick<User, 'xp_total' | 'level' | 'hydration_penalty_count'>, current: User): boolean {
+  const incomingPenalties = incoming.hydration_penalty_count ?? 0;
+  const currentPenalties = current.hydration_penalty_count ?? 0;
+  if (incomingPenalties !== currentPenalties) return incomingPenalties < currentPenalties;
+  return (incoming.xp_total ?? 0) < (current.xp_total ?? 0) || (incoming.level ?? 1) < (current.level ?? 1);
 }
 
 function isInvalidSession(error: unknown): boolean {

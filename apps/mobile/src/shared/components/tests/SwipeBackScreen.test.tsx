@@ -3,11 +3,11 @@ import {Pressable, Text} from 'react-native';
 import {act, fireEvent, render} from '@testing-library/react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {createGestureController} from 'react-native-gesture-handler/jest-utils';
-import {SwipeBackScreen} from '../presentation/SwipeBackScreen';
+import {SwipeBackScreen} from '../SwipeBackScreen';
 
 async function setup() {
   const onBack = jest.fn();
-  const content = () => <GestureHandlerRootView><SwipeBackScreen onBack={onBack}>{close => <Pressable accessibilityRole="button" onPress={close}><Text>Voltar</Text></Pressable>}</SwipeBackScreen></GestureHandlerRootView>;
+  const content = () => <GestureHandlerRootView><SwipeBackScreen testID="achievements" onBack={onBack}>{close => <Pressable accessibilityRole="button" onPress={close}><Text>Voltar</Text></Pressable>}</SwipeBackScreen></GestureHandlerRootView>;
   const view = await render(content());
   const gesture = createGestureController('achievements-back-gesture');
   const refresh = () => view.rerender(content());

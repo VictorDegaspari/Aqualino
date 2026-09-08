@@ -1,9 +1,8 @@
+import {useTranslation} from '../../../../shared/i18n/useTranslation';
 import type {ChallengeReward, HydrationWeek, HydrationWeekDay} from '@aqualino/contracts';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
-  RefreshControl,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -20,6 +19,8 @@ import {ChallengePath} from './ChallengePath';
 import {DayDetailsModal} from './DayDetailsModal';
 import {challengeCanvasHeight, challengeTheme, dayNodes, timelineLayout} from './challengeTheme';
 import {haptics} from '../../../../shared/device/haptics';
+import {useChallengeCalendar} from './useChallengeCalendar';
+import {HomeRefreshScrollView} from '../HomeRefreshScrollView';
 
 const SCENE_TOP_SPACE = 68;
 
@@ -29,11 +30,13 @@ interface Props {
   reward?: ChallengeReward | null;
   onReward?: () => void;
   motionEnabled?: boolean;
-  refreshing?: boolean;
-  onRefresh: () => void;
+  onRefresh: () => Promise<unknown> | void;
+  footer?: React.ReactNode;
 }
 
-export function ChallengeTimeline({week, mode, reward, onReward, motionEnabled = true, refreshing = false, onRefresh}: Props): React.JSX.Element {
+export function ChallengeTimeline({week: snapshot, mode, reward, onReward, motionEnabled = true, onRefresh, footer}: Props): React.JSX.Element {
+  const {t} = useTranslation();
+  const week = useChallengeCalendar(snapshot);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
   const [selected, setSelected] = useState<{day: HydrationWeekDay; index: number}>();
@@ -41,7 +44,8 @@ export function ChallengeTimeline({week, mode, reward, onReward, motionEnabled =
   const positionedChallenge = useRef('');
   const {width} = useWindowDimensions();
   const scale = Math.min(1.06, Math.max(0.9, (width - 32) / challengeTheme.canvasWidth));
-  const currentIndex = Math.max(0, week.days.findIndex(day => day.is_today));
+  const todayIndex = week.days.findIndex(day => day.is_today);
+  const currentIndex = todayIndex >= 0 ? todayIndex : week.current_date > week.ends_on ? week.days.length - 1 : 0;
   const challengeKey = `${week.starts_on}:${week.ends_on}:${week.current_date}`;
   const layout = useMemo(() => createLayout(scale), [scale]);
 
@@ -53,9 +57,9 @@ export function ChallengeTimeline({week, mode, reward, onReward, motionEnabled =
     const currentVisualCenter = (SCENE_TOP_SPACE + currentNode.y - 48) * scale;
     const maxOffset = Math.max(0, contentHeight - viewportHeight);
     const target = Math.min(maxOffset, Math.max(0, currentVisualCenter - viewportHeight / 2));
-    scrollRef.current?.scrollTo({y: target, animated: false});
+    scrollRef.current?.scrollTo({y: target, animated: motionEnabled && positionedChallenge.current !== ''});
     positionedChallenge.current = challengeKey;
-  }, [challengeKey, contentHeight, currentIndex, scale, viewportHeight]);
+  }, [challengeKey, contentHeight, currentIndex, motionEnabled, scale, viewportHeight]);
 
   const handleViewportLayout = useCallback((event: LayoutChangeEvent) => {
     const nextHeight = Math.round(event.nativeEvent.layout.height);
@@ -76,28 +80,30 @@ export function ChallengeTimeline({week, mode, reward, onReward, motionEnabled =
     <View style={styles.section}>
       <Text style={styles.range}>
         <Text style={styles.rangeStrong}>{formatShortRange(week.starts_on, week.ends_on)}</Text>
-        {'  ·  '}Dia {currentIndex + 1} de 7
+        {'  ·  '}{todayIndex >= 0 ? t(`Dia ${currentIndex + 1} de 7`, `Day ${currentIndex + 1} of 7`, `Día ${currentIndex + 1} de 7`) : week.current_date > week.ends_on ? t("Período encerrado", "Period ended", "Período terminado") : t("Começa em breve", "Starting soon", "Empieza pronto")}
       </Text>
 
       <View onLayout={handleViewportLayout} style={styles.viewport}>
-        <ScrollView
+        <HomeRefreshScrollView
           ref={scrollRef}
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           onContentSizeChange={handleContentSizeChange}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={challengeTheme.colors.cyan} />}>
+          motionEnabled={motionEnabled}
+          onRefresh={onRefresh}>
           <View style={layout.scene}>
             <ChallengePath scale={scale} />
             {week.days.map((day, index) => (
               <ChallengeDay day={day} index={index} key={day.date} scale={scale} motionEnabled={motionEnabled} onPress={handleDayPress} />
             ))}
           </View>
-          {mode === 'solo' ? <Pressable accessibilityRole="button" accessibilityLabel="Ver baú do desafio solo" onPress={onReward} style={styles.chest}>
+          {footer}
+          {mode === 'solo' ? <Pressable accessibilityRole="button" accessibilityLabel={t("Ver baú do desafio solo", "View solo challenge chest", "Ver cofre del desafío individual")} onPress={onReward} style={styles.chest}>
             <RewardChestIcon opened={reward?.state === 'claimed'} />
-            <Text style={styles.chestLabel}>{reward?.state === 'claimed' ? 'Recompensa recebida' : reward?.state === 'available' ? 'Seu baú está liberado!' : 'Baú surpresa • cumpra as 7 metas'}</Text>
+            <Text style={styles.chestLabel}>{reward?.state === 'claimed' ? t("Recompensa recebida", "Reward received", "Recompensa recibida") : reward?.state === 'available' ? t("Seu baú está liberado!", "Your chest is ready!", "¡Tu cofre está disponible!") : t("Baú surpresa • cumpra as 7 metas", "Surprise chest • reach all 7 goals", "Cofre sorpresa • cumple las 7 metas")}</Text>
           </Pressable> : null}
-        </ScrollView>
+        </HomeRefreshScrollView>
         {motionEnabled ? <ChallengeBubbles viewportHeight={viewportHeight || 320} /> : null}
       </View>
 

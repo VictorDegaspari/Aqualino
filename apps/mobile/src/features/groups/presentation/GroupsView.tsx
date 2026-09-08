@@ -1,9 +1,10 @@
 import React, {useState} from 'react';
 import type {GroupInvitePreview, PrivateGroup} from '@aqualino/contracts';
-import {ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {UserAvatar} from '../../../shared/avatars/UserAvatar';
 import {AqualinoIcon, type AqualinoIconName} from '../../../shared/components/AqualinoIcon';
+import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
 import {TabScreenHeader} from '../../../shared/components/TabScreenHeader';
 import {haptics} from '../../../shared/device/haptics';
 import type {AppLocale} from '../../../shared/i18n/appLocale';
@@ -14,6 +15,7 @@ import {GroupTeam} from './GroupTeam';
 import {groupsCopy} from './groupsCopy';
 
 interface Props {
+  reviews?: React.ReactNode;
   displayName: string;
   avatarId?: string | null;
   userId?: string;
@@ -32,11 +34,12 @@ interface Props {
   onShare: () => void;
   onRenewInvite: () => void;
   onLeave: () => void;
+  onPhotoReviewChange?: (enabled: boolean) => Promise<boolean>;
 }
 
-export function GroupsView({displayName, avatarId, userId, locale = 'pt-BR', group, loading = false,
+export function GroupsView({reviews, displayName, avatarId, userId, locale = 'pt-BR', group, loading = false,
   refreshing = false, busy = false, loadError, error, onRefresh, onClearError, onCreateGroup,
-  onPreviewInvite, onJoinGroup, onShare, onRenewInvite, onLeave}: Props): React.JSX.Element {
+  onPreviewInvite, onJoinGroup, onShare, onRenewInvite, onLeave, onPhotoReviewChange}: Props): React.JSX.Element {
   const copy = groupsCopy[locale];
   const [form, setForm] = useState<'create' | 'join' | null>(null);
   const openForm = (mode: 'create' | 'join') => {onClearError(); setForm(mode);};
@@ -71,10 +74,10 @@ export function GroupsView({displayName, avatarId, userId, locale = 'pt-BR', gro
           </View> : null}
           {error && !form ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
           {loading && !loadError ? <View style={styles.section}>
-            <ActivityIndicator color={challengeTheme.colors.cyanStrong} />
+            <LoadingWaterDrop size={44} accessibilityLabel={copy.loading} />
             <Text style={styles.cardDescription}>{copy.loading}</Text>
-          </View> : group ? <GroupTeam group={group} userId={userId} copy={copy} locale={locale} busy={busy}
-            onShare={onShare} onRenew={onRenewInvite} onLeave={onLeave} /> : !loadError ? <>
+          </View> : group ? <GroupTeam reviews={reviews} group={group} userId={userId} copy={copy} locale={locale} busy={busy}
+            onShare={onShare} onRenew={onRenewInvite} onLeave={onLeave} onPhotoReviewChange={onPhotoReviewChange} /> : !loadError ? <>
           <View style={styles.invitationCard}>
             <View style={styles.statusPill}>
               <View style={styles.statusDot} />

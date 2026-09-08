@@ -1,5 +1,6 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
+import {AppSwitch} from '../../../shared/components/AppSwitch';
 import type {PrivateGroup} from '@aqualino/contracts';
 import {UserAvatar} from '../../../shared/avatars/UserAvatar';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
@@ -8,8 +9,11 @@ import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {GroupButton} from './GroupButton';
 import type {GroupsCopy} from './groupsCopy';
 import {LevelBadge} from '../../../shared/components/LevelBadge';
+import {GroupChallengePanel} from '../../home/presentation/challenge/GroupChallengePanel';
 
-export function GroupTeam({group, userId, copy, locale, busy, onShare, onRenew, onLeave}: {
+export function GroupTeam({reviews, group, userId, copy, locale, busy, onShare, onRenew, onLeave, onPhotoReviewChange}: {
+  reviews?: React.ReactNode;
+  onPhotoReviewChange?: (enabled: boolean) => Promise<boolean>;
   group: PrivateGroup; userId?: string; copy: GroupsCopy; locale: AppLocale; busy: boolean;
   onShare: () => void; onRenew: () => void; onLeave: () => void;
 }): React.JSX.Element {
@@ -29,6 +33,20 @@ export function GroupTeam({group, userId, copy, locale, busy, onShare, onRenew, 
         <Text style={styles.description}>{group.members.length < 2 ? copy.waiting : copy.together}</Text>
         <Text style={styles.caption}>{copy.timezone}: {group.timezone}</Text>
       </View>
+      <GroupChallengePanel locale={locale} challenge={group.challenge} result={group.previous_challenge} rules={group.challenge_rules} />
+      <View style={styles.card}>
+        <View style={styles.summary}>
+          <Text style={[styles.sectionTitle, styles.heading]}>{locale === 'es-ES' ? "Votación de registros" : locale === 'en-US' ? 'Photo voting' : 'Votação das marcações'}</Text>
+          {group.owner_id === userId && onPhotoReviewChange ? <AppSwitch
+            testID="group-photo-review-toggle" accessibilityLabel={locale === 'es-ES' ? "Votación de registros" : locale === 'en-US' ? 'Photo voting' : 'Votação das marcações'}
+            value={group.photo_review_enabled ?? true} disabled={busy}
+            onValueChange={onPhotoReviewChange} />
+            : <Text style={styles.caption}>{group.photo_review_enabled === false ? (locale === 'es-ES' ? "Desactivada" : locale === 'en-US' ? 'Disabled' : 'Desabilitada') : (locale === 'es-ES' ? "Activada" : locale === 'en-US' ? 'Enabled' : 'Habilitada')}</Text>}
+        </View>
+        <Text style={styles.description}>{locale === 'es-ES' ? "El líder puede activar la votación en grupos de 3 o más personas. Los cambios se aplican a los nuevos envíos; las votaciones abiertas mantienen su plazo de 12 horas." : locale === 'en-US' ? 'The leader can enable voting for groups of 3 or more people. Changes apply to new submissions; open votes keep their 12-hour deadline.' : 'O líder pode habilitar a votação em grupos com 3 ou mais pessoas. Alterações valem para novos envios; votações abertas mantêm seu prazo de 12 horas.'}</Text>
+        <Text style={styles.caption}>{locale === 'es-ES' ? "Se mantienen el límite de 15 registros al día y la pausa de 15 minutos." : locale === 'en-US' ? 'The limit of 15 logs per day and a 15-minute pause always applies.' : 'O limite de 15 marcações por dia e a pausa de 15 minutos continuam valendo.'}</Text>
+      </View>
+      {reviews}
       <View style={styles.card}>
         <Text accessibilityRole="header" style={styles.sectionTitle}>{copy.members}</Text>
         {group.members.map(member => (

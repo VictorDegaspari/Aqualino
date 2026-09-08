@@ -8,7 +8,7 @@ export function projectPendingChallenges(challenges: HydrationChallenges | undef
   const projected = {...challenges};
   for (const mode of ['solo', 'group'] as const) {
     const challenge = challenges[mode];
-    if (!challenge || challenge.status !== 'active') continue;
+    if (!challenge || challenge.status !== 'active' || challenge.participating === false) continue;
     let progress = challenge.progress;
     for (const event of events) {
       const date = hydrationLogDate(new Date(event.occurredAt), progress.timezone);

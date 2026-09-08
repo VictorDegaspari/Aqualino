@@ -30,9 +30,11 @@ export interface User {
   email_verified_at?: string | null;
   email_verification_required?: boolean;
   xp_total?: number;
+  hydration_penalty_count?: number;
   xp_multiplier?: number;
   level?: number;
   level_progress?: LevelProgress;
+  group_medals?: {gold: number; silver: number; bronze: number};
   streak?: number;
   profile: UserProfile;
 }
@@ -45,6 +47,41 @@ export interface HydrationToday {
   percentage: number;
   goal_achieved: boolean;
   log_count: number;
+  recording_limits?: HydrationRecordingLimits;
+}
+
+export interface HydrationRecordingLimits {
+  daily_limit: number;
+  minimum_interval_seconds: number;
+  recorded_today: number;
+  remaining_today: number;
+  next_allowed_at: string | null;
+  server_now: string;
+}
+
+export interface HydrationReview {
+  id: string;
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  amount_ml: number;
+  occurred_at: string;
+  photo_path: string | null;
+  status: 'pending' | 'valid' | 'invalid';
+  expires_at: string | null;
+  invalidated_at: string | null;
+  eligible_voters: number;
+  invalid_votes_required: number;
+  valid_votes: number;
+  invalid_votes: number;
+  abstentions: number;
+  your_vote: 'valid' | 'invalid' | null;
+  can_vote: boolean;
+}
+
+export interface HydrationReviewPage {
+  data: HydrationReview[];
+  meta: {current_page: number; last_page: number; total: number};
 }
 
 export type HydrationWeekDayState =
@@ -78,7 +115,7 @@ export interface HydrationWeek {
 }
 
 export interface ChallengeReward {
-  state: 'locked' | 'available' | 'claimed';
+  state: 'locked' | 'reviewing' | 'available' | 'claimed';
   type: 'xp' | InventoryItemCode | null;
   amount: number | null;
 }
@@ -86,11 +123,44 @@ export interface ChallengeReward {
 export interface HydrationChallenge {
   id: string;
   mode: 'solo' | 'group';
-  status: 'scheduled' | 'active' | 'completed';
+  status: 'scheduled' | 'active' | 'settling' | 'completed' | 'cancelled';
   starts_at: string;
   ends_at: string;
   progress: HydrationWeek;
   reward: ChallengeReward | null;
+  group_id?: string;
+  participating?: boolean;
+  rules?: GroupChallengeRules;
+  sync_deadline_at?: string;
+  review_deadline_at?: string;
+  finalized_at?: string | null;
+  leaderboard?: GroupLeaderboardEntry[];
+}
+
+export interface GroupChallengeRules {
+  version: string;
+  ranking: 'competition';
+  daily_points_cap: number;
+  total_points_cap: number;
+  points_decimals: number;
+  goal_policy: 'frozen_at_start';
+  minimum_reward_points: number;
+  sync_grace_minutes: number;
+  rewards: {type: 'xp' | InventoryItemCode; amount: number; probability: number}[];
+}
+
+export interface GroupLeaderboardEntry {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  is_you: boolean;
+  total_ml: number;
+  goal_ml: number;
+  percentage: number;
+  points: number;
+  rank: number | null;
+  tied: boolean;
+  medal: 'gold' | 'silver' | 'bronze' | null;
 }
 
 export interface HydrationChallenges {
@@ -98,6 +168,8 @@ export interface HydrationChallenges {
   group: HydrationChallenge | null;
   group_name: string | null;
   can_start_group: boolean;
+  group_result?: HydrationChallenge | null;
+  group_rules?: GroupChallengeRules;
 }
 
 export interface WidgetSnapshot {
@@ -123,6 +195,8 @@ export interface HydrationLog {
   local_date: string;
   source: 'mobile' | 'widget' | 'shortcut' | 'import';
   client_event_id: string;
+  invalidated_at?: string | null;
+  review_expires_at?: string | null;
 }
 
 export interface HydrationLogPage {
@@ -140,6 +214,7 @@ export interface RecordWaterInput {
   occurred_at?: string;
   source: HydrationLog['source'];
   client_event_id: string;
+  photo_base64?: string;
 }
 
 export interface RecordWaterResult {
@@ -152,6 +227,7 @@ export interface RecordWaterResult {
     xp_multiplier?: number;
     awarded_xp_multiplier?: number;
     xp_total: number;
+    hydration_penalty_count?: number;
     level: number;
     level_progress?: LevelProgress;
     streak: number;
@@ -224,6 +300,7 @@ export interface GroupInvite {
 }
 
 export interface PrivateGroup {
+  photo_review_enabled?: boolean;
   id: string;
   name: string;
   timezone: string;
@@ -231,6 +308,9 @@ export interface PrivateGroup {
   max_members: number;
   members: GroupMember[];
   invite: GroupInvite | null;
+  challenge?: HydrationChallenge | null;
+  previous_challenge?: HydrationChallenge | null;
+  challenge_rules?: GroupChallengeRules;
 }
 
 export interface GroupInvitePreview {

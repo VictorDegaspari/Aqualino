@@ -1,3 +1,4 @@
+import {useTranslation} from '../../../../shared/i18n/useTranslation';
 import React, {useMemo} from 'react';
 import {Pressable, StyleSheet, View, type ViewStyle} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -17,15 +18,16 @@ interface Props {
 }
 
 export function ChallengeBottomNavigation({activeTab, onOpenHome, onOpenGroup, onOpenReminders, onOpenHistory, onOpenProfile}: Props): React.JSX.Element {
+  const {t} = useTranslation();
   const insets = useSafeAreaInsets();
   const safeAreaStyle = useMemo<ViewStyle>(() => ({height: 58 + insets.bottom, paddingBottom: insets.bottom}), [insets.bottom]);
   return (
     <View style={[styles.navigation, safeAreaStyle]}>
-      <NavItem icon="home" label="Início" active={activeTab === 'home'} onPress={onOpenHome} />
-      <NavItem icon="group" label="Grupo" active={activeTab === 'group'} onPress={onOpenGroup} />
-      <NavItem icon="reminders" label="Lembretes" active={activeTab === 'reminders'} onPress={onOpenReminders} />
-      <NavItem icon="history" label="Histórico" active={activeTab === 'history'} onPress={onOpenHistory} />
-      <NavItem icon="profile" label="Perfil" active={activeTab === 'profile'} onPress={onOpenProfile} />
+      <NavItem icon="home" label={t("Início", "Home", "Inicio")} active={activeTab === 'home'} onPress={onOpenHome} />
+      <NavItem icon="group" label={t("Grupo", "Group", "Grupo")} active={activeTab === 'group'} onPress={onOpenGroup} />
+      <NavItem icon="reminders" label={t("Lembretes", "Reminders", "Recordatorios")} active={activeTab === 'reminders'} onPress={onOpenReminders} />
+      <NavItem icon="history" label={t("Histórico", "History", "Historial")} active={activeTab === 'history'} onPress={onOpenHistory} />
+      <NavItem icon="profile" label={t("Perfil", "Profile", "Perfil")} active={activeTab === 'profile'} onPress={onOpenProfile} />
     </View>
   );
 }

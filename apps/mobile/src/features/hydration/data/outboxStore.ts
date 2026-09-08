@@ -6,6 +6,7 @@ export interface PendingHydration {
   occurredAt: string;
   source: 'mobile' | 'widget' | 'shortcut';
   attempts: number;
+  photoBase64?: string;
 }
 
 export interface OutboxStore {
@@ -17,4 +18,3 @@ export interface OutboxStore {
   saveHome(data: HydrationHomeData): Promise<void>;
   loadHome(): Promise<HydrationHomeData | null>;
 }
-

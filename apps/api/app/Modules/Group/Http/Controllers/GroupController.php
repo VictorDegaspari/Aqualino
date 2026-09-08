@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Group\Application\GroupService;
 use App\Modules\Group\Http\Requests\CreateGroupRequest;
 use App\Modules\Group\Http\Requests\GroupInviteRequest;
+use App\Modules\Group\Http\Requests\UpdateGroupSettingsRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -34,6 +35,13 @@ class GroupController extends Controller
     public function renewInvite(Request $request, GroupService $groups): JsonResponse
     {
         return response()->json(['data' => $groups->renewInvite($request->user())]);
+    }
+
+    public function updateSettings(UpdateGroupSettingsRequest $request, GroupService $groups): JsonResponse
+    {
+        $data = $request->validated();
+
+        return response()->json(['data' => $groups->updatePhotoReview($request->user(), (bool) $data['photo_review_enabled'])]);
     }
 
     public function leave(Request $request, GroupService $groups): JsonResponse

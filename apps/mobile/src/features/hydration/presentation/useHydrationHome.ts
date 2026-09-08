@@ -8,12 +8,16 @@ import {useSyncStatusStore} from '../application/syncStatusStore';
 import {updateHydrationWeek} from '../application/updateHydrationWeek';
 import {hydrationLogsKey, mergeHydrationLogs, pendingHydrationLog} from '../application/hydrationHistory';
 import {useSessionStore} from '../../auth/application/sessionStore';
+import {projectRecordingLimits} from '../application/projectRecordingLimits';
 import {projectPendingChallenges} from '../application/projectPendingChallenges';
 
 export const hydrationHomeKey = ['hydration', 'home'] as const;
 
+export const hydrationHomeAccountKey = (userId?: string) => userId ? [...hydrationHomeKey, userId] : hydrationHomeKey;
+
 export function useHydrationHomeData() {
-  return useQuery({queryKey: hydrationHomeKey, queryFn: () => hydrationService.cachedOrRemote()});
+  const userId = useSessionStore(state => state.user?.id);
+  return useQuery({queryKey: hydrationHomeAccountKey(userId), queryFn: () => hydrationService.cachedOrRemote()});
 }
 
 export function useHydrationHome() {
@@ -25,8 +29,9 @@ export function useHydrationHome() {
 
 export function useQuickHydration() {
   const mutation = useRecordHydration();
+  const home = useHydrationHomeData();
 
-  return {record: mutation.mutateAsync, isRecording: mutation.isPending};
+  return {record: mutation.mutateAsync, isRecording: mutation.isPending, today: home.data?.data.today};
 }
 
 function useRecordHydration() {
@@ -35,14 +40,15 @@ function useRecordHydration() {
   const setPending = useSyncStatusStore(state => state.setPending);
   const timezone = useSessionStore(state => state.user?.profile.timezone ?? 'America/Sao_Paulo');
   const userId = useSessionStore(state => state.user?.id);
+  const homeKey = hydrationHomeAccountKey(userId);
   const applyGamification = useSessionStore(state => state.applyGamification);
 
   return useMutation({
-    mutationFn: ({amountMl, source}: {amountMl: number; source: PendingHydration['source']}) =>
-      hydrationService.record(amountMl, source, network.isConnected !== false),
+    mutationFn: ({amountMl, source, photoBase64}: {amountMl: number; source: PendingHydration['source']; photoBase64?: string}) =>
+      hydrationService.record(amountMl, source, network.isConnected !== false, photoBase64),
     onMutate: async ({amountMl}) => {
-      await queryClient.cancelQueries({queryKey: hydrationHomeKey});
-      const previous = queryClient.getQueryData<{data: HydrationHomeData; offline: boolean}>(hydrationHomeKey);
+      await queryClient.cancelQueries({queryKey: homeKey});
+      const previous = queryClient.getQueryData<{data: HydrationHomeData; offline: boolean}>(homeKey);
       if (previous) {
         const total = previous.data.today.total_ml + amountMl;
         const today = {
@@ -52,7 +58,7 @@ function useRecordHydration() {
           percentage: Math.round((total / Math.max(previous.data.today.goal_ml, 1)) * 100),
           goal_achieved: total >= previous.data.today.goal_ml,
         };
-        queryClient.setQueryData(hydrationHomeKey, {
+        queryClient.setQueryData(homeKey, {
           ...previous,
           data: {
             ...previous.data,
@@ -66,7 +72,7 @@ function useRecordHydration() {
     },
     onError: (_error, _variables, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(hydrationHomeKey, context.previous);
+        queryClient.setQueryData(homeKey, context.previous);
       }
     },
     onSuccess: async (outcome, _variables, context) => {
@@ -76,14 +82,14 @@ function useRecordHydration() {
       }
       await queryClient.cancelQueries({queryKey: hydrationLogsKey});
       const log = outcome.kind === 'synced' ? outcome.result.log : pendingHydrationLog(outcome.event, timezone);
-      queryClient.setQueryData<HydrationLogPage>([...hydrationLogsKey, log.local_date], current =>
+      queryClient.setQueryData<HydrationLogPage>([...hydrationLogsKey, userId, log.local_date], current =>
         mergeHydrationLogs(current?.data ?? [], [log]));
       queryClient.invalidateQueries({queryKey: hydrationLogsKey});
       if (outcome.kind === 'synced') queryClient.invalidateQueries({queryKey: ['achievements']});
       if (outcome.kind === 'synced') {
-        const current = queryClient.getQueryData<{data: HydrationHomeData; offline: boolean}>(hydrationHomeKey);
+        const current = queryClient.getQueryData<{data: HydrationHomeData; offline: boolean}>(homeKey);
         if (current) {
-          queryClient.setQueryData(hydrationHomeKey, {
+          queryClient.setQueryData(homeKey, {
             data: {
               ...current.data,
               challenges: outcome.result.challenges ?? current.data.challenges,
@@ -95,9 +101,9 @@ function useRecordHydration() {
           });
         }
       } else {
-        const current = queryClient.getQueryData<{data: HydrationHomeData; offline: boolean}>(hydrationHomeKey);
+        const current = queryClient.getQueryData<{data: HydrationHomeData; offline: boolean}>(homeKey);
         if (current) {
-          queryClient.setQueryData(hydrationHomeKey, {...current, data: {...current.data, challenges: projectPendingChallenges(current.data.challenges, [outcome.event])}, offline: true});
+          queryClient.setQueryData(homeKey, {...current, data: {...current.data, challenges: projectPendingChallenges(current.data.challenges, [outcome.event]), today: {...current.data.today, recording_limits: projectRecordingLimits(current.data.today.recording_limits, [outcome.event], current.data.today.log_count - 1)}}, offline: true});
         }
       }
       try {

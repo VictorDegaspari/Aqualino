@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
-import {Pressable, StyleSheet, Switch, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {AppSwitch} from '../../../shared/components/AppSwitch';
 import {AppError} from '../../../shared/errors/AppError';
 import {appCopy} from '../../../shared/i18n/appLocale';
 import {typography} from '../../../shared/theme/typography';
@@ -127,12 +128,10 @@ export function RegisterForm({onAuthenticated, onLogin}: RegisterFormProps): Rea
       />
 
       <View style={styles.terms}>
-        <Switch
+        <AppSwitch
           accessibilityLabel={copy.terms}
           value={terms}
           onValueChange={setTerms}
-          trackColor={{false: challengeTheme.colors.border, true: challengeTheme.colors.cyanStrong}}
-          thumbColor={terms ? challengeTheme.colors.backgroundDeep : '#D6F6FF'}
         />
         <Text style={styles.termsText}>{copy.terms}</Text>
       </View>

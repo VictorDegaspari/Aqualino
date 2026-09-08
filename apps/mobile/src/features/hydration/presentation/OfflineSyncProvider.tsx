@@ -9,6 +9,7 @@ import {useSyncStatusStore} from '../application/syncStatusStore';
 
 export function OfflineSyncProvider({children}: React.PropsWithChildren): React.JSX.Element {
   const queryClient = useQueryClient();
+  const userId = useSessionStore(state => state.user?.id);
   const sessionStatus = useSessionStore(state => state.status);
   const verificationRequired = useSessionStore(state => requiresEmailVerification(state.user));
   const refreshUser = useSessionStore(state => state.refreshUser);
@@ -25,7 +26,7 @@ export function OfflineSyncProvider({children}: React.PropsWithChildren): React.
     const startBackgroundSync = () => {
       if (!active) return;
 
-      hydrationService.pendingCount().then(setPending).catch(() => undefined);
+      hydrationService.pendingCount().then(count => {if (active) setPending(count);}).catch(() => undefined);
       unsubscribe = NetInfo.addEventListener(state => {
         if (!state.isConnected || !secureTokenStore.getCached()) {
           return;
@@ -33,6 +34,7 @@ export function OfflineSyncProvider({children}: React.PropsWithChildren): React.
         setSyncing(true);
         hydrationService.flush()
           .then(async ({synced, rejected}) => {
+            if (!active) return;
             if (synced > 0) {
               refreshUser().catch(() => undefined);
               queryClient.invalidateQueries({queryKey: ['groups']});
@@ -41,10 +43,11 @@ export function OfflineSyncProvider({children}: React.PropsWithChildren): React.
               queryClient.invalidateQueries({queryKey: ['achievements']});
               await queryClient.invalidateQueries({queryKey: ['hydration']});
             }
-            setPending(await hydrationService.pendingCount());
+            const count = await hydrationService.pendingCount();
+            if (active) setPending(count);
           })
           .catch(() => undefined)
-          .finally(() => setSyncing(false));
+          .finally(() => {if (active) setSyncing(false);});
       });
     };
     const firstFrame = requestAnimationFrame(() => {
@@ -55,12 +58,14 @@ export function OfflineSyncProvider({children}: React.PropsWithChildren): React.
 
     return () => {
       active = false;
+      setSyncing(false);
+      setPending(0);
       cancelAnimationFrame(firstFrame);
       if (secondFrame !== undefined) cancelAnimationFrame(secondFrame);
       if (backgroundTimer) clearTimeout(backgroundTimer);
       unsubscribe?.();
     };
-  }, [queryClient, sessionStatus, verificationRequired, setPending, setSyncing, refreshUser]);
+  }, [queryClient, userId, sessionStatus, verificationRequired, setPending, setSyncing, refreshUser]);
 
   return <>{children}</>;
 }

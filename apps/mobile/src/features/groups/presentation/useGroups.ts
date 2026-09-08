@@ -79,6 +79,7 @@ export function useGroups(userId: string | undefined, copy: GroupsCopy) {
     preview: async (code: string): Promise<GroupInvitePreview | null> => (await run(() => groupsRepository.preview(code), false))?.value ?? null,
     accept: async (code: string) => Boolean(await run(() => groupsRepository.accept(code), true)),
     renewInvite: async () => Boolean(await run(() => groupsRepository.renewInvite(), true)),
+    updatePhotoReview: async (enabled: boolean) => Boolean(await run(() => groupsRepository.updatePhotoReview(enabled), true)),
     leave: async () => Boolean(await run(() => groupsRepository.leave(), true)),
   };
 }

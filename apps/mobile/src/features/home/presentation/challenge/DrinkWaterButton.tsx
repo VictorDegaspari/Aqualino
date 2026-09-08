@@ -1,3 +1,4 @@
+import {useTranslation} from '../../../../shared/i18n/useTranslation';
 import React, {memo} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {haptics} from '../../../../shared/device/haptics';
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export const DrinkWaterButton = memo(function DrinkWaterButtonView({onPress}: Props): React.JSX.Element {
+  const {t} = useTranslation();
   const handlePress = () => {
     haptics.lightImpact();
     onPress();
@@ -18,13 +20,13 @@ export const DrinkWaterButton = memo(function DrinkWaterButtonView({onPress}: Pr
     <Pressable
       testID="home-drink-water"
       accessibilityRole="button"
-      accessibilityLabel="Bebi água"
+      accessibilityLabel={t("Bebi água", "I drank water", "Bebí agua")}
       onPress={handlePress}
       style={({pressed}) => [styles.button, pressed && styles.pressed]}>
       <ChallengeAsset name="drinkButton" resizeMode="stretch" style={styles.background} />
       <View style={styles.content}>
         <ChallengeAsset name="addWater" style={styles.icon} />
-        <Text style={styles.label}>Bebi água</Text>
+        <Text style={styles.label}>{t("Bebi água", "I drank water", "Bebí agua")}</Text>
       </View>
     </Pressable>
   );

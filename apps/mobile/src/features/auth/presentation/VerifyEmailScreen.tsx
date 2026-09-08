@@ -14,7 +14,7 @@ export function VerifyEmailScreen(): React.JSX.Element {
   const refreshUser = useSessionStore(state => state.refreshUser);
   const signOut = useSessionStore(state => state.signOut);
   const preference = useOnboardingPreferencesStore(state => state.locale);
-  const locale = user?.profile.locale === 'en-US' ? 'en-US' : user?.profile.locale === 'pt-BR' ? 'pt-BR' : preference;
+  const locale = normalizeAppLocale(user?.profile.locale, preference);
   const copy = accountSecurityCopy[locale];
   const [busy, setBusy] = useState<'check' | 'resend' | 'exit'>();
   const [message, setMessage] = useState<string>();
@@ -84,3 +84,4 @@ export function VerifyEmailScreen(): React.JSX.Element {
     <SecurityLink label={copy.useAnotherAccount} onPress={exit} disabled={Boolean(busy)} />
   </AuthScaffold>;
 }
+import {normalizeAppLocale} from '../../../shared/i18n/appLocale';

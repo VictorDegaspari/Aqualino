@@ -1,6 +1,7 @@
 import React, {memo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
+import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
 import {AppError} from '../../../shared/errors/AppError';
 import {appCopy, type AppLocale} from '../../../shared/i18n/appLocale';
 import {typography} from '../../../shared/theme/typography';
@@ -117,10 +118,12 @@ export const AccountAccessStep = memo(function AccountAccessStepView({
                 key={account.id}
                 accessibilityRole="button"
                 accessibilityLabel={`${copy.continueAs} ${account.displayName}`}
-                accessibilityState={{busy: busyAccountId === account.id}}
+                accessibilityState={{busy: busyAccountId === account.id, disabled: Boolean(busyAccountId)}}
+                accessibilityValue={{text: busyAccountId === account.id ? copy.signingIn : undefined}}
+                accessibilityLiveRegion="polite"
                 disabled={Boolean(busyAccountId)}
                 onPress={() => resumeAccount(account)}
-                style={({pressed}) => [styles.accountCard, pressed && !busyAccountId && styles.accountCardPressed]}>
+                style={({pressed}) => [styles.accountCard, busyAccountId === account.id && styles.accountCardLoading, pressed && !busyAccountId && styles.accountCardPressed]}>
                 <View style={styles.accountAvatar}>
                   <Text style={styles.accountAvatarLabel}>{account.displayName.trim().charAt(0).toUpperCase() || 'A'}</Text>
                 </View>
@@ -128,7 +131,12 @@ export const AccountAccessStep = memo(function AccountAccessStepView({
                   <Text numberOfLines={1} style={styles.accountName}>{account.displayName}</Text>
                   <Text numberOfLines={1} style={styles.accountEmail}>{account.email}</Text>
                 </View>
-                <Text style={styles.accountAction}>{busyAccountId === account.id ? '…' : `${copy.signIn} ›`}</Text>
+                <View pointerEvents="none" style={styles.accountActionContent}>
+                  {busyAccountId === account.id ? (
+                    <LoadingWaterDrop testID="saved-account-signing-in" size={23} />
+                  ) : null}
+                  <Text style={styles.accountAction}>{busyAccountId === account.id ? copy.signingIn : `${copy.signIn} ›`}</Text>
+                </View>
               </Pressable>
             ))}
           </View>
@@ -236,14 +244,16 @@ const styles = StyleSheet.create({
     borderRadius: 20, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panel,
   },
   accountCardPressed: {opacity: 0.82, borderColor: challengeTheme.colors.cyanStrong},
+  accountCardLoading: {borderColor: challengeTheme.colors.cyanStrong, backgroundColor: 'rgba(29, 174, 211, 0.14)'},
   accountAvatar: {
     width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 24,
     borderWidth: 1, borderColor: 'rgba(83, 240, 255, 0.68)', backgroundColor: 'rgba(29, 174, 211, 0.2)',
   },
   accountAvatarLabel: {fontFamily: typography.family, fontSize: 20, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
-  accountIdentity: {flex: 1, gap: 2},
+  accountIdentity: {flex: 1, minWidth: 0, gap: 2},
   accountName: {fontFamily: typography.family, fontSize: 16, lineHeight: 21, fontWeight: '900', color: challengeTheme.colors.text},
   accountEmail: {fontFamily: typography.family, fontSize: 12, lineHeight: 17, color: challengeTheme.colors.muted},
+  accountActionContent: {minWidth: 68, alignItems: 'center', justifyContent: 'center', gap: 4},
   accountAction: {fontFamily: typography.family, fontSize: 12, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
   manageAccountsButton: {minHeight: 43, alignItems: 'center', justifyContent: 'center'},
   manageAccountsLabel: {fontFamily: typography.family, fontSize: 13, lineHeight: 18, fontWeight: '900', color: challengeTheme.colors.cyanStrong},

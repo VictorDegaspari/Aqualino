@@ -3,12 +3,15 @@
 namespace App\Modules\Hydration\Application;
 
 use App\Models\User;
+use App\Modules\Group\Application\GroupChallengeService;
 use App\Modules\Hydration\Infrastructure\Models\HydrationGoal;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 class HydrationGoalService
 {
+    public function __construct(private readonly GroupChallengeService $challenges) {}
+
     public function forDate(User $user, string $localDate): ?HydrationGoal
     {
         return HydrationGoal::query()
@@ -27,6 +30,7 @@ class HydrationGoalService
         $today = CarbonImmutable::now($timezone)->startOfDay();
 
         return DB::transaction(function () use ($user, $dailyGoalMl, $today): HydrationGoal {
+            $this->challenges->prepareForUser($user);
             $current = $this->forDate($user, $today->toDateString());
 
             if ($current && $current->starts_on->isSameDay($today)) {
@@ -45,6 +49,6 @@ class HydrationGoalService
                 'starts_on' => $today->toDateString(),
                 'source' => 'user',
             ]);
-        });
+        }, 3);
     }
 }

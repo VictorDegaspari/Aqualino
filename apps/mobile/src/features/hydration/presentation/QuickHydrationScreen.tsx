@@ -1,32 +1,50 @@
+import {useTranslation} from '../../../shared/i18n/useTranslation';
 import React, {useEffect, useRef, useState} from 'react';
-import {ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {Image, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {launchCamera} from 'react-native-image-picker';
 import Animated, {Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming} from 'react-native-reanimated';
 import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
+import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
 import {haptics} from '../../../shared/device/haptics';
 import {useSessionStore} from '../../auth/application/sessionStore';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {useHydrationPreferencesStore} from '../application/hydrationPreferencesStore';
 import {useQuickHydration} from './useHydrationHome';
+import {hydrationLogDate} from '../application/hydrationHistory';
+import {AppError} from '../../../shared/errors/AppError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'QuickHydration'>;
 
 export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Element {
+  const {locale, t} = useTranslation();
   const favorites = useSessionStore(state => state.user?.profile.favorite_volumes_ml);
   const volumes = favorites?.length ? favorites : [200, 300, 500];
   const selectAmount = useHydrationPreferencesStore(state => state.selectAmount);
   const lastAmount = useHydrationPreferencesStore(state => state.lastAmountMl);
-  const {record, isRecording} = useQuickHydration();
+  const {record, isRecording, today} = useQuickHydration();
   const submitting = useRef(false);
   const [pendingAmount, setPendingAmount] = useState<number | null>(null);
   const [photoUri, setPhotoUri] = useState(route.params?.photoUri);
+  const [photoBase64, setPhotoBase64] = useState(route.params?.photoBase64);
+  const [now, setNow] = useState(Date.now());
   const [takingPhoto, setTakingPhoto] = useState(false);
   const [error, setError] = useState<string>();
   const entrance = useSharedValue(24);
   const busy = isRecording || pendingAmount !== null || takingPhoto;
+  const limits = today?.recording_limits;
+  const nextAllowedAt = limits?.next_allowed_at ? Date.parse(limits.next_allowed_at) : 0;
+  const dailyLimitReached = limits?.remaining_today === 0 && today?.local_date === hydrationLogDate(new Date(now), today?.timezone ?? 'UTC');
+  const paused = nextAllowedAt > now || dailyLimitReached;
+  const hasPhoto = Boolean(photoUri && photoBase64);
+
+  useEffect(() => {
+    if (!paused) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [paused]);
   const source = route.params?.source === 'widget'
     ? 'widget'
     : route.params?.source === 'mobile' ? 'mobile' : 'shortcut';
@@ -43,20 +61,20 @@ export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Elem
   };
 
   const submit = async (amount: number) => {
-    if (submitting.current || busy || !photoUri) return;
+    if (submitting.current || busy || !hasPhoto || paused) return;
     submitting.current = true;
     setPendingAmount(amount);
     setError(undefined);
     haptics.lightImpact();
     try {
       selectAmount(amount);
-      await record({amountMl: amount, source});
+      await record({amountMl: amount, source, photoBase64});
       haptics.success();
       navigation.popTo('Home', {recordedAmountMl: amount});
     } catch (reason) {
       submitting.current = false;
       setPendingAmount(null);
-      setError(reason instanceof Error ? reason.message : 'Não foi possível registrar. Tente novamente.');
+      setError(reason instanceof AppError && reason.fields ? Object.values(reason.fields).flat()[0] ?? reason.message : reason instanceof Error ? reason.message : t("Não foi possível registrar. Tente novamente.", "Could not record. Try again.", "No se pudo registrar. Inténtalo de nuevo."));
     }
   };
 
@@ -66,18 +84,20 @@ export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Elem
     setError(undefined);
     try {
       const result = await launchCamera({
-        mediaType: 'photo', cameraType: 'back', quality: 0.8, maxWidth: 1920, maxHeight: 1920,
-        saveToPhotos: false, includeBase64: false,
+        mediaType: 'photo', cameraType: 'back', quality: 0.6, maxWidth: 1280, maxHeight: 1280,
+        saveToPhotos: false, includeBase64: true,
       });
       if (result.didCancel) return;
       const uri = result.assets?.[0]?.uri;
-      if (result.errorCode || !uri) {
-        setError('A foto é necessária para registrar. Verifique a câmera e tente novamente.');
+      const base64 = result.assets?.[0]?.base64;
+      if (result.errorCode || !uri || !base64 || base64.length > 1800000) {
+        setError(t("A foto é necessária para registrar. Verifique a câmera e tente novamente.", "A photo is required to record water. Check the camera and try again.", "Necesitas una foto para registrar agua. Revisa la cámara e inténtalo de nuevo."));
         return;
       }
       setPhotoUri(uri);
+      setPhotoBase64(base64);
     } catch {
-      setError('A foto é necessária para registrar. Verifique a câmera e tente novamente.');
+      setError(t("A foto é necessária para registrar. Verifique a câmera e tente novamente.", "A photo is required to record water. Check the camera and try again.", "Necesitas una foto para registrar agua. Revisa la cámara e inténtalo de nuevo."));
     } finally {
       setTakingPhoto(false);
     }
@@ -85,7 +105,7 @@ export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Elem
 
   return (
     <View style={styles.page}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Fechar registro de água" disabled={busy} onPress={close} style={StyleSheet.absoluteFill} />
+      <Pressable accessibilityRole="button" accessibilityLabel={t("Fechar registro de água", "Close water log", "Cerrar registro de agua")} disabled={busy} onPress={close} style={StyleSheet.absoluteFill} />
       <Animated.View accessibilityViewIsModal style={[styles.sheet, entranceStyle]}>
         <SafeAreaView edges={['bottom']}>
           <View style={styles.handle} />
@@ -95,25 +115,27 @@ export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Elem
                 <AqualinoIcon name="waterPlus" size={32} color={challengeTheme.colors.cyanStrong} />
               </View>
               <View style={styles.heading}>
-                <Text style={styles.eyebrow}>BEBI ÁGUA</Text>
-                <Text accessibilityRole="header" style={styles.title}>Quanto você bebeu?</Text>
+                <Text style={styles.eyebrow}>{t("BEBI ÁGUA", "I DRANK WATER", "BEBÍ AGUA")}</Text>
+                <Text accessibilityRole="header" style={styles.title}>{t("Quanto você bebeu?", "How much did you drink?", "¿Cuánto bebiste?")}</Text>
               </View>
             </View>
-            <Text style={styles.subtitle}>{photoUri ? 'Toque no volume para registrar.' : 'Primeiro, tire uma foto do seu copo ou garrafa.'}</Text>
+            <Text style={styles.subtitle}>{photoUri ? t("Toque no volume para registrar.", "Tap an amount to record it.", "Toca la cantidad para registrarla.") : t("Primeiro, tire uma foto do seu copo ou garrafa.", "First, take a photo of your glass or bottle.", "Primero, toma una foto de tu vaso o botella.")}</Text>
+            <Text style={styles.rules}>{t("Até 15 marcações por dia, com 15 minutos entre elas, no solo e no grupo. Com votação habilitada pelo líder e 3 ou mais pessoas no grupo, os outros membros poderão conferir sua foto e votar por 12 horas após a sincronização.", "Up to 15 logs per day, 15 minutes apart, in solo and group modes. With voting enabled by the leader and at least 3 members, the others can review your photo and vote for 12 hours after syncing.", "Hasta 15 registros al día, con 15 minutos entre ellos, en modo individual y de grupo. Si el líder activa la votación y hay al menos 3 miembros, los demás podrán revisar tu foto y votar durante 12 horas después de la sincronización.")}</Text>
+            {limits ? <Text accessibilityLiveRegion="polite" style={styles.rules}>{t(`${limits.recorded_today} de ${limits.daily_limit} marcações hoje.`, `${limits.recorded_today} of ${limits.daily_limit} logs today.`, `${limits.recorded_today} de ${limits.daily_limit} registros hoy.`)}{dailyLimitReached ? t(" Limite diário atingido. Novas marcações estarão disponíveis no próximo dia.", " Daily limit reached. New logs will be available tomorrow.", " Límite diario alcanzado. Podrás registrar de nuevo mañana.") : paused ? t(` Próximo registro às ${new Date(nextAllowedAt).toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'})}.`, ` Next log at ${new Date(nextAllowedAt).toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'})}.`, ` Próximo registro a las ${new Date(nextAllowedAt).toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'})}.`) : ''}</Text> : null}
 
             {photoUri ? (
               <View style={styles.photoPreview}>
-                <Image accessibilityLabel="Foto do seu copo ou garrafa" source={{uri: photoUri}} resizeMode="cover" style={styles.photo} />
+                <Image accessibilityLabel={t("Foto do seu copo ou garrafa", "Photo of your glass or bottle", "Foto de tu vaso o botella")} source={{uri: photoUri}} resizeMode="cover" style={styles.photo} />
               </View>
             ) : null}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={photoUri ? 'Trocar foto' : 'Tirar foto do copo'}
+              accessibilityLabel={photoUri ? t("Trocar foto", "Change photo", "Cambiar foto") : t("Tirar foto do copo", "Take glass photo", "Fotografiar el vaso")}
               disabled={busy}
               onPress={takePhoto}
               style={({pressed}) => [styles.photoButton, busy && styles.dimmed, pressed && styles.photoButtonPressed]}>
-              {takingPhoto ? <ActivityIndicator size="small" color={challengeTheme.colors.cyanStrong} /> : <AqualinoIcon name="plus" size={16} color={challengeTheme.colors.cyanStrong} />}
-              <Text style={styles.photoButtonLabel}>{photoUri ? 'Trocar foto' : 'Tirar foto do copo'}</Text>
+              {takingPhoto ? <LoadingWaterDrop size={20} /> : <AqualinoIcon name="plus" size={16} color={challengeTheme.colors.cyanStrong} />}
+              <Text style={styles.photoButtonLabel}>{photoUri ? t("Trocar foto", "Change photo", "Cambiar foto") : t("Tirar foto do copo", "Take glass photo", "Fotografiar el vaso")}</Text>
             </Pressable>
 
             <View style={styles.buttons}>
@@ -123,12 +145,12 @@ export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Elem
                   <Pressable
                     key={volume}
                     accessibilityRole="button"
-                    accessibilityLabel={`Registrar ${volume} ml de água`}
-                    accessibilityState={{disabled: busy || !photoUri, busy: isPending}}
-                    disabled={busy || !photoUri}
+                    accessibilityLabel={t(`Registrar ${volume} ml de água`, `Record ${volume} ml of water`, `Registrar ${volume} ml de agua`)}
+                    accessibilityState={{disabled: busy || !hasPhoto || paused, busy: isPending}}
+                    disabled={busy || !hasPhoto || paused}
                     onPress={() => {submit(volume);}}
-                    style={({pressed}) => [styles.volumeButton, isPending && styles.volumeButtonSelected, ((!photoUri || busy) && !isPending) && styles.dimmed, pressed && styles.volumeButtonPressed]}>
-                    {isPending ? <ActivityIndicator color={challengeTheme.colors.backgroundDeep} /> : <AqualinoIcon name="water" size={28} color={challengeTheme.colors.cyanStrong} />}
+                    style={({pressed}) => [styles.volumeButton, isPending && styles.volumeButtonSelected, ((!hasPhoto || busy || paused) && !isPending) && styles.dimmed, pressed && styles.volumeButtonPressed]}>
+                    {isPending ? <LoadingWaterDrop size={27} /> : <AqualinoIcon name="water" size={28} color={challengeTheme.colors.cyanStrong} />}
                     <Text style={[styles.volumeLabel, isPending && styles.selectedText]}>{volume}</Text>
                     <Text style={[styles.volumeUnit, isPending && styles.selectedText]}>ml</Text>
                     {lastAmount === volume && !isPending ? <View style={styles.favoriteDot} /> : null}
@@ -138,7 +160,7 @@ export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Elem
             </View>
 
             <Text accessibilityLiveRegion="polite" style={styles.status}>
-              {pendingAmount !== null ? `Registrando ${pendingAmount} ml…` : photoUri ? 'Sua gota acompanha cada gole.' : 'A foto libera o registro do volume.'}
+              {pendingAmount !== null ? t(`Registrando ${pendingAmount} ml…`, `Recording ${pendingAmount} ml…`, `Registrando ${pendingAmount} ml…`) : photoUri ? t("Sua gota acompanha cada gole.", "Your drop follows every sip.", "Tu gota acompaña cada sorbo.") : t("A foto libera o registro do volume.", "A photo unlocks amount recording.", "La foto permite registrar la cantidad.")}
             </Text>
             {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
 
@@ -150,6 +172,7 @@ export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Elem
 }
 
 const styles = StyleSheet.create({
+  rules: {fontSize: 12, lineHeight: 18, color: challengeTheme.colors.muted},
   page: {flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 10, 24, 0.62)'},
   sheet: {
     maxHeight: '88%', borderTopLeftRadius: 30, borderTopRightRadius: 30,

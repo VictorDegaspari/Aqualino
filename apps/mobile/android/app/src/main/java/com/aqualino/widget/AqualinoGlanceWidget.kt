@@ -41,7 +41,6 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import java.util.Calendar
 import java.util.TimeZone
 import kotlinx.coroutines.flow.first
 import org.json.JSONObject
@@ -53,9 +52,9 @@ data class AqualinoWidgetSnapshot(
   val timezone: String = TimeZone.getDefault().id,
   val condition: String = "empty",
   val isAuthenticated: Boolean = false,
+  val generatedAt: String? = null,
 )
 
-private data class WidgetDay(val label: String, val completed: Boolean)
 private data class WidgetPalette(
   val background: Color,
   val heading: Color,
@@ -315,7 +314,7 @@ private fun WeekStrip(
   checkSize: Int,
   labelSize: Int,
 ) {
-  val days = widgetDays(snapshot)
+  val days = widgetWeekDays(snapshot.timezone, snapshot.currentStreak, snapshot.totalMl, snapshot.generatedAt)
   Column(horizontalAlignment = Alignment.Start) {
     Row(verticalAlignment = Alignment.CenterVertically) {
       days.forEachIndexed { index, day ->
@@ -418,25 +417,9 @@ private fun snapshotFromJson(raw: String?): AqualinoWidgetSnapshot? {
       timezone = json.optString("user_timezone", TimeZone.getDefault().id),
       condition = json.optString("condition", "empty"),
       isAuthenticated = json.optBoolean("is_authenticated", true),
+      generatedAt = json.optString("generated_at").takeIf { it.isNotBlank() },
     )
   }.getOrNull()
-}
-
-private fun widgetDays(snapshot: AqualinoWidgetSnapshot): List<WidgetDay> {
-  val initials = arrayOf("D", "S", "T", "Q", "Q", "S", "S")
-  val todayHasWater = snapshot.totalMl >= 50
-  val firstCompletedDaysAgo = if (todayHasWater) 0 else 1
-  val calendar = Calendar.getInstance(TimeZone.getTimeZone(snapshot.timezone))
-  val todayIndex = calendar.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY
-
-  return (VISIBLE_DAY_COUNT - 1 downTo 0).map { daysAgo ->
-    val dayIndex = (todayIndex - daysAgo + initials.size) % initials.size
-    val completed = daysAgo >= 0 &&
-      snapshot.currentStreak > 0 &&
-      daysAgo >= firstCompletedDaysAgo &&
-      daysAgo < firstCompletedDaysAgo + snapshot.currentStreak
-    WidgetDay(initials[dayIndex], completed)
-  }
 }
 
 private fun widgetPresentation(snapshot: AqualinoWidgetSnapshot): WidgetPresentation {
@@ -494,7 +477,6 @@ private fun widgetPresentation(snapshot: AqualinoWidgetSnapshot): WidgetPresenta
 }
 
 private const val VARIATION_INTERVAL_MS = 3L * 60L * 60L * 1_000L
-private const val VISIBLE_DAY_COUNT = 5
 private const val STRONG_STREAK_DAYS = 3
 
 private val HAPPY_BLUE = WidgetPalette(Color(0xFF087FC7), Color(0xFFF2FBFF), Color(0xFFD9F5FF), Color(0xFF075C92), Color(0xFF50CFF4))

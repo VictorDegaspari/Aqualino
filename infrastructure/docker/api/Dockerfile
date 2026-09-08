@@ -30,6 +30,7 @@ COPY --chown=www-data:www-data apps/api /app
 COPY --from=vendor-production --chown=www-data:www-data /app/vendor /app/vendor
 RUN touch .env \
     && php -r "require 'vendor/autoload.php';" \
+    && mkdir -p storage/app/private/hydration \
     && chown -R www-data:www-data storage bootstrap/cache
 USER www-data
 CMD ["php-fpm", "-F"]
@@ -39,6 +40,7 @@ ENV APP_ENV=local
 COPY --chown=www-data:www-data apps/api /app
 COPY --from=vendor-development --chown=www-data:www-data /app/vendor /app/vendor
 RUN touch .env \
+    && mkdir -p storage/app/private/hydration \
     && chown -R www-data:www-data storage bootstrap/cache
 USER www-data
 CMD ["php-fpm", "-F"]

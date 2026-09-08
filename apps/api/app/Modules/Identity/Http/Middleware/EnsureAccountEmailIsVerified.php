@@ -12,7 +12,7 @@ class EnsureAccountEmailIsVerified
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if ($user?->email_verification_required && ! $user->hasVerifiedEmail()) {
+        if ($user?->requiresEmailVerification() && ! $user->hasVerifiedEmail()) {
             return ApiResponse::error($request, 'EMAIL_VERIFICATION_REQUIRED', 'Confirme seu e-mail para continuar.', 403);
         }
 

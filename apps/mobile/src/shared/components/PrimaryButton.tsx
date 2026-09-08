@@ -1,6 +1,7 @@
 import React from 'react';
-import {ActivityIndicator, Pressable, StyleSheet, Text} from 'react-native';
+import {Pressable, StyleSheet, Text} from 'react-native';
 import {tokens} from '@aqualino/design-tokens';
+import {LoadingWaterDrop} from './LoadingWaterDrop';
 
 interface Props {
   label: string;
@@ -18,7 +19,7 @@ export function PrimaryButton({label, onPress, loading, disabled, accessibilityL
       disabled={disabled || loading}
       onPress={onPress}
       style={({pressed}) => [styles.button, (disabled || loading) && styles.disabled, pressed && styles.pressed]}>
-      {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.label}>{label}</Text>}
+      {loading ? <LoadingWaterDrop size={24} /> : <Text style={styles.label}>{label}</Text>}
     </Pressable>
   );
 }
@@ -36,4 +37,3 @@ const styles = StyleSheet.create({
   disabled: {opacity: 0.45},
   pressed: {opacity: 0.8},
 });
-

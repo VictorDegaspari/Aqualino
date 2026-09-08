@@ -29,7 +29,7 @@ export const hydrationRemoteRepository: HydrationRemoteRepository = {
     `/hydration/logs?local_date=${encodeURIComponent(localDate)}&page=${page}&per_page=100`,
     {unwrapData: false},
   ),
-  record: input => apiRequest<RecordWaterResult>('/hydration/logs', {method: 'POST', body: input, timeoutMs: 8000}),
+  record: input => apiRequest<RecordWaterResult>('/hydration/logs', {method: 'POST', body: input, timeoutMs: 30_000}),
   updateGoal: dailyGoalMl => apiRequest('/hydration/goals/current', {
     method: 'PUT',
     body: {daily_goal_ml: dailyGoalMl},

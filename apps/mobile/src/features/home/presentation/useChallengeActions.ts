@@ -3,7 +3,7 @@ import type {HydrationChallenge, HydrationChallenges} from '@aqualino/contracts'
 import {apiRequest} from '../../../shared/api/apiClient';
 import {useSessionStore} from '../../auth/application/sessionStore';
 import type {HydrationHomeData} from '../../hydration/data/hydrationRemoteRepository';
-import {hydrationHomeKey} from '../../hydration/presentation/useHydrationHome';
+import {hydrationHomeAccountKey} from '../../hydration/presentation/useHydrationHome';
 import {hydrationService} from '../../hydration/application/hydrationService';
 import {AppError} from '../../../shared/errors/AppError';
 
@@ -11,19 +11,24 @@ type HomeCache = {data: HydrationHomeData; offline: boolean};
 
 export function useChallengeActions() {
   const client = useQueryClient();
+  const userId = useSessionStore.getState().user?.id;
+  const hydrationHomeKey = hydrationHomeAccountKey(userId);
   const start = useMutation({
     mutationFn: (mode: 'solo' | 'group') => request<HydrationChallenges>('/hydration/challenges', {mode}),
     onMutate: () => client.cancelQueries({queryKey: hydrationHomeKey}),
     onSuccess: async challenges => {
+      if (useSessionStore.getState().user?.id !== userId) return;
       await client.cancelQueries({queryKey: hydrationHomeKey});
       client.setQueryData<HomeCache>(hydrationHomeKey, current => current ? {...current, data: {...current.data, challenges}, offline: false} : current);
       await hydrationService.rememberChallenges(challenges).catch(() => undefined);
+      client.invalidateQueries({queryKey: ['groups']});
       client.invalidateQueries({queryKey: hydrationHomeKey});
     },
   });
   const claim = useMutation({
     mutationFn: (id: string) => request<HydrationChallenge>(`/hydration/challenges/${encodeURIComponent(id)}/reward`),
     onSuccess: async challenge => {
+      if (useSessionStore.getState().user?.id !== userId) return;
       await client.cancelQueries({queryKey: hydrationHomeKey});
       client.setQueryData<HomeCache>(hydrationHomeKey, current => current?.data.challenges ? {
         ...current, data: {...current.data, challenges: {...current.data.challenges, solo: challenge}},

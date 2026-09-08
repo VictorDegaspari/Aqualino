@@ -7,6 +7,35 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## E-mails do Aqualino
+
+O envio usa o driver nativo do Laravel com o SDK `resend/resend-php`, tanto para confirmação de e-mail quanto para recuperação de senha. As notificações são processadas pela fila; mantenha o Horizon em execução.
+
+Para ativar o Resend, configure o `.env` da raiz ao usar Docker Compose, ou `apps/api/.env` ao executar a API diretamente:
+
+```dotenv
+MAIL_MAILER=resend
+RESEND_API_KEY=re_sua_chave
+MAIL_FROM_ADDRESS=contato@seu-dominio.com
+MAIL_FROM_NAME=Aqualino
+APP_URL=https://api.seu-dominio.com
+```
+
+Use um remetente de um [domínio verificado no Resend](https://resend.com/docs/send-with-laravel/). `APP_URL` deve ser acessível para os links de confirmação e recuperação de senha.
+
+Depois de configurar, execute na raiz `docker compose up -d --build api horizon scheduler` para instalar o SDK e aplicar a configuração à API e aos workers. Fora do Docker, execute `composer install`, limpe o cache de configuração com `php artisan config:clear` e reinicie os workers.
+
+### Confirmação de e-mail no ambiente local
+
+```dotenv
+APP_ENV=local
+LOCAL_SKIP_EMAIL_VERIFICATION=true
+```
+
+Essa opção libera cadastro, login e rotas protegidas sem exigir confirmação, e suprime o envio de e-mails de confirmação. O e-mail continua sem confirmação no banco; desativar a opção restaura a exigência. A opção é ignorada fora de `APP_ENV=local` e não altera a recuperação de senha.
+
+Para testar o fluxo completo localmente, use `LOCAL_SKIP_EMAIL_VERIFICATION=false`. O envio local padrão continua pelo Mailpit (`MAIL_MAILER=smtp`, `MAIL_HOST=mailpit`, `MAIL_PORT=1025`), sem precisar de uma chave do Resend. Recrie os serviços do Compose ou limpe o cache e reinicie os workers após alterar as variáveis.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

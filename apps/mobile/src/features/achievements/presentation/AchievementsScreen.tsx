@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions} from 'react-native';
+import {Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {Achievement, AchievementCode} from '@aqualino/contracts';
@@ -10,7 +10,8 @@ import {useAchievementLocalStore} from '../application/achievementLocalStore';
 import {AchievementMedal} from './AchievementMedal';
 import {AchievementModal} from './AchievementModal';
 import {achievementCopy, type AchievementCopy} from './achievementCopy';
-import {SwipeBackScreen} from './SwipeBackScreen';
+import {SwipeBackScreen} from '../../../shared/components/SwipeBackScreen';
+import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
 import {useAchievements} from './useAchievements';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Achievements'>;
@@ -27,7 +28,7 @@ export function AchievementsScreen({navigation}: Props): React.JSX.Element {
   }, [selected]);
   return (
     <>
-      <SwipeBackScreen onBack={onBack}>{close => <AchievementCollectionView
+      <SwipeBackScreen testID="achievements" onBack={onBack}>{close => <AchievementCollectionView
         items={items} unlockedCount={unlockedCount} copy={achievementCopy[locale]}
         loading={query.isPending} refreshing={query.isFetching && !query.isPending} error={query.isError}
         onBack={close} onSelect={item => setSelectedCode(item.code)} onRefresh={() => {query.refetch();}} />}</SwipeBackScreen>
@@ -64,7 +65,7 @@ export function AchievementCollectionView({items, unlockedCount, copy, loading, 
               <Text style={[styles.filterLabel, filter === value && styles.filterLabelActive]}>{value === 'all' ? copy.allFilter : value === 'earned' ? copy.earned : copy.lockedFilter}</Text>
             </Pressable>)}
           </View>
-          {loading ? <View style={styles.notice}><ActivityIndicator color={challengeTheme.colors.cyanStrong} /><Text style={styles.description}>{copy.loading}</Text></View> : null}
+          {loading ? <View style={styles.notice}><LoadingWaterDrop size={42} accessibilityLabel={copy.loading} /><Text style={styles.description}>{copy.loading}</Text></View> : null}
           {error ? <View style={styles.notice}>
             <Text accessibilityRole="alert" style={styles.description}>{copy.error}</Text>
             <Pressable accessibilityRole="button" onPress={onRefresh} style={styles.retry}><Text style={styles.retryLabel}>{copy.retry}</Text></Pressable>

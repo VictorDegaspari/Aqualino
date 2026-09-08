@@ -133,3 +133,17 @@ test('disables sharing an expired invitation', async () => {
   expect(view.getByRole('button', {name: 'Compartilhar convite'})).toBeDisabled();
   expect(view.getByRole('button', {name: 'Gerar novo código'})).toBeEnabled();
 });
+
+
+test('lets only the leader change photo voting and disables the switch while saving', async () => {
+  const onPhotoReviewChange = jest.fn().mockResolvedValue(true);
+  const view = await renderGroups(props({group, onPhotoReviewChange}));
+  await fireEvent.press(view.getByTestId('group-photo-review-toggle'));
+  expect(onPhotoReviewChange).toHaveBeenCalledWith(false);
+  await view.unmount();
+  const member = await renderGroups(props({group, userId: 'guest', onPhotoReviewChange}));
+  expect(member.queryByTestId('group-photo-review-toggle')).toBeNull();
+  await member.unmount();
+  const saving = await renderGroups(props({group, busy: true, onPhotoReviewChange}));
+  expect(saving.getByRole('switch', {name: 'Votação das marcações'})).toBeDisabled();
+});

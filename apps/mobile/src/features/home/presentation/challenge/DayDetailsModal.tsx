@@ -1,3 +1,4 @@
+import {useTranslation} from '../../../../shared/i18n/useTranslation';
 import type {HydrationWeekDay} from '@aqualino/contracts';
 import {
   BottomSheetBackdrop,
@@ -9,7 +10,9 @@ import React, {useCallback, useEffect, useMemo, useRef} from 'react';
 import {Pressable, StyleSheet, Text, View, type ViewStyle} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {AqualinoIcon, type AqualinoIconName} from '../../../../shared/components/AqualinoIcon';
-import {challengeTheme, dayStateLabels, weekdayLabels} from './challengeTheme';
+import {challengeDateLabel, dayStateLabel, weekdayLabel} from './challengeLocale';
+import type {AppLocale} from '../../../../shared/i18n/appLocale';
+import {challengeTheme} from './challengeTheme';
 
 interface Props {
   day?: HydrationWeekDay;
@@ -18,6 +21,7 @@ interface Props {
 }
 
 export function DayDetailsModal({day, onClose}: Props): React.JSX.Element {
+  const {locale, t} = useTranslation();
   const sheetRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   const safePercentage = Math.min(100, Math.max(0, day?.percentage ?? 0));
@@ -46,11 +50,11 @@ export function DayDetailsModal({day, onClose}: Props): React.JSX.Element {
     return <></>;
   }
 
-  const details = getDetails(day);
+  const details = getDetails(day, locale, t);
   return (
     <BottomSheetModal
       ref={sheetRef}
-      accessibilityLabel="Detalhes de hidratação do dia"
+      accessibilityLabel={t("Detalhes de hidratação do dia", "Daily hydration details", "Detalles de hidratación del día")}
       backdropComponent={renderBackdrop}
       backgroundStyle={styles.sheetBackground}
       enableDynamicSizing
@@ -61,31 +65,31 @@ export function DayDetailsModal({day, onClose}: Props): React.JSX.Element {
       style={styles.sheet}>
       <BottomSheetView accessibilityViewIsModal style={[styles.card, cardInset]}>
         <View style={styles.heading}>
-          <Text accessibilityRole="header" style={styles.title}>{weekdayLabels[day.weekday - 1]} • {formatDisplayDate(day.date)}</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Fechar" onPress={dismiss} style={styles.close}>
-            <Text style={styles.closeText}>Fechar</Text>
+          <Text accessibilityRole="header" style={styles.title}>{weekdayLabel(day.weekday, locale)} • {challengeDateLabel(day.date, locale)}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("Fechar", "Close", "Cerrar")} onPress={dismiss} style={styles.close}>
+            <Text style={styles.closeText}>{t("Fechar", "Close", "Cerrar")}</Text>
           </Pressable>
         </View>
 
         <View style={styles.amountRow}>
           <AqualinoIcon name="water" size={31} />
-          <Text style={styles.amount}>{formatNumber(day.total_ml)} ml</Text>
+          <Text style={styles.amount}>{day.total_ml.toLocaleString(locale)} ml</Text>
         </View>
         <View style={styles.goalRow}>
-          <Text style={styles.muted}>Meta</Text>
-          <Text style={styles.goal}>{formatNumber(day.goal_ml)} ml</Text>
+          <Text style={styles.muted}>{t("Meta", "Goal", "Meta")}</Text>
+          <Text style={styles.goal}>{day.goal_ml.toLocaleString(locale)} ml</Text>
         </View>
         <View style={styles.track}>
           <View style={[styles.fill, fillStyle]} />
         </View>
-        <Text style={styles.percentage}>{Math.round(day.percentage)}% da meta</Text>
+        <Text style={styles.percentage}>{t(`${Math.round(day.percentage)}% da meta`, `${Math.round(day.percentage)}% of goal`, `${Math.round(day.percentage)}% de la meta`)}</Text>
 
         <View style={styles.statusRow}>
           <AqualinoIcon name={details.icon} size={22} color={details.color} />
           <View style={styles.statusCopy}>
             <Text style={[styles.status, {color: details.color}]}>{details.status}</Text>
             {details.complement ? <Text style={styles.complement}>{details.complement}</Text> : null}
-            {day.protection ? <Text style={styles.protection}>{protectionLabel(day.protection)}</Text> : null}
+            {day.protection ? <Text style={styles.protection}>{protectionLabel(day.protection, t)}</Text> : null}
           </View>
         </View>
       </BottomSheetView>
@@ -93,39 +97,30 @@ export function DayDetailsModal({day, onClose}: Props): React.JSX.Element {
   );
 }
 
-function getDetails(day: HydrationWeekDay): {status: string; complement?: string; icon: AqualinoIconName; color: string} {
+function getDetails(day: HydrationWeekDay, locale: AppLocale, t: (pt: string, en: string, es: string) => string): {status: string; complement?: string; icon: AqualinoIconName; color: string} {
   const missing = Math.max(0, day.goal_ml - day.total_ml);
   if (day.state === 'future') {
-    return {status: 'Dia ainda não iniciado', icon: 'lock', color: challengeTheme.colors.muted};
+    return {status: t("Dia ainda não iniciado", "Day has not started yet", "El día aún no ha empezado"), icon: 'lock', color: challengeTheme.colors.muted};
   }
   if (day.state === 'goal_achieved') {
-    return {status: 'Meta atingida', icon: 'check', color: challengeTheme.colors.cyanStrong};
+    return {status: t("Meta atingida", "Goal reached", "Meta alcanzada"), icon: 'check', color: challengeTheme.colors.cyanStrong};
   }
   if (day.state === 'missed') {
-    return {status: 'Meta não atingida', complement: `Faltaram ${formatNumber(missing)} ml`, icon: 'alert', color: '#F0A1B7'};
+    return {status: t("Meta não atingida", "Goal not reached", "Meta no alcanzada"), complement: t(`Faltaram ${missing.toLocaleString(locale)} ml`, `${missing.toLocaleString(locale)} ml short`, `Faltaron ${missing.toLocaleString(locale)} ml`), icon: 'alert', color: '#F0A1B7'};
   }
   if (day.state === 'in_progress') {
-    return {status: dayStateLabels.in_progress, complement: `Faltam ${formatNumber(missing)} ml`, icon: 'waves', color: challengeTheme.colors.cyan};
+    return {status: dayStateLabel('in_progress', locale), complement: t(`Faltam ${missing.toLocaleString(locale)} ml`, `${missing.toLocaleString(locale)} ml remaining`, `Faltan ${missing.toLocaleString(locale)} ml`), icon: 'waves', color: challengeTheme.colors.cyan};
   }
   return {
-    status: day.is_today ? 'Nenhum registro hoje' : 'Meta não atingida',
-    complement: `Faltam ${formatNumber(missing)} ml`, icon: 'water', color: challengeTheme.colors.muted,
+    status: day.is_today ? t("Nenhum registro hoje", "No logs today", "Sin registros hoy") : t("Meta não atingida", "Goal not reached", "Meta no alcanzada"),
+    complement: t(`Faltam ${missing.toLocaleString(locale)} ml`, `${missing.toLocaleString(locale)} ml remaining`, `Faltan ${missing.toLocaleString(locale)} ml`), icon: 'water', color: challengeTheme.colors.muted,
   };
 }
 
-function protectionLabel(protection: HydrationWeekDay['protection']): string {
-  return protection === 'streak_freeze' ? 'Streak protegido por congelamento' : 'Streak recuperado por poção';
+function protectionLabel(protection: HydrationWeekDay['protection'], t: (pt: string, en: string, es: string) => string): string {
+  return protection === 'streak_freeze' ? t("Streak protegido por congelamento", "Streak protected by freeze", "Racha protegida por congelamiento") : t("Streak recuperado por poção", "Streak recovered by potion", "Racha recuperada con una poción");
 }
 
-function formatDisplayDate(date: string): string {
-  const [, month, day] = date.split('-');
-  const monthLabel = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'][Number(month) - 1] ?? '';
-  return `${day} ${monthLabel}`;
-}
-
-function formatNumber(value: number): string {
-  return value.toLocaleString('pt-BR');
-}
 
 const styles = StyleSheet.create({
   sheet: {shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.24, shadowRadius: 18, shadowOffset: {width: 0, height: -5}, elevation: 18},

@@ -42,6 +42,6 @@ class VerifyAccountEmail extends VerifyEmail implements ShouldBeEncrypted, Shoul
 
     public function shouldSend(object $notifiable, string $channel): bool
     {
-        return ! $notifiable->trashed() && ! $notifiable->hasVerifiedEmail();
+        return ! $notifiable->trashed() && $notifiable->requiresEmailVerification() && ! $notifiable->hasVerifiedEmail();
     }
 }

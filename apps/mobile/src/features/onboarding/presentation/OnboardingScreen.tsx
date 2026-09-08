@@ -1,7 +1,8 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {mascotImages} from '../../../assets/mascot/mascotImages';
 import {LanguageSelector} from '../../../shared/components/LanguageSelector';
+import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
 import {AppError} from '../../../shared/errors/AppError';
 import {appCopy} from '../../../shared/i18n/appLocale';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
@@ -75,7 +76,7 @@ export function OnboardingScreen(): React.JSX.Element {
               <Text style={styles.subtitle}>{copy.savingSubtitle}</Text>
             </View>
             <View style={styles.panel}>
-              {loading ? <ActivityIndicator size="large" color={challengeTheme.colors.cyanStrong} /> : null}
+              {loading ? <LoadingWaterDrop size={56} accessibilityLabel="Salvando preferências" /> : null}
               {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
               {error ? (
                 <Pressable accessibilityRole="button" onPress={complete} style={({pressed}) => [styles.finishButton, pressed && styles.finishButtonPressed]}>
@@ -175,7 +176,7 @@ export function OnboardingScreen(): React.JSX.Element {
               disabled={!goalIsValid || volumes.length === 0 || loading}
               onPress={complete}
               style={({pressed}) => [styles.finishButton, (!goalIsValid || volumes.length === 0 || loading) && styles.finishButtonDisabled, pressed && !loading && styles.finishButtonPressed]}>
-              {loading ? <ActivityIndicator color={challengeTheme.colors.backgroundDeep} /> : <Text style={styles.finishLabel}>{copy.finish}</Text>}
+              {loading ? <LoadingWaterDrop size={25} /> : <Text style={styles.finishLabel}>{copy.finish}</Text>}
             </Pressable>
           </View>
 

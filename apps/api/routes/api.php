@@ -6,6 +6,7 @@ use App\Modules\Group\Http\Controllers\GroupController;
 use App\Modules\Hydration\Http\Controllers\HydrationChallengeController;
 use App\Modules\Hydration\Http\Controllers\HydrationController;
 use App\Modules\Hydration\Http\Controllers\HydrationGoalController;
+use App\Modules\Hydration\Http\Controllers\HydrationReviewController;
 use App\Modules\Identity\Http\Controllers\AccountSecurityController;
 use App\Modules\Identity\Http\Controllers\AuthController;
 use App\Modules\Identity\Http\Controllers\MeController;
@@ -42,6 +43,7 @@ Route::prefix('v1')->group(function (): void {
                 Route::post('/', [GroupController::class, 'store']);
                 Route::post('/invites/preview', [GroupController::class, 'preview']);
                 Route::post('/invites/accept', [GroupController::class, 'accept'])->name('groups.accept');
+                Route::patch('/current/settings', [GroupController::class, 'updateSettings']);
                 Route::post('/current/invite', [GroupController::class, 'renewInvite']);
                 Route::delete('/current/membership', [GroupController::class, 'leave']);
             });
@@ -50,6 +52,9 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/hydration/challenges', [HydrationChallengeController::class, 'store'])->middleware('throttle:20,1');
             Route::post('/hydration/challenges/{challengeId}/reward', [HydrationChallengeController::class, 'claim'])->middleware('throttle:20,1');
             Route::get('/hydration/logs', [HydrationController::class, 'index']);
+            Route::get('/groups/current/reviews', [HydrationReviewController::class, 'index']);
+            Route::post('/hydration/logs/{logId}/votes', [HydrationReviewController::class, 'store'])->middleware('throttle:60,1');
+            Route::get('/hydration/logs/{logId}/photo', [HydrationReviewController::class, 'photo']);
             Route::post('/hydration/logs', [HydrationController::class, 'store']);
             Route::get('/hydration/goals/current', [HydrationGoalController::class, 'show']);
             Route::put('/hydration/goals/current', [HydrationGoalController::class, 'update']);

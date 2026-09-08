@@ -16,7 +16,7 @@ class MascotSnapshotService
         $timezone = $user->profile->timezone;
         $now = CarbonImmutable::now($timezone);
         $today = $now->startOfDay();
-        $lastLog = HydrationLog::query()
+        $lastLog = HydrationLog::query()->valid()
             ->where('user_id', $user->id)
             ->latest('occurred_at')
             ->first();

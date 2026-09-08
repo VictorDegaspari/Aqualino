@@ -10,7 +10,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class HydrationQueryService
 {
-    public function __construct(private readonly HydrationGoalService $goals) {}
+    public function __construct(private readonly HydrationGoalService $goals, private readonly HydrationRecordLimits $limits) {}
 
     public function today(User $user): array
     {
@@ -32,6 +32,7 @@ class HydrationQueryService
             'percentage' => (int) round(($total / max(1, $goalMl)) * 100),
             'goal_achieved' => $total >= $goalMl,
             'log_count' => $stat?->log_count ?? 0,
+            'recording_limits' => $this->limits->forUser($user),
         ];
     }
 

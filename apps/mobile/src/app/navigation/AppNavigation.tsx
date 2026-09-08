@@ -23,7 +23,7 @@ export type RootStackParamList = {
   History: undefined;
   Profile: undefined;
   Achievements: undefined;
-  QuickHydration: {source?: string; photoUri?: string} | undefined;
+  QuickHydration: {source?: string; photoUri?: string; photoBase64?: string} | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -93,11 +93,8 @@ export function AppNavigation(): React.JSX.Element {
                 <Stack.Screen name="Groups" getComponent={getGroupsScreen} options={tabScreenOptions} />
                 <Stack.Screen name="Reminders" getComponent={getRemindersScreen} options={tabScreenOptions} />
                 <Stack.Screen name="Inventory" getComponent={getInventoryScreen} options={{
-                  title: 'Inventário',
-                  headerStyle: {backgroundColor: challengeTheme.colors.background},
-                  headerTintColor: challengeTheme.colors.text,
-                  headerTitleStyle: {fontWeight: '900'},
-                  contentStyle: {backgroundColor: challengeTheme.colors.background},
+                  headerShown: false, presentation: 'transparentModal', animation: 'none', gestureEnabled: false,
+                  contentStyle: {backgroundColor: 'transparent'},
                 }} />
                 <Stack.Screen name="History" getComponent={getHistoryScreen} options={tabScreenOptions} />
                 <Stack.Screen name="Profile" getComponent={getProfileScreen} options={tabScreenOptions} />

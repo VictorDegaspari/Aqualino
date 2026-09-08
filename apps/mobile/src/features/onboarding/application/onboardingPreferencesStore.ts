@@ -1,6 +1,7 @@
 import {createMMKV} from 'react-native-mmkv';
 import {create} from 'zustand';
 import {normalizeAppLocale, type AppLocale} from '../../../shared/i18n/appLocale';
+import {getDeviceLocale} from '../../../shared/i18n/deviceLocale';
 
 const storage = createMMKV({id: 'aqualino.onboarding'});
 const welcomeCompletedKey = 'onboarding.welcomeCompleted';
@@ -26,7 +27,7 @@ interface OnboardingPreferencesState {
 
 export const useOnboardingPreferencesStore = create<OnboardingPreferencesState>(set => ({
   hasCompletedWelcome: storage.getBoolean(welcomeCompletedKey) ?? false,
-  locale: normalizeAppLocale(storage.getString(localeKey)),
+  locale: normalizeAppLocale(storage.getString(localeKey), getDeviceLocale()),
   dailyGoalMl: initialDailyGoalMl,
   hasSelectedDailyGoal: storage.contains(dailyGoalMlKey),
   completeWelcome() {

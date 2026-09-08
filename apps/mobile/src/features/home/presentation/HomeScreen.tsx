@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {AppState} from 'react-native';
 import {launchCamera} from 'react-native-image-picker';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useIsFocused, useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
@@ -9,6 +10,9 @@ import {useSyncStatusStore} from '../../hydration/application/syncStatusStore';
 import {HomeView} from './HomeView';
 import {AppDialog} from '../../../shared/components/AppDialog';
 import {useChallengeActions} from './useChallengeActions';
+import {useHomePreferencesStore} from '../application/homePreferencesStore';
+import {LegacyHydrationRecovery} from '../../hydration/presentation/LegacyHydrationRecovery';
+import {defaultHomeThemeId} from '../domain/homeThemes';
 
 export function HomeScreen(): React.JSX.Element {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -16,6 +20,7 @@ export function HomeScreen(): React.JSX.Element {
   const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
   const recordedAmountMl = route.params?.recordedAmountMl;
   const user = useSessionStore(state => state.user);
+  const homeThemeId = useHomePreferencesStore(state => user ? state.themesByUser[user.id] ?? defaultHomeThemeId : defaultHomeThemeId);
   const refreshUser = useSessionStore(state => state.refreshUser);
   const {query} = useHydrationHome();
   const challenges = useChallengeActions();
@@ -30,7 +35,10 @@ export function HomeScreen(): React.JSX.Element {
     const refresh = () => {refreshHome(); refreshUser().catch(() => undefined);};
     refresh();
     const timer = setInterval(refresh, 60_000);
-    return () => clearInterval(timer);
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') refresh();
+    });
+    return () => {clearInterval(timer); subscription.remove();};
   }, [isFocused, refreshHome, refreshUser]);
 
   useEffect(() => {
@@ -44,16 +52,17 @@ export function HomeScreen(): React.JSX.Element {
     openingCamera.current = true;
     try {
       const result = await launchCamera({
-        mediaType: 'photo', cameraType: 'back', quality: 0.8, maxWidth: 1920, maxHeight: 1920,
-        saveToPhotos: false, includeBase64: false,
+        mediaType: 'photo', cameraType: 'back', quality: 0.6, maxWidth: 1280, maxHeight: 1280,
+        saveToPhotos: false, includeBase64: true,
       });
       if (result.didCancel) return;
       const photoUri = result.assets?.[0]?.uri;
-      if (result.errorCode || !photoUri) {
+      const photoBase64 = result.assets?.[0]?.base64;
+      if (result.errorCode || !photoUri || !photoBase64 || photoBase64.length > 1800000) {
         setCameraError(true);
         return;
       }
-      navigation.navigate('QuickHydration', {source: 'mobile', photoUri});
+      navigation.navigate('QuickHydration', {source: 'mobile', photoUri, photoBase64});
     } catch {
       setCameraError(true);
     } finally {
@@ -65,9 +74,10 @@ export function HomeScreen(): React.JSX.Element {
   return (
     <>
       <HomeView
+        key={user?.id ?? 'guest'}
+        homeThemeId={homeThemeId}
         data={query.data?.data}
         loading={query.isLoading}
-        refreshing={query.isFetching}
         error={query.error instanceof Error ? query.error.message : undefined}
         offline={Boolean(query.data?.offline)}
         syncing={syncing}
@@ -84,9 +94,11 @@ export function HomeScreen(): React.JSX.Element {
         onClaimReward={challenges.claim}
         motionEnabled={isFocused && !cameraError}
         onRetry={query.refetch}
+        onRefresh={() => query.refetch({throwOnError: true})}
         onOpenHydration={openHydration}
         onOpenInventory={openInventory}
       />
+      {user ? <LegacyHydrationRecovery key={`legacy-${user.id}`} userId={user.id} displayName={user.profile.display_name} enabled={isFocused && !cameraError} /> : null}
       {cameraError ? <AppDialog
         title="Não foi possível abrir a câmera"
         message="A foto é necessária para registrar a água. Verifique a permissão da câmera e tente novamente."

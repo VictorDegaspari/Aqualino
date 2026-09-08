@@ -60,7 +60,10 @@ class SoftDeletionTest extends TestCase
     {
         $user = $this->member();
         $group = app(GroupService::class)->create($user, 'Primeira maré');
+        $guest = $this->member();
+        app(GroupService::class)->accept($guest, $group['invite']['code']);
         $challenge = app(HydrationChallengeService::class)->start($user, 'group');
+        app(GroupService::class)->leave($guest);
         Sanctum::actingAs($user);
 
         $this->deleteJson('/api/v1/groups/current/membership')->assertOk();

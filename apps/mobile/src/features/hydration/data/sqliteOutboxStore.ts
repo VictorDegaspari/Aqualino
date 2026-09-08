@@ -9,24 +9,25 @@ interface PendingRow {
   occurred_at: string;
   source: string;
   attempts: number;
+  photo_base64: string | null;
 }
 
 interface CacheRow { [key: string]: SQLiteValue; value: string }
 
 const DATABASE_NAME = 'aqualino.sqlite';
-const DATABASE_GLOBAL_KEY = '__aqualinoOutboxDatabase__';
-
 type GlobalWithOutboxDatabase = typeof globalThis & {
-  __aqualinoOutboxDatabase__?: NitroSQLiteConnection;
+  __aqualinoOutboxDatabases__?: Record<string, NitroSQLiteConnection>;
 };
 
-function getSharedDatabase(): NitroSQLiteConnection {
+function getSharedDatabase(name: string): NitroSQLiteConnection {
   const globalScope = globalThis as GlobalWithOutboxDatabase;
-  globalScope[DATABASE_GLOBAL_KEY] ??= open({name: DATABASE_NAME});
-  return globalScope[DATABASE_GLOBAL_KEY];
+  globalScope.__aqualinoOutboxDatabases__ ??= {};
+  globalScope.__aqualinoOutboxDatabases__[name] ??= open({name});
+  return globalScope.__aqualinoOutboxDatabases__[name];
 }
 
 export class SQLiteOutboxStore implements OutboxStore {
+  constructor(private readonly databaseName = DATABASE_NAME) {}
   private database?: NitroSQLiteConnection;
   private initialization?: Promise<void>;
 
@@ -46,26 +47,40 @@ export class SQLiteOutboxStore implements OutboxStore {
         value TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )`},
+      {query: `CREATE TABLE IF NOT EXISTS hydration_outbox_photos (
+        client_event_id TEXT PRIMARY KEY NOT NULL,
+        photo_base64 TEXT NOT NULL
+      )`},
     ]).then(() => undefined);
 
     return this.initialization;
   }
 
+  async pendingCount(): Promise<number> {
+    await this.initialize();
+    const {rows} = await this.getDatabase().executeAsync<{[key: string]: SQLiteValue; count: number}>(
+      'SELECT COUNT(*) AS count FROM hydration_outbox',
+    );
+    return rows.item(0)?.count ?? 0;
+  }
+
   async enqueue(event: PendingHydration): Promise<void> {
     await this.initialize();
-    await this.getDatabase().executeAsync(
-      `INSERT OR IGNORE INTO hydration_outbox
+    await this.getDatabase().executeBatchAsync([
+      {query: `INSERT OR IGNORE INTO hydration_outbox
        (client_event_id, amount_ml, occurred_at, source, attempts, created_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [event.clientEventId, event.amountMl, event.occurredAt, event.source, event.attempts, new Date().toISOString()],
-    );
+      params: [event.clientEventId, event.amountMl, event.occurredAt, event.source, event.attempts, new Date().toISOString()]},
+      ...(event.photoBase64 ? [{query: 'INSERT OR IGNORE INTO hydration_outbox_photos (client_event_id, photo_base64) VALUES (?, ?)', params: [event.clientEventId, event.photoBase64]}] : []),
+    ]);
   }
 
   async pending(): Promise<PendingHydration[]> {
     await this.initialize();
     const {rows} = await this.getDatabase().executeAsync<PendingRow>(
-      `SELECT client_event_id, amount_ml, occurred_at, source, attempts
-       FROM hydration_outbox ORDER BY created_at ASC LIMIT 100`,
+      `SELECT o.client_event_id, o.amount_ml, o.occurred_at, o.source, o.attempts, p.photo_base64
+       FROM hydration_outbox o LEFT JOIN hydration_outbox_photos p ON p.client_event_id = o.client_event_id
+       ORDER BY o.created_at ASC LIMIT 100`,
     );
 
     return rows._array.map(row => ({
@@ -74,12 +89,16 @@ export class SQLiteOutboxStore implements OutboxStore {
       occurredAt: row.occurred_at,
       source: row.source as PendingHydration['source'],
       attempts: row.attempts,
+      photoBase64: row.photo_base64 ?? undefined,
     }));
   }
 
   async remove(clientEventId: string): Promise<void> {
     await this.initialize();
-    await this.getDatabase().executeAsync('DELETE FROM hydration_outbox WHERE client_event_id = ?', [clientEventId]);
+    await this.getDatabase().executeBatchAsync([
+      {query: 'DELETE FROM hydration_outbox_photos WHERE client_event_id = ?', params: [clientEventId]},
+      {query: 'DELETE FROM hydration_outbox WHERE client_event_id = ?', params: [clientEventId]},
+    ]);
   }
 
   async recordFailure(clientEventId: string, message: string): Promise<void> {
@@ -117,7 +136,7 @@ export class SQLiteOutboxStore implements OutboxStore {
   }
 
   private getDatabase(): NitroSQLiteConnection {
-    this.database ??= getSharedDatabase();
+    this.database ??= getSharedDatabase(this.databaseName);
     return this.database;
   }
 }

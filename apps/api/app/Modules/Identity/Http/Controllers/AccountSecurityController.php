@@ -62,7 +62,7 @@ class AccountSecurityController extends Controller
         $token = $request->query('token');
         $email = is_string($email) && strlen($email) <= 255 ? mb_strtolower(trim($email)) : '';
         $token = is_string($token) && strlen($token) <= 256 ? $token : '';
-        $locale = $request->query('locale') === 'en-US' ? 'en-US' : 'pt-BR';
+        $locale = in_array($request->query('locale'), ['pt-BR', 'en-US', 'es-ES'], true) ? $request->query('locale') : 'pt-BR';
         $copy = AccountEmailContent::for($locale, 'reset');
         $validInput = filter_var($email, FILTER_VALIDATE_EMAIL) && preg_match('/^[a-zA-Z0-9]{32,256}$/', $token);
 
@@ -90,7 +90,7 @@ class AccountSecurityController extends Controller
                 return true;
             }, 3);
         }
-        $locale = $request->query('locale') === 'en-US' ? 'en-US' : 'pt-BR';
+        $locale = in_array($request->query('locale'), ['pt-BR', 'en-US', 'es-ES'], true) ? $request->query('locale') : 'pt-BR';
 
         return $this->page([
             'copy' => AccountEmailContent::for($locale, $valid ? 'verified' : 'invalid'),

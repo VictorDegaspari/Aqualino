@@ -83,7 +83,7 @@ test('toggles and removes an existing reminder', async () => {
     <RemindersView {...baseProps} reminders={[reminder]} onToggle={onToggle} onRemove={onRemove} />,
   );
 
-  await act(async () => fireEvent(view.getByLabelText('Lembrete das 08:30'), 'valueChange', false));
+  await act(async () => fireEvent.press(view.getByLabelText('Lembrete das 08:30')));
   await act(async () => fireEvent.press(view.getByRole('button', {name: 'Remover lembrete das 08:30'})));
 
   expect(onToggle).toHaveBeenCalledWith('morning', false);

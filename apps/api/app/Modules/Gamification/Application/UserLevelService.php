@@ -4,11 +4,12 @@ namespace App\Modules\Gamification\Application;
 
 use App\Models\User;
 use App\Modules\Gamification\Domain\LevelProgression;
+use App\Modules\Hydration\Infrastructure\Models\HydrationLog;
 use Illuminate\Support\Facades\DB;
 
 final class UserLevelService
 {
-    /** @return array{xp_total: int, level: int, level_progress: array{current_xp: int, required_xp: int, remaining_xp: int, percentage: int}} */
+    /** @return array{hydration_penalty_count: int, xp_total: int, level: int, level_progress: array{current_xp: int, required_xp: int, remaining_xp: int, percentage: int}} */
     public function snapshot(User $user): array
     {
         return DB::transaction(function () use ($user): array {
@@ -22,6 +23,7 @@ final class UserLevelService
             $required = LevelProgression::requiredXp($locked->level);
 
             return [
+                'hydration_penalty_count' => HydrationLog::withTrashed()->where('user_id', $locked->id)->whereNotNull('invalidated_at')->count(),
                 'xp_total' => $locked->xp_total,
                 'level' => $locked->level,
                 'level_progress' => [

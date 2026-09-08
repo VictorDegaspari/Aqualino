@@ -6,6 +6,9 @@ final class AccountEmailContent
 {
     public static function for(string $locale, string $action): array
     {
+        if ($locale === 'es-ES') {
+            return self::spanish($action);
+        }
         $english = $locale === 'en-US';
         $base = [
             'locale' => $english ? 'en-US' : 'pt-BR',
@@ -48,6 +51,47 @@ final class AccountEmailContent
                 'body' => $english ? 'It happens. Choose a new password and get back to caring for your Aqualino.' : 'Acontece. Escolha uma nova senha e volte a cuidar do seu Aqualino.',
                 'button' => $english ? 'Reset password' : 'Redefinir senha',
                 'expiry' => $english ? 'This password reset link expires in 60 minutes and can be used once.' : 'Este link expira em 60 minutos e só pode ser usado uma vez.',
+            ],
+        };
+
+        return [...$base, ...$content];
+    }
+
+    private static function spanish(string $action): array
+    {
+        $base = [
+            'locale' => 'es-ES', 'brand' => 'Aqualino', 'eyebrow' => 'TU CAMINO, PROTEGIDO',
+            'greeting' => 'Hola', 'footer' => 'Pequeños pasos. Grandes mareas.',
+            'ignore' => 'Si no lo has solicitado, puedes ignorar este correo.',
+            'fallback' => 'Si el botón no funciona, copia este enlace en tu navegador:',
+            'open_app' => 'Abrir Aqualino', 'email_label' => 'Correo electrónico',
+            'password_label' => 'Contraseña nueva', 'confirmation_label' => 'Confirmar contraseña nueva',
+            'password_hint' => 'Usa al menos 8 caracteres, con letras y números.',
+            'password_mismatch' => 'Las contraseñas deben coincidir.', 'submit' => 'Guardar contraseña nueva',
+            'working' => 'Espera…', 'error' => 'No se pudo completar la acción. Inténtalo de nuevo.',
+            'invalid_reset' => 'Este enlace no es válido o ha caducado. Solicita otro en la app.',
+            'reset_success' => '¡Contraseña actualizada! Inicia sesión con tu contraseña nueva.',
+            'reset_success_title' => 'Todo listo para volver',
+        ];
+        $content = match ($action) {
+            'verify' => [
+                'title' => 'Confirma tu correo',
+                'body' => 'Tu Aqualino está listo para este camino. Confirma tu correo para terminar de crear tu cuenta.',
+                'button' => 'Confirmar correo', 'expiry' => 'Este enlace de confirmación caduca en 60 minutos.',
+            ],
+            'verified' => [
+                'title' => '¡Correo confirmado!',
+                'body' => 'Todo listo. Vuelve a Aqualino y continúa tu camino de hidratación.',
+            ],
+            'invalid' => [
+                'title' => 'Vamos a probar otro enlace',
+                'body' => 'Este enlace de confirmación no es válido o ha caducado. Abre Aqualino y solicita otro correo.',
+            ],
+            default => [
+                'title' => 'Restablece tu contraseña',
+                'body' => 'Puede pasar. Elige una contraseña nueva y vuelve a cuidar de tu Aqualino.',
+                'button' => 'Restablecer contraseña',
+                'expiry' => 'Este enlace caduca en 60 minutos y solo se puede usar una vez.',
             ],
         };
 

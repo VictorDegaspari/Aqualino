@@ -1,11 +1,13 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Animated, {useAnimatedStyle, useReducedMotion, useSharedValue, withTiming} from 'react-native-reanimated';
 import {challengeTheme} from '../../features/home/presentation/challenge/challengeTheme';
 import {AqualinoIcon, type AqualinoIconName} from './AqualinoIcon';
 import {AppModal} from './AppModal';
 import {BellIcon} from './BellIcon';
+import {LoadingWaterDrop} from './LoadingWaterDrop';
+import {useTranslation} from '../i18n/useTranslation';
 
 interface Props {
   title: string;
@@ -20,7 +22,9 @@ interface Props {
   onClose: () => void;
 }
 
-export function AppDialog({title, message, icon = 'alert', illustration, confirmLabel = 'Entendi', cancelLabel, destructive, error, onConfirm, onClose}: Props): React.JSX.Element {
+export function AppDialog({title, message, icon = 'alert', illustration, confirmLabel: customConfirmLabel, cancelLabel, destructive, error, onConfirm, onClose}: Props): React.JSX.Element {
+  const {t} = useTranslation();
+  const confirmLabel = customConfirmLabel ?? t('Entendi', 'Got it', 'Entendido');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string>();
   const submitting = useRef(false);
@@ -41,7 +45,7 @@ export function AppDialog({title, message, icon = 'alert', illustration, confirm
     try {
       if (await onConfirm?.() !== false) onClose();
     } catch (reason) {
-      setActionError(reason instanceof Error ? reason.message : 'Não foi possível concluir. Tente novamente.');
+      setActionError(reason instanceof Error ? reason.message : t('Não foi possível concluir. Tente novamente.', 'Could not complete this action. Try again.', 'No se pudo completar la acción. Inténtalo de nuevo.'));
     } finally {
       submitting.current = false;
       setBusy(false);
@@ -66,7 +70,7 @@ export function AppDialog({title, message, icon = 'alert', illustration, confirm
               accessibilityRole="button" accessibilityLabel={confirmLabel} accessibilityState={{disabled: busy, busy}}
               disabled={busy} onPress={() => {confirm();}}
               style={({pressed}) => [styles.button, destructive && styles.dangerButton, pressed && styles.pressed, busy && styles.busy]}>
-              {busy ? <ActivityIndicator color={challengeTheme.colors.backgroundDeep} /> : null}
+              {busy ? <LoadingWaterDrop size={23} /> : null}
               <Text style={styles.buttonLabel}>{confirmLabel}</Text>
             </Pressable>
             {cancelLabel ? <Pressable accessibilityRole="button" disabled={busy} onPress={close} style={({pressed}) => [styles.button, styles.cancelButton, pressed && styles.pressed, busy && styles.busy]}>

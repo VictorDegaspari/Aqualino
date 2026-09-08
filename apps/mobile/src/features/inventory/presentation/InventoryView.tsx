@@ -1,11 +1,15 @@
+import {useTranslation} from '../../../shared/i18n/useTranslation';
 import type {Inventory, InventoryItem, InventoryItemCode} from '@aqualino/contracts';
-import React from 'react';
-import {ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
+import React, {useState} from 'react';
+import {Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Svg, {Circle, Path, Rect} from 'react-native-svg';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {mascotImages} from '../../../assets/mascot/mascotImages';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
+import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
+import type {HomeThemeId} from '../../home/domain/homeThemes';
+import {InventoryThemes} from './InventoryThemes';
 
 interface Props {
   inventory?: Inventory;
@@ -14,6 +18,9 @@ interface Props {
   error?: string;
   actionFeedback?: {kind: 'success' | 'error'; message: string};
   actionInProgress?: boolean;
+  selectedThemeId: HomeThemeId;
+  onBack: () => void;
+  onSelectTheme: (themeId: HomeThemeId) => void;
   onRetry: () => void;
   onActivateFreeze: () => void;
   onReleaseFreeze: (effectId: string) => void;
@@ -25,37 +32,24 @@ interface PotionContent {
   description: string;
 }
 
-const potionContent: Record<InventoryItemCode, PotionContent> = {
+function usePotionContent(): Record<InventoryItemCode, PotionContent> {
+  const {t} = useTranslation();
+  return {
   streak_freeze: {
-    name: 'Congelamento de streak',
-    description: 'Protege a próxima falta elegível depois de ativado.',
+    name: t('Congelamento de streak', 'Streak freeze', 'Congelar racha'),
+    description: t('Protege a próxima falta elegível depois de ativado.', 'Protects the next eligible missed day after activation.', 'Protege el próximo día fallido elegible después de activarse.'),
   },
   streak_revive: {
-    name: 'Poção de reacender',
-    description: 'Recupera a quebra mais recente dentro da janela permitida.',
+    name: t('Poção de reacender', 'Streak revival potion', 'Poción para recuperar la racha'),
+    description: t('Recupera a quebra mais recente dentro da janela permitida.', 'Restores the most recent break within the allowed window.', 'Recupera la última racha interrumpida dentro del plazo permitido.'),
   },
 };
+}
 
 export function InventoryView(props: Props): React.JSX.Element {
-  if (props.loading && !props.inventory) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator accessibilityLabel="Carregando inventário" color={challengeTheme.colors.cyanStrong} size="large" />
-      </View>
-    );
-  }
-
-  if (props.error && !props.inventory) {
-    return (
-      <View style={styles.center}>
-        <Text accessibilityRole="alert" style={styles.error}>{props.error}</Text>
-        <Pressable accessibilityRole="button" onPress={props.onRetry} style={({pressed}) => [styles.retryButton, pressed && styles.buttonPressed]}>
-          <Text style={styles.retryLabel}>Tentar novamente</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
+  const potionContent = usePotionContent();
+  const {t} = useTranslation();
+  const [category, setCategory] = useState<'potions' | 'themes'>('potions');
   const itemCount = props.inventory?.items.reduce((sum, item) => sum + item.available_quantity, 0) ?? 0;
 
   return (
@@ -68,88 +62,121 @@ export function InventoryView(props: Props): React.JSX.Element {
       />
       <View pointerEvents="none" style={styles.backgroundOverlay} />
 
-      <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        <View style={styles.topbar}>
+          <Pressable testID="inventory-back" accessibilityRole="button" accessibilityLabel={t("Voltar", "Back", "Volver")} onPress={props.onBack} style={({pressed}) => [styles.back, pressed && styles.buttonPressed]}>
+            <Text style={styles.backIcon}>‹</Text>
+            <Text style={styles.backLabel}>{t("Voltar", "Back", "Volver")}</Text>
+          </Pressable>
+        </View>
         <ScrollView
           contentContainerStyle={styles.content}
-          refreshControl={<RefreshControl refreshing={Boolean(props.refreshing)} onRefresh={props.onRetry} tintColor={challengeTheme.colors.cyanStrong} />}
+          refreshControl={category === 'potions' ? <RefreshControl refreshing={Boolean(props.refreshing)} onRefresh={props.onRetry} tintColor={challengeTheme.colors.cyanStrong} /> : undefined}
           showsVerticalScrollIndicator={false}>
           <View style={styles.hero}>
             <View style={styles.mascotOrb}>
               <Image source={mascotImages.happy} resizeMode="contain" style={styles.mascot} />
             </View>
             <View style={styles.heroCopy}>
-              <Text style={styles.eyebrow}>BOLSA DO AQUALINO</Text>
-              <Text accessibilityRole="header" style={styles.title}>Inventário</Text>
-              <Text style={styles.subtitle}>Guarde poções e mantenha sua sequência protegida.</Text>
+              <Text style={styles.eyebrow}>{t("BOLSA DO AQUALINO", "AQUALINO’S BAG", "BOLSA DE AQUALINO")}</Text>
+              <Text accessibilityRole="header" style={styles.title}>{t("Inventário", "Inventory", "Inventario")}</Text>
             </View>
           </View>
 
-          {props.inventory?.usage.blocked_by_group_challenge ? (
-            <View accessibilityRole="alert" style={styles.blockedNotice}>
-              <View style={styles.noticeIcon}><AqualinoIcon name="lock" size={18} color={challengeTheme.colors.gold} /></View>
-              <View style={styles.noticeContent}>
-                <Text style={styles.blockedTitle}>Poções guardadas durante a batalha</Text>
-                <Text style={styles.blockedText}>Seu saldo fica seguro e volta a ficar utilizável quando o desafio de grupo terminar.</Text>
-              </View>
-            </View>
-          ) : null}
-
-          {props.actionFeedback ? (
-            <View accessibilityRole="alert" style={props.actionFeedback.kind === 'error' ? styles.feedbackError : styles.feedbackSuccess}>
-              <AqualinoIcon
-                name={props.actionFeedback.kind === 'error' ? 'alert' : 'check'}
-                size={17}
-                color={props.actionFeedback.kind === 'error' ? challengeTheme.colors.danger : challengeTheme.colors.cyanStrong}
-              />
-              <Text style={props.actionFeedback.kind === 'error' ? styles.feedbackErrorText : styles.feedbackSuccessText}>
-                {props.actionFeedback.message}
-              </Text>
-            </View>
-          ) : null}
-
-          <View style={styles.sectionHeading}>
-            <View>
-              <Text style={styles.sectionTitle}>Suas poções</Text>
-              <Text style={styles.sectionSubtitle}>Use quando precisar de um reforço na jornada.</Text>
-            </View>
-            <View accessibilityLabel={`${itemCount} poções disponíveis`} style={styles.stockPill}>
-              <Text style={styles.stockValue}>{itemCount}</Text>
-              <Text style={styles.stockLabel}>{itemCount === 1 ? 'poção' : 'poções'}</Text>
-            </View>
-          </View>
-
-          <View style={styles.items}>
-            {props.inventory?.items.map(item => (
-              <InventoryItemCard
-                actionInProgress={Boolean(props.actionInProgress)}
-                blocked={props.inventory?.usage.blocked_by_group_challenge ?? false}
-                freezeState={props.inventory?.usage.hydration_freeze}
-                item={item}
-                key={item.code}
-                onActivateFreeze={props.onActivateFreeze}
-                onReleaseFreeze={props.onReleaseFreeze}
-                onReviveStreak={props.onReviveStreak}
-              />
+          <View accessibilityRole="tablist" accessibilityLabel={t("Categorias do inventário", "Inventory categories", "Categorías del inventario")} style={styles.categories}>
+            {([{id: 'potions', label: t("Poções", "Potions", "Pociones"), icon: 'water'}, {id: 'themes', label: t("Temas", "Themes", "Temas"), icon: 'waves'}] as const).map(item => (
+              <Pressable
+                key={item.id}
+                testID={`inventory-${item.id}`}
+                accessibilityRole="tab"
+                accessibilityLabel={item.label}
+                accessibilityState={{selected: category === item.id}}
+                onPress={() => setCategory(item.id)}
+                style={({pressed}) => [styles.category, category === item.id && styles.categorySelected, pressed && styles.buttonPressed]}>
+                <AqualinoIcon name={item.icon} size={18} color={category === item.id ? challengeTheme.colors.backgroundDeep : challengeTheme.colors.muted} />
+                <Text style={[styles.categoryLabel, category === item.id && styles.categoryLabelSelected]}>{item.label}</Text>
+              </Pressable>
             ))}
           </View>
 
-          <View style={styles.storeSection}>
-            <View style={styles.storeHeading}>
-              <View style={styles.storeHeadingCopy}>
-                <Text style={styles.sectionTitle}>Loja de poções</Text>
-                <Text style={styles.sectionSubtitle}>Os preços oficiais aparecerão quando a loja for publicada.</Text>
+          {category === 'themes' ? (
+            <InventoryThemes selectedThemeId={props.selectedThemeId} onSelect={props.onSelectTheme} />
+          ) : props.loading && !props.inventory ? (
+            <View style={styles.center}>
+              <LoadingWaterDrop accessibilityLabel={t("Carregando inventário", "Loading inventory", "Cargando el inventario")} size={62} />
+            </View>
+          ) : props.error && !props.inventory ? (
+            <View style={styles.center}>
+              <Text accessibilityRole="alert" style={styles.error}>{props.error}</Text>
+              <Pressable accessibilityRole="button" onPress={props.onRetry} style={({pressed}) => [styles.retryButton, pressed && styles.buttonPressed]}>
+                <Text style={styles.retryLabel}>{t("Tentar novamente", "Try again", "Intentar de nuevo")}</Text>
+              </Pressable>
+            </View>
+          ) : <>
+            {props.inventory?.usage.blocked_by_group_challenge ? (
+              <View accessibilityRole="alert" style={styles.blockedNotice}>
+                <View style={styles.noticeIcon}><AqualinoIcon name="lock" size={18} color={challengeTheme.colors.gold} /></View>
+                <View style={styles.noticeContent}>
+                  <Text style={styles.blockedTitle}>{t("Poções guardadas durante a batalha", "Potions stored during the challenge", "Pociones guardadas durante el desafío")}</Text>
+                  <Text style={styles.blockedText}>{t("Seu saldo fica seguro e volta a ficar utilizável quando o desafio de grupo terminar.", "Your balance stays safe and becomes available when the group challenge ends.", "Tu saldo queda guardado y volverá a estar disponible cuando termine el desafío de grupo.")}</Text>
+                </View>
               </View>
-              <View style={styles.storeIcon}><AqualinoIcon name="star" size={23} color={challengeTheme.colors.gold} /></View>
+            ) : null}
+
+            {props.actionFeedback ? (
+              <View accessibilityRole="alert" style={props.actionFeedback.kind === 'error' ? styles.feedbackError : styles.feedbackSuccess}>
+                <AqualinoIcon
+                  name={props.actionFeedback.kind === 'error' ? 'alert' : 'check'}
+                  size={17}
+                  color={props.actionFeedback.kind === 'error' ? challengeTheme.colors.danger : challengeTheme.colors.cyanStrong}
+                />
+                <Text style={props.actionFeedback.kind === 'error' ? styles.feedbackErrorText : styles.feedbackSuccessText}>
+                  {props.actionFeedback.message}
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={styles.sectionHeading}>
+              <View>
+                <Text style={styles.sectionTitle}>{t("Suas poções", "Your potions", "Tus pociones")}</Text>
+              </View>
+              <View accessibilityLabel={`${itemCount} poções disponíveis`} style={styles.stockPill}>
+                <Text style={styles.stockValue}>{itemCount}</Text>
+                <Text style={styles.stockLabel}>{itemCount === 1 ? t("poção", "potion", "poción") : t("poções", "potions", "pociones")}</Text>
+              </View>
             </View>
 
-            <View style={styles.storeCards}>
-              {(Object.keys(potionContent) as InventoryItemCode[]).map(code => (
-                <StorePotionCard code={code} key={code} />
+            <View style={styles.items}>
+              {props.inventory?.items.map(item => (
+                <InventoryItemCard
+                  actionInProgress={Boolean(props.actionInProgress)}
+                  blocked={props.inventory?.usage.blocked_by_group_challenge ?? false}
+                  freezeState={props.inventory?.usage.hydration_freeze}
+                  item={item}
+                  key={item.code}
+                  onActivateFreeze={props.onActivateFreeze}
+                  onReleaseFreeze={props.onReleaseFreeze}
+                  onReviveStreak={props.onReviveStreak}
+                />
               ))}
             </View>
 
-            <Text style={styles.storeFootnote}>Compra segura pela App Store ou Google Play.</Text>
-          </View>
+            <View style={styles.storeSection}>
+              <View style={styles.storeHeading}>
+                <View style={styles.storeHeadingCopy}>
+                  <Text style={styles.sectionTitle}>{t("Loja de poções", "Potion shop", "Tienda de pociones")}</Text>
+                </View>
+                <View style={styles.storeIcon}><AqualinoIcon name="star" size={23} color={challengeTheme.colors.gold} /></View>
+              </View>
+
+              <View style={styles.storeCards}>
+                {(Object.keys(potionContent) as InventoryItemCode[]).map(code => (
+                  <StorePotionCard code={code} key={code} />
+                ))}
+              </View>
+
+            </View>
+          </>}
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -167,17 +194,19 @@ interface ItemCardProps {
 }
 
 function InventoryItemCard(props: ItemCardProps): React.JSX.Element {
+  const {t} = useTranslation();
+  const potionContent = usePotionContent();
   const {item} = props;
   const content = potionContent[item.code];
   const hasActiveFreeze = item.code === 'streak_freeze' && Boolean(props.freezeState);
   const actionDisabled = props.blocked || item.available_quantity < 1 || props.actionInProgress;
 
   return (
-    <View accessibilityLabel={`${content.name}: ${item.available_quantity} disponível`} style={[styles.itemCard, hasActiveFreeze && styles.itemCardActive]}>
+    <View accessibilityLabel={t(`${content.name}: ${item.available_quantity} disponível`, `${content.name}: ${item.available_quantity} available`, `${content.name}: ${item.available_quantity} disponible`)} style={[styles.itemCard, hasActiveFreeze && styles.itemCardActive]}>
       <View style={styles.itemTop}>
         <PotionBottleIcon code={item.code} size={58} />
         <View style={styles.itemCopy}>
-          <Text style={styles.itemEyebrow}>NO SEU ESTOQUE</Text>
+          <Text style={styles.itemEyebrow}>{t("NO SEU ESTOQUE", "IN YOUR INVENTORY", "EN TU INVENTARIO")}</Text>
           <Text style={styles.itemName}>{content.name}</Text>
         </View>
         <View style={styles.quantityBadge}>
@@ -191,7 +220,7 @@ function InventoryItemCard(props: ItemCardProps): React.JSX.Element {
       {item.reserved_quantity > 0 ? (
         <View style={styles.reservedPill}>
           <AqualinoIcon name="lock" size={13} color={challengeTheme.colors.cyanStrong} />
-          <Text style={styles.reserved}>{item.reserved_quantity} reservada(s) para proteção ativa</Text>
+          <Text style={styles.reserved}>{t(`${item.reserved_quantity} reservada(s) para proteção ativa`, `${item.reserved_quantity} reserved for active protection`, `${item.reserved_quantity} reservada(s) para protección activa`)}</Text>
         </View>
       ) : null}
 
@@ -201,7 +230,7 @@ function InventoryItemCard(props: ItemCardProps): React.JSX.Element {
             <View style={styles.activeRow}>
               <AqualinoIcon name="check" size={16} color={challengeTheme.colors.cyanStrong} />
               <Text style={styles.activeState}>
-                {props.freezeState?.status === 'suspended' ? 'Proteção suspensa durante a batalha' : 'Proteção ativa'}
+                {props.freezeState?.status === 'suspended' ? t("Proteção suspensa durante a batalha", "Protection suspended during the challenge", "Protección suspendida durante el desafío") : t("Proteção ativa", "Protection active", "Protección activa")}
               </Text>
             </View>
             <Pressable
@@ -211,8 +240,8 @@ function InventoryItemCard(props: ItemCardProps): React.JSX.Element {
               onPress={() => props.onReleaseFreeze(props.freezeState?.id ?? '')}
               style={({pressed}) => [styles.secondaryButton, pressed && !props.actionInProgress && styles.buttonPressed]}>
               {props.actionInProgress
-                ? <ActivityIndicator color={challengeTheme.colors.cyanStrong} />
-                : <Text style={styles.secondaryLabel}>Cancelar proteção</Text>}
+                ? <LoadingWaterDrop size={24} />
+                : <Text style={styles.secondaryLabel}>{t("Cancelar proteção", "Cancel protection", "Cancelar protección")}</Text>}
             </Pressable>
           </>
         ) : (
@@ -223,8 +252,8 @@ function InventoryItemCard(props: ItemCardProps): React.JSX.Element {
             onPress={item.code === 'streak_freeze' ? props.onActivateFreeze : props.onReviveStreak}
             style={({pressed}) => [styles.actionButton, actionDisabled && styles.actionButtonDisabled, pressed && !actionDisabled && styles.buttonPressed]}>
             {props.actionInProgress
-              ? <ActivityIndicator color={challengeTheme.colors.backgroundDeep} />
-              : <Text style={styles.actionLabel}>{item.code === 'streak_freeze' ? 'Ativar proteção' : 'Reacender streak'}</Text>}
+              ? <LoadingWaterDrop size={24} />
+              : <Text style={styles.actionLabel}>{item.code === 'streak_freeze' ? t("Ativar proteção", "Activate protection", "Activar protección") : t("Reacender streak", "Revive streak", "Recuperar racha")}</Text>}
           </Pressable>
         )}
       </View>
@@ -233,10 +262,11 @@ function InventoryItemCard(props: ItemCardProps): React.JSX.Element {
 }
 
 function StorePotionCard({code}: {code: InventoryItemCode}): React.JSX.Element {
-  const content = potionContent[code];
+  const {t} = useTranslation();
+  const content = usePotionContent()[code];
 
   return (
-    <View accessibilityLabel={`${content.name}, indisponível`} style={styles.storeCard}>
+    <View accessibilityLabel={t(`${content.name}, indisponível`, `${content.name}, unavailable`, `${content.name}, no disponible`)} style={styles.storeCard}>
       <PotionBottleIcon code={code} size={49} />
       <View style={styles.storeCardContent}>
         <Text style={styles.storeItemName}>{content.name}</Text>
@@ -244,7 +274,7 @@ function StorePotionCard({code}: {code: InventoryItemCode}): React.JSX.Element {
       </View>
       <View style={styles.unavailableBadge}>
         <AqualinoIcon name="lock" size={13} color={challengeTheme.colors.muted} />
-        <Text style={styles.unavailableLabel}>Em breve</Text>
+        <Text style={styles.unavailableLabel}>{t("Em breve", "Coming soon", "Próximamente")}</Text>
       </View>
     </View>
   );
@@ -279,8 +309,17 @@ const styles = StyleSheet.create({
   background: {position: 'absolute', width: '100%', height: '100%', opacity: 0.65},
   backgroundOverlay: {position: 'absolute', width: '100%', height: '100%', backgroundColor: 'rgba(0, 13, 32, 0.64)'},
   safeArea: {flex: 1},
+  topbar: {flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 4},
+  back: {minWidth: 48, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8},
+  backIcon: {fontSize: 40, lineHeight: 44, color: challengeTheme.colors.cyanStrong},
+  backLabel: {fontSize: 14, fontWeight: '800', color: challengeTheme.colors.cyanStrong},
   content: {paddingHorizontal: 20, paddingTop: 22, paddingBottom: 35, gap: 19},
-  center: {flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18, padding: 24, backgroundColor: challengeTheme.colors.background},
+  center: {minHeight: 240, alignItems: 'center', justifyContent: 'center', gap: 18, padding: 24},
+  categories: {flexDirection: 'row', gap: 8, padding: 5, borderRadius: challengeTheme.radius.pill, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panel},
+  category: {flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44, borderRadius: challengeTheme.radius.pill},
+  categorySelected: {backgroundColor: challengeTheme.colors.cyanStrong},
+  categoryLabel: {fontSize: 14, fontWeight: '800', color: challengeTheme.colors.muted},
+  categoryLabelSelected: {color: challengeTheme.colors.backgroundDeep},
   error: {maxWidth: 300, color: challengeTheme.colors.danger, textAlign: 'center', fontSize: 15, lineHeight: 21},
   retryButton: {minHeight: 50, justifyContent: 'center', paddingHorizontal: 22, borderRadius: challengeTheme.radius.pill, backgroundColor: challengeTheme.colors.cyanStrong},
   retryLabel: {color: challengeTheme.colors.backgroundDeep, fontSize: 15, fontWeight: '900'},
@@ -290,7 +329,6 @@ const styles = StyleSheet.create({
   heroCopy: {flex: 1, gap: 2},
   eyebrow: {fontSize: 10, lineHeight: 14, letterSpacing: 1.05, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
   title: {fontSize: 30, lineHeight: 37, fontWeight: '900', color: challengeTheme.colors.text},
-  subtitle: {fontSize: 13, lineHeight: 18, color: '#C1E5F8'},
   blockedNotice: {flexDirection: 'row', alignItems: 'flex-start', gap: 11, padding: 15, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255, 191, 35, 0.42)', backgroundColor: 'rgba(77, 52, 4, 0.54)'},
   noticeIcon: {width: 31, height: 31, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255, 191, 35, 0.12)'},
   noticeContent: {flex: 1, gap: 2},
@@ -302,7 +340,6 @@ const styles = StyleSheet.create({
   feedbackErrorText: {flex: 1, color: '#FFD1D9', fontSize: 13, lineHeight: 18, fontWeight: '700'},
   sectionHeading: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginTop: 2},
   sectionTitle: {color: challengeTheme.colors.text, fontSize: 21, lineHeight: 27, fontWeight: '900'},
-  sectionSubtitle: {marginTop: 2, color: challengeTheme.colors.muted, fontSize: 13, lineHeight: 18},
   stockPill: {minWidth: 67, alignItems: 'center', paddingHorizontal: 11, paddingVertical: 8, borderRadius: challengeTheme.radius.pill, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: 'rgba(11, 225, 236, 0.11)'},
   stockValue: {color: challengeTheme.colors.cyanStrong, fontSize: 18, lineHeight: 21, fontWeight: '900'},
   stockLabel: {color: '#B9EAF0', fontSize: 10, lineHeight: 12, fontWeight: '700'},
@@ -339,6 +376,5 @@ const styles = StyleSheet.create({
   storeDescription: {color: challengeTheme.colors.muted, fontSize: 11, lineHeight: 15},
   unavailableBadge: {flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'center', paddingHorizontal: 8, paddingVertical: 6, borderRadius: challengeTheme.radius.pill, backgroundColor: 'rgba(141, 171, 200, 0.12)', borderWidth: 1, borderColor: 'rgba(141, 171, 200, 0.22)'},
   unavailableLabel: {color: '#B7CCDB', fontSize: 11, lineHeight: 15, fontWeight: '900'},
-  storeFootnote: {color: '#91B9D0', fontSize: 11, lineHeight: 16, textAlign: 'center'},
   buttonPressed: {opacity: 0.82, transform: [{scale: 0.985}]},
 });

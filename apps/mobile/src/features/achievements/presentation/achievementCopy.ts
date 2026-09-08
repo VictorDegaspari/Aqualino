@@ -34,6 +34,36 @@ const pt = {
 };
 export type AchievementCopy = typeof pt;
 export const achievementCopy: Record<AppLocale, AchievementCopy> = {
+  'es-ES': {
+    title: 'Logros', subtitle: 'Pequeños pasos. Grandes mareas.', highlights: 'Tus destacados',
+    all: 'Ver todos los logros', profileHint: 'Abre tu colección completa de logros',
+    earned: 'Conseguidos', earnedBadge: 'Conseguido', allFilter: 'Todos', lockedFilter: 'Por conseguir', locked: 'Aún por conseguir',
+    beginnings: 'Primeros pasos', consistency: 'Constancia', goals: 'Tus metas', levels: 'Niveles permanentes',
+    newAchievement: 'NUEVO LOGRO', congratulations: '¡Lo has conseguido!',
+    saved: 'Otro hito en tu camino.', continue: 'Continuar', close: 'Cerrar',
+    back: 'Volver al perfil', swipeHint: 'Desliza hacia la derecha para volver',
+    loading: 'Cargando tu colección…', error: 'No se pudieron actualizar los logros.', retry: 'Intentar de nuevo',
+    offline: 'Mostrando la colección guardada en este dispositivo.', empty: 'Tu primer logro está a un pequeño paso.',
+    noLocked: '¡Has conseguido toda esta colección!', progress: 'Progreso',
+    collectionCount: (earned, total) => `${earned} de ${total} logros`,
+    unlockedOn: date => `Conseguido el ${date}`, progressLabel: (progress, target) => `${progress} de ${target}`,
+    items: {
+      level_5: {title: 'Nivel 5', description: 'Acumula XP hasta alcanzar el nivel 5.', celebration: 'Una medalla verde por cuidarte. ¡Este nivel es tuyo para siempre!'},
+      level_10: {title: 'Nivel 10', description: 'Acumula XP hasta alcanzar el nivel 10.', celebration: 'Una medalla azul para celebrar el nivel 10. ¡Sigue a tu ritmo!'},
+      level_50: {title: 'Nivel 50', description: 'Acumula XP hasta alcanzar el nivel 50.', celebration: '¡Tu medalla morada marca un largo camino de cuidado!'},
+      level_100: {title: 'Nivel 100', description: 'Acumula XP hasta alcanzar el nivel 100.', celebration: '¡Llegó tu medalla dorada! El camino continúa más allá del nivel 100.'},
+      first_drop: {title: 'Primera gota', description: 'Registra agua por primera vez.', celebration: 'El primer sorbo de un nuevo camino. ¡Aqualino está contigo!'},
+      first_reminder: {title: 'A tiempo', description: 'Crea tu primer recordatorio de hidratación.', celebration: 'Un gesto de cuidado para tu yo del futuro. ¡Tu primer recordatorio está listo!'},
+      first_goal: {title: 'Día completo', description: 'Alcanza tu meta diaria por primera vez.', celebration: 'Has alcanzado tu meta. ¡Celebra el cuidado de hoy, a tu ritmo!'},
+      team_player: {title: 'En equipo', description: 'Crea o únete a tu primer grupo.', celebration: '¡Cuidarte también puede ser un camino compartido!'},
+      streak_3: {title: 'A buen ritmo', description: 'Alcanza una racha de 3 días de hidratación.', celebration: 'Tres días de constancia. ¡Tu hábito está tomando ritmo!'},
+      streak_7: {title: 'Semana azul', description: 'Alcanza una racha de 7 días de hidratación.', celebration: '¡Una semana de cuidado, una gota a la vez!'},
+      streak_14: {title: 'Marea constante', description: 'Alcanza una racha de 14 días de hidratación.', celebration: 'Dos semanas de constancia. ¡Tu cuidado ya deja huella!'},
+      streak_30: {title: 'Guardián de las gotas', description: 'Alcanza una racha de 30 días de hidratación.', celebration: 'Treinta días de camino. ¡Un hábito construido por ti!'},
+      goals_7: {title: 'Siete días de cuidado', description: 'Alcanza tu meta en 7 días, consecutivos o no.', celebration: 'Siete metas alcanzadas. ¡Cada día de cuidado merece celebrarse!'},
+      goals_30: {title: 'Océano de cuidado', description: 'Alcanza tu meta en 30 días, consecutivos o no.', celebration: 'Treinta metas alcanzadas. ¡Tu océano está hecho de pequeños cuidados!'},
+    },
+  },
   'pt-BR': pt,
   'en-US': {
     title: 'Achievements', subtitle: 'Small steps. Great waves.', highlights: 'Your highlights',

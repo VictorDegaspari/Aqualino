@@ -13,3 +13,5 @@ Schedule::command('outbox:dispatch')
     ->withoutOverlapping();
 
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
+
+Schedule::command('groups:advance-challenges')->everyMinute()->withoutOverlapping();

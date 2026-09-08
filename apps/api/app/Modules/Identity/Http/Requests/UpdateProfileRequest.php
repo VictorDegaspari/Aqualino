@@ -35,7 +35,7 @@ class UpdateProfileRequest extends FormRequest
                 Rule::unique('user_profiles', 'username')->withoutTrashed()->ignore($this->user()->id, 'user_id'),
             ],
             'timezone' => ['sometimes', 'string', Rule::in(DateTimeZone::listIdentifiers())],
-            'locale' => ['sometimes', 'string', Rule::in(['pt-BR', 'en-US'])],
+            'locale' => ['sometimes', 'string', Rule::in(['pt-BR', 'en-US', 'es-ES'])],
             'favorite_volumes_ml' => ['sometimes', 'array', 'min:1', 'max:6'],
             'favorite_volumes_ml.*' => ['integer', 'min:50', 'max:2000', 'distinct'],
             'onboarding_completed' => ['sometimes', 'boolean'],

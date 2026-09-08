@@ -7,11 +7,13 @@ import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
 import {hydrationHomeKey} from '../../hydration/presentation/useHydrationHome';
 import {ProfileScreen} from '../presentation/ProfileScreen';
 
+const mockRefreshUser = jest.fn().mockResolvedValue(undefined);
+jest.mock('@react-navigation/native', () => ({useIsFocused: () => true}));
 jest.mock('../../hydration/application/hydrationService', () => ({hydrationService: {cachedOrRemote: jest.fn()}}));
 jest.mock('@react-native-community/netinfo', () => ({useNetInfo: () => ({isConnected: true})}));
 jest.mock('../../auth/application/sessionStore', () => ({useSessionStore: (selector: (state: unknown) => unknown) => selector({
-  user: {streak: 9, level: 2, xp_multiplier: 1.9, level_progress: {current_xp: 25, required_xp: 125, remaining_xp: 100, percentage: 20}, profile: {display_name: 'Ana', username: 'ana'}},
-  refreshUser: jest.fn(), signOut: jest.fn(),
+  user: {group_medals: {gold: 2, silver: 1, bronze: 0}, streak: 9, level: 2, xp_multiplier: 1.9, level_progress: {current_xp: 25, required_xp: 125, remaining_xp: 100, percentage: 20}, profile: {display_name: 'Ana', username: 'ana'}},
+  refreshUser: mockRefreshUser, signOut: jest.fn(),
 })}));
 jest.mock('../../auth/data/authRepository', () => ({authRepository: {updateProfile: jest.fn()}}));
 jest.mock('../../achievements/presentation/ProfileAchievements', () => ({ProfileAchievements: () => null}));
@@ -50,4 +52,13 @@ test('lights the profile flame from the same updated daily total as Home and res
 
   await act(() => {client.setQueryData(hydrationHomeKey, {data: {today: {total_ml: 0}}});});
   await waitFor(() => expect(view.getByLabelText(offLabel)).toBeTruthy());
+});
+
+
+test('shows confirmed medal counts linked to the profile', async () => {
+  const {view} = await setup(0);
+  expect(view.getByLabelText('Ouro: 2 medalhas')).toBeTruthy();
+  expect(view.getByLabelText('Prata: 1 medalha')).toBeTruthy();
+  expect(view.getByLabelText('Bronze: 0 medalhas')).toBeTruthy();
+  expect(view.getByText('Medalhas confirmadas nos desafios concluídos.')).toBeTruthy();
 });

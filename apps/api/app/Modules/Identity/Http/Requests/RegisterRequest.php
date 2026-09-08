@@ -30,7 +30,7 @@ class RegisterRequest extends FormRequest
             'display_name' => ['required', 'string', 'min:2', 'max:80'],
             'username' => ['required', 'string', 'regex:/^[a-z0-9_]{3,24}$/', Rule::unique('user_profiles', 'username')->withoutTrashed()],
             'timezone' => ['required', 'string', Rule::in(DateTimeZone::listIdentifiers())],
-            'locale' => ['sometimes', 'string', Rule::in(['pt-BR', 'en-US'])],
+            'locale' => ['sometimes', 'string', Rule::in(['pt-BR', 'en-US', 'es-ES'])],
             'daily_goal_ml' => ['sometimes', 'integer', 'between:500,10000'],
             'onboarding_completed' => ['sometimes', 'boolean'],
             'terms_accepted' => ['accepted'],

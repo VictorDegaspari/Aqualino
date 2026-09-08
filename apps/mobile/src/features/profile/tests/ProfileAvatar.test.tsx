@@ -8,9 +8,11 @@ import {AppModalProvider} from '../../../shared/components/AppModal';
 import {getAvatarSource} from '../../../shared/avatars/avatarOptions';
 import {authRepository} from '../../auth/data/authRepository';
 import {ProfileScreen} from '../presentation/ProfileScreen';
+import {useOnboardingPreferencesStore} from '../../onboarding/application/onboardingPreferencesStore';
 
 let mockUser: User;
 const mockRefreshUser = jest.fn().mockResolvedValue(undefined);
+jest.mock('@react-navigation/native', () => ({useIsFocused: () => true}));
 jest.mock('../../auth/application/sessionStore', () => ({useSessionStore: (selector: (state: unknown) => unknown) => selector({user: mockUser, refreshUser: mockRefreshUser, signOut: jest.fn()})}));
 jest.mock('../../auth/data/authRepository', () => ({authRepository: {updateProfile: jest.fn()}}));
 jest.mock('../../hydration/presentation/useHydrationHome', () => ({useHydrationHomeData: () => ({data: undefined})}));
@@ -18,6 +20,7 @@ jest.mock('../../achievements/presentation/ProfileAchievements', () => ({Profile
 
 beforeEach(() => {
   jest.clearAllMocks();
+  useOnboardingPreferencesStore.setState({locale: 'pt-BR'});
   mockUser = {id: 'new-user', email: 'ana@example.com', profile: {
     user_id: 'new-user', display_name: 'Ana', username: 'ana', avatar_url: null,
     timezone: 'America/Sao_Paulo', locale: 'pt-BR', favorite_volumes_ml: [200, 300, 500], onboarding_completed_at: null,
@@ -26,6 +29,25 @@ beforeEach(() => {
     mockUser = {...mockUser, profile: {...mockUser.profile, avatar_url: input.avatar_url ?? null}};
     return mockUser.profile;
   });
+});
+
+test('changes the app to Spanish from the profile and persists the selection', async () => {
+  const view = await renderProfile();
+  await fireEvent.press(view.getByRole('button', {name: /Idioma do app/}));
+  await fireEvent.press(view.getByRole('radio', {name: 'Español, España'}));
+  await waitFor(() => expect(view.getByText('Idioma de la app')).toBeTruthy());
+  expect(authRepository.updateProfile).toHaveBeenCalledWith({locale: 'es-ES'});
+  expect(useOnboardingPreferencesStore.getState().locale).toBe('es-ES');
+  expect(view.getByRole('button', {name: 'Cerrar sesión'})).toBeTruthy();
+});
+
+test('keeps the current language when saving the preference fails', async () => {
+  jest.mocked(authRepository.updateProfile).mockRejectedValueOnce(new Error('Offline'));
+  const view = await renderProfile();
+  await fireEvent.press(view.getByRole('button', {name: /Idioma do app/}));
+  await fireEvent.press(view.getByRole('radio', {name: 'Español, España'}));
+  await waitFor(() => expect(view.getByText('Não foi possível salvar suas preferências.')).toBeTruthy());
+  expect(useOnboardingPreferencesStore.getState().locale).toBe('pt-BR');
 });
 
 function renderProfile() {
@@ -50,7 +72,7 @@ test('saves the first avatar when explicitly selected and restores it on the nex
   const view = await renderProfile();
   await fireEvent.press(view.getByRole('button', {name: 'Escolher avatar'}));
   await fireEvent.press(view.getByRole('radio', {name: 'Avatar 1'}));
-  await waitFor(() => expect(mockRefreshUser).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(mockRefreshUser).toHaveBeenCalledTimes(2));
   expect(authRepository.updateProfile).toHaveBeenCalledWith({avatar_url: 'avatar_1'});
   expect(view.getByRole('button', {name: 'Editar avatar'})).toBeTruthy();
   await view.unmount();
@@ -75,7 +97,7 @@ test('returns to the empty state when the first avatar cannot be saved', async (
   await waitFor(() => expect(view.getByText('Não foi possível salvar seu avatar')).toBeTruthy());
   await fireEvent.press(view.getByRole('button', {name: 'Entendi'}));
   expect(view.getByRole('button', {name: 'Escolher avatar'})).toBeTruthy();
-  expect(mockRefreshUser).not.toHaveBeenCalled();
+  expect(mockRefreshUser).toHaveBeenCalledTimes(1);
 });
 
 test.each([null, undefined, 'unknown', 'toString'])('does not supply a default image for an unselected or invalid avatar: %s', value => {

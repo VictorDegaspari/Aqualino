@@ -1,5 +1,5 @@
 import React from 'react';
-import {fireEvent, render} from '@testing-library/react-native';
+import {act, fireEvent, render, waitFor} from '@testing-library/react-native';
 import {AppError} from '../../../shared/errors/AppError';
 import {WelcomeScreen} from '../presentation/WelcomeScreen';
 
@@ -95,13 +95,25 @@ describe('WelcomeScreen account flow', () => {
   });
 
   it('resumes a saved account without asking for a password', async () => {
-    mockResumeRememberedAccount.mockResolvedValue(true);
+    let finish!: (resumed: boolean) => void;
+    mockResumeRememberedAccount.mockReturnValueOnce(new Promise<boolean>(resolve => {finish = resolve;}));
     const view = await render(<WelcomeScreen />);
 
+    const signingIn = fireEvent.press(view.getByRole('button', {name: 'Continuar como Ana'}));
+    await waitFor(() => expect(view.getByTestId('saved-account-signing-in')).toBeTruthy());
+    expect(view.getByText('Entrando')).toBeTruthy();
+    expect(view.getByRole('button', {name: 'Continuar como Ana'})).toBeDisabled();
     await fireEvent.press(view.getByRole('button', {name: 'Continuar como Ana'}));
+    expect(mockResumeRememberedAccount).toHaveBeenCalledTimes(1);
+
+    await act(() => finish(true));
+    await signingIn;
 
     expect(mockResumeRememberedAccount).toHaveBeenCalledWith('user-1');
     expect(view.queryByText('FORMULÁRIO DE LOGIN')).toBeNull();
+    expect(view.queryByTestId('saved-account-signing-in')).toBeNull();
+    expect(view.queryByText('Entrando')).toBeNull();
+    expect(view.getByRole('button', {name: 'Continuar como Ana'})).toBeEnabled();
   });
 
   it('keeps the saved account and explains when it is offline', async () => {
@@ -112,6 +124,8 @@ describe('WelcomeScreen account flow', () => {
 
     expect(view.getByText('Ana')).toBeTruthy();
     expect(view.getByText('Você não está conectado à internet. Verifique sua conexão e tente novamente.')).toBeTruthy();
+    expect(view.queryByTestId('saved-account-signing-in')).toBeNull();
+    expect(view.getByRole('button', {name: 'Continuar como Ana'})).toBeEnabled();
   });
 
   it('removes a saved account only from account management', async () => {
@@ -146,16 +160,34 @@ describe('WelcomeScreen account flow', () => {
     expect(view.getByText('Escolha o idioma do app')).toBeTruthy();
   });
 
-  it('opens registration inside the final step on first access', async () => {
+  it('keeps progress and back navigation in sync through registration on first access', async () => {
     mockOnboardingState.hasCompletedWelcome = false;
     const view = await render(<WelcomeScreen />);
+    expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(1);
+    expect(view.queryByRole('button', {name: 'Voltar'})).toBeNull();
 
     await fireEvent.press(view.getByRole('button', {name: 'Continuar'}));
+    expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(2);
     await fireEvent.press(view.getByRole('button', {name: 'Continuar'}));
     await fireEvent.press(view.getByText('Criar minha conta'));
 
     expect(view.getByText('FORMULÁRIO DE CADASTRO')).toBeTruthy();
     expect(view.getByText('Etapa 3 de 3')).toBeTruthy();
+    expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(3);
+
+    await fireEvent.press(view.getByRole('button', {name: 'Voltar'}));
+    expect(view.queryByText('FORMULÁRIO DE CADASTRO')).toBeNull();
+    expect(view.getByText('Criar minha conta')).toBeTruthy();
+    expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(3);
+
+    await fireEvent.press(view.getByRole('button', {name: 'Voltar'}));
+    expect(view.getByText('Qual é a sua meta diária?')).toBeTruthy();
+    expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(2);
+
+    await fireEvent.press(view.getByRole('button', {name: 'Voltar'}));
+    expect(view.getByText('Escolha o idioma do app')).toBeTruthy();
+    expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(1);
+    expect(view.queryByRole('button', {name: 'Voltar'})).toBeNull();
   });
 
   it('returns to the previous step on a right swipe from the left edge', async () => {

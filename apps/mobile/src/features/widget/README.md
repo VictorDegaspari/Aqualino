@@ -11,7 +11,7 @@ Os widgets são nativos e funcionam sem manter o processo React Native aberto.
 | Android | Jetpack Glance 1.1.1 | API 24 / Android 7 | pequeno 2×2 e horizontal 4×2 |
 | iOS | WidgetKit + SwiftUI | iOS 15.1 | `systemSmall` e `systemMedium` |
 
-O tamanho pequeno mostra sequência, mascote e frase. O horizontal também mostra os cinco dias mais recentes. Os dois abrem a tela inicial do aplicativo ao toque.
+O tamanho pequeno mostra sequência, mascote e frase. O horizontal também mostra uma faixa de cinco dias da semana atual. Os dois abrem a tela inicial do aplicativo ao toque.
 
 Não existem widgets redimensionáveis, `systemLarge`, tela bloqueada, Live Activity ou registro de água diretamente no widget. Essas possibilidades não devem ser presumidas pela interface React Native.
 
@@ -53,7 +53,7 @@ O contrato público fica em [`packages/contracts/src/index.ts`](../../../../../p
 | Campo | Uso |
 | --- | --- |
 | `schema_version` | Precisa ser `2`; outra versão produz o estado seguro desconectado. |
-| `generated_at` | Data ISO-8601 da geração e validação básica do snapshot. |
+| `generated_at` | Data ISO-8601 da geração; ancora os checks ao dia salvo para não marcar um novo dia usando água de um snapshot anterior. |
 | `user_timezone` | Calcula os cinco dias civis no fuso do perfil. |
 | `last_log_at` | Mantido no contrato para semântica e evolução do snapshot. |
 | `days_since_last_log` | Ajuda a migrar snapshots antigos no cache React Native. |
@@ -89,7 +89,7 @@ Nunca reutilize uma versão com significado diferente. Dados incompatíveis deve
 
 Não há skeleton de rede no widget. A condição de domínio `skeleton` representa o humor do mascote por longo tempo sem água e não um carregamento. Isso evita loading infinito quando o aplicativo ainda não gravou dados.
 
-Os cinco marcadores terminam no dia atual e usam o fuso do perfil. As iniciais seguem `D S T Q Q S S`. Dias consecutivos concluídos são agrupados em uma cápsula arredondada com checks; dias pendentes permanecem circulares.
+Os cinco marcadores seguem a semana de segunda a domingo no fuso do perfil, da esquerda para a direita. De segunda a sexta, a faixa mostra `S T Q Q S` (segunda–sexta); no sábado, terça–sábado; no domingo, quarta–domingo. Após domingo, a faixa volta para segunda–sexta, começando a marcar pela esquerda. Dias futuros ficam pendentes, e a sequência no título continua acumulada entre semanas. Os checks são ancorados em `generated_at`, para que o cache de domingo não marque segunda-feira automaticamente. Dias consecutivos concluídos são agrupados em uma cápsula arredondada com checks; dias pendentes permanecem circulares.
 
 ## Cores, frases e mascote
 

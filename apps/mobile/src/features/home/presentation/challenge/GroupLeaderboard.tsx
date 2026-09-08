@@ -1,53 +1,32 @@
+import type {HydrationChallenge} from '@aqualino/contracts';
 import React, {memo} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {LeaderboardPlayer} from './LeaderboardPlayer';
 import {challengeTheme} from './challengeTheme';
+import type {AppLocale} from '../../../../shared/i18n/appLocale';
 
-interface Props {
-  displayName: string;
-  avatarId?: string | null;
-}
-
-const players = [
-  {position: 1, medal: 'rankGold' as const, color: '#FFBE20'},
-  {position: 2, medal: 'rankSilver' as const, color: '#08D6DF'},
-  {position: 3, medal: 'rankBronze' as const, color: '#D87943'},
-  {position: 4, color: '#08BFCB'},
-  {position: 5, color: '#31627E'},
-];
-
-export const GroupLeaderboard = memo(function GroupLeaderboardView({displayName, avatarId}: Props): React.JSX.Element {
+export const GroupLeaderboard = memo(function GroupLeaderboardView({challenge, onDetails, locale = 'pt-BR'}: {
+  challenge: HydrationChallenge; onDetails: () => void; locale?: AppLocale;
+}): React.JSX.Element {
+  const english = locale === 'en-US';
   return (
     <View style={styles.panel}>
-      <View style={styles.heading}>
-        <Text style={styles.title}>Placar do grupo</Text>
-        <Text numberOfLines={1} style={styles.name}>{displayName}</Text>
-      </View>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale === 'es-ES' ? "Ver la clasificación completa del grupo" : english ? 'View full group standings' : 'Ver placar completo do grupo'} onPress={onDetails} style={styles.heading}>
+        <Text style={styles.title}>{locale === 'es-ES' ? "Clasificación del grupo" : english ? 'Group standings' : 'Placar do grupo'}</Text>
+        <Text style={styles.status}>{challenge.status === 'completed' ? (locale === 'es-ES' ? "Definitivo" : english ? 'Final' : 'Definitivo') : challenge.status === 'settling' ? (locale === 'es-ES' ? "Calculando" : english ? 'Finalizing' : 'Apurando') : (locale === 'es-ES' ? "Proyección" : english ? 'Projected' : 'Projeção')} ›</Text>
+      </Pressable>
       <View style={styles.players}>
-        {players.map((player, index) => (
-          <LeaderboardPlayer
-            key={player.position}
-            position={player.position}
-            active={index === 0}
-            medal={player.medal}
-            barColor={player.color}
-            avatarId={index === 0 ? avatarId : undefined}
-          />
-        ))}
+        {challenge.leaderboard?.map(entry => <LeaderboardPlayer locale={locale} key={entry.user_id} entry={entry} />)}
       </View>
     </View>
   );
 });
 
 const styles = StyleSheet.create({
-  panel: {
-    marginTop: 11, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 6,
-    borderRadius: challengeTheme.radius.panel, borderWidth: 2, borderColor: challengeTheme.colors.border,
-    backgroundColor: challengeTheme.colors.panel, shadowColor: '#00152C', shadowOpacity: 0.6,
-    shadowRadius: 8, shadowOffset: {width: 0, height: 4}, elevation: 5,
-  },
-  heading: {height: 20, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 4},
-  title: {fontSize: 16, lineHeight: 20, fontWeight: '900', color: challengeTheme.colors.text},
-  name: {maxWidth: 105, fontSize: 10, lineHeight: 13, color: challengeTheme.colors.muted},
-  players: {height: 76, marginTop: 1, flexDirection: 'row', alignItems: 'flex-end'},
+  panel: {paddingHorizontal: 10, paddingBottom: 8, borderRadius: challengeTheme.radius.panel, borderWidth: 1,
+    borderColor: challengeTheme.colors.border, backgroundColor: challengeTheme.colors.panel},
+  heading: {minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8},
+  title: {fontSize: 15, fontWeight: '900', color: challengeTheme.colors.text},
+  status: {fontSize: 11, color: challengeTheme.colors.cyan},
+  players: {flexDirection: 'row', alignItems: 'flex-end'},
 });

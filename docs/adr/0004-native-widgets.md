@@ -13,7 +13,7 @@ O widget funciona com o app fechado e sem polling de rede. O sistema operacional
 
 ## Evolução do snapshot
 
-A versão 2 acrescenta `current_streak`, usado no título e na janela móvel dos cinco dias mais recentes. O app regrava o snapshot ao carregar a Home e depois de cada registro, permitindo que widgets instalados migrem sem polling próprio. Android e iOS descartam versões incompatíveis e apresentam um estado inicial seguro.
+A versão 2 acrescenta `current_streak`, usado no título e nos checks da faixa de cinco dias da semana atual. A faixa reinicia pela segunda-feira após domingo e avança da esquerda para a direita; no fim de semana, desloca-se para incluir sábado e domingo. `generated_at` ancora os checks à data do snapshot, evitando transportar o registro de domingo para a segunda-feira. O app regrava o snapshot ao carregar a Home e depois de cada registro, permitindo que widgets instalados migrem sem polling próprio. Android e iOS descartam versões incompatíveis e apresentam um estado inicial seguro.
 
 ## Referência operacional
 

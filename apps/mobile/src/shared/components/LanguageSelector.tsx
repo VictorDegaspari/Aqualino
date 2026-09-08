@@ -6,9 +6,10 @@ import {localeOptions, type AppLocale} from '../i18n/appLocale';
 interface Props {
   value: AppLocale;
   onChange: (locale: AppLocale) => void;
+  disabled?: boolean;
 }
 
-export function LanguageSelector({value, onChange}: Props): React.JSX.Element {
+export function LanguageSelector({value, onChange, disabled = false}: Props): React.JSX.Element {
   return (
     <View accessibilityRole="radiogroup" style={styles.options}>
       {localeOptions.map(option => {
@@ -18,7 +19,8 @@ export function LanguageSelector({value, onChange}: Props): React.JSX.Element {
             key={option.value}
             accessibilityRole="radio"
             accessibilityLabel={`${option.label}, ${option.country}`}
-            accessibilityState={{selected}}
+            accessibilityState={{selected, disabled}}
+            disabled={disabled}
             onPress={() => onChange(option.value)}
             style={({pressed}) => [styles.option, selected && styles.optionSelected, pressed && styles.optionPressed]}>
             <Text style={styles.flag}>{option.flag}</Text>

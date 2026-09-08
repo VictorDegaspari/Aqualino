@@ -24,6 +24,7 @@ class StoreHydrationLogRequest extends FormRequest
             'occurred_at' => ['nullable', 'date'],
             'source' => ['required', Rule::in(['mobile', 'widget', 'shortcut', 'import'])],
             'client_event_id' => ['required', 'uuid'],
+            'photo_base64' => ['sometimes', 'string', 'max:1800000'],
             'metadata' => ['sometimes', 'array', 'max:8'],
         ];
     }

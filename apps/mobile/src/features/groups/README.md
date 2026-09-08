@@ -14,8 +14,14 @@ Endpoints sob `/api/v1`:
 - `POST /groups/invites/accept` — `{code, accept: true}`
 - `POST /groups/current/invite`
 - `DELETE /groups/current/membership`
+- `PATCH /groups/current/settings` — `{photo_review_enabled}`, somente líder
+- `GET /groups/current/reviews?page=1`
+- `POST /hydration/logs/{id}/votes` — `{vote: "valid" | "invalid"}`
+- `GET /hydration/logs/{id}/photo` — imagem privada autenticada
 
-O contrato está em `packages/contracts/openapi.yaml`. Esta entrega cobre a formação da equipe. Agendamento e pontuação do desafio de sete dias, avatar do grupo, remoção de integrantes, transferência manual e convites por deep link permanecem para os próximos incrementos; a tela não apresenta placares ou desafios simulados.
+O contrato está em `packages/contracts/openapi.yaml`. O responsável inicia a primeira rodada pela Home, na aba Grupo, com pelo menos duas pessoas. A Home e a aba Equipes exibem o placar real, as regras e o último resultado. O elenco e a meta individual ficam fixos na largada; os pontos são comparados em centésimos e os empates usam posições como 1º, 1º, 3º. A rodada tem sete dias civis no fuso do grupo e 15 minutos finais para sincronização, e aguarda também o encerramento das votações abertas antes da confirmação das medalhas e dos sorteios dos primeiros colocados (70% XP, 20% congelamento, 10% reacender). A próxima rodada começa automaticamente ao final da janela, se houver pelo menos duas pessoas.
+
+O comando `groups:advance-challenges`, executado a cada minuto pelo scheduler, fixa os participantes, fecha os resultados e concede os prêmios de forma idempotente. Consultas e mudanças do grupo também reconciliam esses estados. O histórico usa soft deletes. Avatar do grupo, remoção de integrantes, transferência manual e convites por deep link permanecem para os próximos incrementos.
 
 ## Validação
 
@@ -28,12 +34,23 @@ pnpm -r typecheck
 pnpm openapi:lint
 ```
 
-A API requer a migration `2026_09_04_224412_create_groups_tables.php`. Para atualizar a API Docker local, que copia o código para a imagem:
+A API requer as migrations de grupos, `2026_09_07_161529_add_group_challenge_scoring.php` e `2026_09_07_171627_add_hydration_photo_reviews.php`. Fotos ficam no volume persistente privado `hydration_photos`. Para atualizar a API Docker local, que copia o código para a imagem:
 
 ```sh
-docker compose build api
-docker compose up -d --no-deps api
-docker compose exec api php artisan migrate
+docker compose build api horizon scheduler
+docker compose run --rm --no-deps api php artisan migrate --force
+docker compose up -d --no-deps api horizon scheduler
+docker compose exec nginx nginx -s reload
 ```
 
-Os testes de backend ficam em `apps/api/tests/Feature/GroupControllerTest.php`. Execute em um banco de testes isolado; nunca use `migrate:fresh` no banco de desenvolvimento.
+Os testes de backend ficam em `apps/api/tests/Feature/GroupControllerTest.php` e `apps/api/tests/Feature/GroupChallengeTest.php`. Execute em um banco de testes isolado; nunca use `migrate:fresh` no banco de desenvolvimento.
+
+## Revisão de marcações
+
+A votação começa habilitada. O líder pode desabilitar ou habilitar novos envios; o prazo e os votos de marcações já recebidas permanecem. Só grupos com pelo menos três pessoas abrem votação. O autor não vota. A lista dos outros integrantes é fixada por marcação e exige maioria estrita: dois inválidos entre quatro elegíveis não anulam, três anulam. Quem sai perde acesso a novos votos; votos já registrados e o total elegível permanecem. Novos integrantes não acessam fotos anteriores.
+
+A janela é de 12 horas a partir do recebimento na API, inclusive para registros offline. Um voto por pessoa, definitivo; repetir a mesma requisição não duplica. As marcações são válidas enquanto aguardam a maioria. Anular mantém o histórico e recalcula água, bônus, XP, sequência e desafios; o nível já conquistado segue a política de nível permanente existente. Prêmios solo e em grupo aguardam as revisões relevantes.
+
+Todos os modos compartilham 15 marcações por dia civil do perfil e 900 segundos entre registros. Anulações e soft deletes não devolvem a vaga. A API verifica ambos os lados do intervalo para envios offline fora de ordem, com bloqueio transacional por usuário. O app mostra limites e horário de liberação e preserva foto, volume, horário confiável e idempotência na fila offline por conta. Esses limites são regras do aplicativo, não recomendações de consumo.
+
+Filas anteriores em `aqualino.sqlite` não têm autoria confiável. A Home oferece recuperação somente se houver pendências e pede ao usuário que as vincule à conta correta; cancelar mantém o arquivo. Novas filas ficam em `aqualino-<userId>.sqlite`, com fotos removidas após confirmação. A migração enfileira antes de retirar da origem e preserva o UUID para retries idempotentes.

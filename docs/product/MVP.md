@@ -143,7 +143,7 @@ Escopo do grupo:
 
 #### Janela do desafio
 
-- quando o grupo se torna elegível, o primeiro desafio começa às 00:00 do dia seguinte no fuso do grupo;
+- o responsável inicia a primeira rodada quando há pelo menos duas pessoas; o desafio começa às 00:00 do dia seguinte no fuso do grupo;
 - se o grupo começar na quarta-feira, o desafio começa na quinta-feira;
 - cada desafio dura sete dias civis consecutivos e termina às 23:59:59 do sétimo dia;
 - `end_date` é sempre `start_date + 6 dias`;
@@ -151,11 +151,23 @@ Escopo do grupo:
 - concluída uma janela, a próxima começa no dia seguinte com os integrantes então elegíveis;
 - o backend devolve início, fim, fuso, status e versão da regra.
 
+#### Validação de marcações
+
+A votação começa habilitada e pode ser desabilitada pelo líder. Mudanças afetam novos envios, preservando votações abertas. Só grupos com mais de duas pessoas votam, sempre excluindo o autor. A janela é de 12 horas após a sincronização; o elenco elegível fica fixo por marcação. O voto é definitivo e idempotente. É preciso mais da metade de todos os outros elegíveis para anular: empates e abstenções favorecem a validade (2 inválidos + 2 ausentes mantém; 3 inválidos + 1 ausente anula).
+
+A anulação permanece no histórico e retira o volume, recalcula XP, sequência e pontos; prêmios relevantes aguardam as votações. Tanto solo quanto grupo compartilham o limite de 15 marcações por dia civil do perfil e intervalo mínimo de 15 minutos. Registros anulados ou excluídos não devolvem vagas. A câmera salva a foto junto da fila offline; o acesso remoto à foto exige autenticação e elegibilidade.
+
 #### Pontuação e premiação
 
 Para cada integrante, a pontuação diária é o percentual da própria meta, limitado a 100 pontos. A pontuação final soma os sete dias, com máximo de 700 pontos. Beber acima da meta continua registrado, mas não aumenta a pontuação competitiva.
 
-O placar mostra nome, avatar, volume, percentual, pontos acumulados, posição ou empate. Horários detalhados dos registros não são compartilhados.
+A regra `group-v1` fixa a meta individual e o elenco no início da rodada. Mudanças posteriores da meta pessoal valem para as próximas rodadas. O percentual diário é arredondado para centésimos antes da soma; a comparação usa esses mesmos valores inteiros em centésimos para que um empate visível seja um empate real.
+
+Após o fim dos sete dias, a rodada fica em `settling` durante 15 minutos para sincronização. Contam registros ocorridos dentro da janela e persistidos antes desse prazo, mesmo quando o fechamento pelo scheduler atrasa. Depois do prazo e do encerramento das votações de fotos relevantes (até 12 horas após cada envio), o servidor grava o resultado, passa para `completed` e concede os prêmios na mesma transação. Novos registros continuam no histórico pessoal, mas não reescrevem um resultado fechado. Zero pontos não concede posição, medalha ou sorteio; uma rodada inteira sem pontos fica sem vencedores.
+
+O elenco permanece registrado após uma saída. Quem entrar depois do início só compete na próxima rodada. Se houver menos de duas pessoas no momento da largada, a rodada é cancelada. O histórico dos participantes usa soft deletes.
+
+O placar mostra nome, avatar, volume, percentual, pontos acumulados, posição ou empate. Na revisão de uma marcação, somente o autor e os integrantes elegíveis do grupo atual podem ver sua foto privada, volume e horário.
 
 As posições usam classificação de competição: pessoas empatadas recebem a mesma posição e a posição seguinte é pulada. A premiação visual é:
 

@@ -1,3 +1,4 @@
+import {useTranslation} from '../../../../shared/i18n/useTranslation';
 import React, {memo} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {AqualinoIcon} from '../../../../shared/components/AqualinoIcon';
@@ -13,10 +14,11 @@ interface Props {
 }
 
 export const ChallengeModeToggle = memo(function ChallengeModeToggleView({mode, groupAvailable = true, onChange}: Props): React.JSX.Element {
+  const {t} = useTranslation();
   return (
     <View accessibilityRole="tablist" style={styles.container}>
-      <Mode active={mode === 'group'} icon="group" label="Grupo" locked={!groupAvailable} onPress={() => onChange('group')} />
-      <Mode active={mode === 'solo'} icon="person" label="Solo" onPress={() => onChange('solo')} />
+      <Mode active={mode === 'group'} icon="group" label={t("Grupo", "Group", "Grupo")} locked={!groupAvailable} onPress={() => onChange('group')} />
+      <Mode active={mode === 'solo'} icon="person" label={t("Solo", "Solo", "Individual")} onPress={() => onChange('solo')} />
     </View>
   );
 });

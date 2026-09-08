@@ -42,7 +42,7 @@ const homeData: HydrationHomeData = {
       {date: '2026-09-06', weekday: 7, state: 'future', total_ml: 0, goal_ml: 2000, percentage: 0, is_today: false, is_trophy: true, protection: null},
     ],
   },
-  mascot: result.widget,
+  mascot: {...result.widget, last_log_at: null},
 };
 
 test('keeps the same client event id from offline enqueue through retry', async () => {
@@ -350,3 +350,46 @@ function createService(store: InMemoryOutboxStore, remote: HydrationRemoteReposi
   clock.synchronize(result.widget.generated_at);
   return new OfflineHydrationService(store, remote, widget, clock);
 }
+
+
+test('retains photo bytes across offline retries and uploads them with the original event', async () => {
+  const store = new InMemoryOutboxStore();
+  const remote = {getHome: jest.fn(), getLogs: jest.fn(), record: jest.fn().mockRejectedValueOnce(new AppError('Offline', 'NETWORK_UNAVAILABLE')).mockResolvedValue(result), updateGoal: jest.fn()};
+  const service = createService(store, remote, {write: jest.fn()});
+  await service.record(300, 'mobile', false, 'photo-data');
+  const original = (await store.pending())[0];
+  expect(original.photoBase64).toBe('photo-data');
+  await service.flush();
+  expect((await store.pending())[0].photoBase64).toBe('photo-data');
+  await service.flush();
+  expect(remote.record).toHaveBeenLastCalledWith(expect.objectContaining({photo_base64: 'photo-data', client_event_id: original.clientEventId}));
+  expect(await store.pending()).toEqual([]);
+});
+
+test('enforces the 15 minute interval offline and accepts the exact boundary', async () => {
+  let elapsed = 0;
+  const clock = new TrustedHydrationClock(() => Date.parse(result.widget.generated_at) + elapsed, () => elapsed);
+  clock.synchronize(result.widget.generated_at);
+  const store = new InMemoryOutboxStore();
+  await store.saveHome(homeData);
+  const service = new OfflineHydrationService(store, {getHome: jest.fn(), getLogs: jest.fn(), record: jest.fn(), updateGoal: jest.fn()}, {write: jest.fn()}, clock);
+  await service.record(300, 'mobile', false);
+  elapsed = 899_999;
+  await expect(service.record(300, 'mobile', false)).rejects.toMatchObject({code: 'HYDRATION_COOLDOWN'});
+  elapsed = 900_000;
+  await service.record(300, 'mobile', false);
+  expect(await service.pendingCount()).toBe(2);
+  expect((await service.cachedOrRemote()).data.today.recording_limits).toMatchObject({recorded_today: 2, remaining_today: 13, next_allowed_at: '2026-09-02T12:30:00.000Z'});
+});
+
+test('counts invalid server records and queued records toward the daily limit', async () => {
+  const store = new InMemoryOutboxStore();
+  await store.saveHome({...homeData, today: {...homeData.today, recording_limits: {
+    daily_limit: 15, minimum_interval_seconds: 900, recorded_today: 14, remaining_today: 1,
+    next_allowed_at: null, server_now: result.widget.generated_at,
+  }}});
+  const service = createService(store, {getHome: jest.fn(), getLogs: jest.fn(), record: jest.fn(), updateGoal: jest.fn()}, {write: jest.fn()});
+  await service.record(300, 'mobile', false);
+  await expect(service.record(300, 'mobile', false)).rejects.toMatchObject({code: 'HYDRATION_DAILY_LIMIT'});
+  expect(await service.pendingCount()).toBe(1);
+});

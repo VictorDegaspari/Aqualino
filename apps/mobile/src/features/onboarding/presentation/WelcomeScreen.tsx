@@ -1,11 +1,14 @@
-import React, {useCallback, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
-import {Image, Pressable, ScrollView, StyleSheet, Text, TextInput, type GestureResponderEvent, View} from 'react-native';
+import {Image, Pressable, StyleSheet, Text, TextInput, type GestureResponderEvent, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import Animated, {cancelAnimation, Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming} from 'react-native-reanimated';
+import Svg, {Path} from 'react-native-svg';
 import {mascotImages} from '../../../assets/mascot/mascotImages';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
 import {LanguageSelector} from '../../../shared/components/LanguageSelector';
+import {KeyboardAwareScrollView} from '../../../shared/components/KeyboardAwareScrollView';
 import {haptics} from '../../../shared/device/haptics';
 import {appCopy} from '../../../shared/i18n/appLocale';
 import {typography} from '../../../shared/theme/typography';
@@ -50,6 +53,29 @@ function OnboardingContinueButton({label, disabled, onPress}: ContinueButtonProp
         <Text style={styles.continueButtonLabel}>{label}</Text>
       </View>
     </Pressable>
+  );
+}
+
+function OnboardingProgressBar({step}: {step: OnboardingStep}): React.JSX.Element {
+  const progress = useSharedValue(step / TOTAL_STEPS);
+
+  useEffect(() => {
+    progress.value = withTiming(step / TOTAL_STEPS, {
+      duration: 420,
+      easing: Easing.inOut(Easing.cubic),
+      reduceMotion: ReduceMotion.System,
+    });
+    return () => cancelAnimation(progress);
+  }, [progress, step]);
+
+  const fillStyle = useAnimatedStyle(() => ({
+    width: `${progress.value * 100}%` as `${number}%`,
+  }));
+
+  return (
+    <View accessible accessibilityRole="progressbar" accessibilityValue={{min: 0, max: TOTAL_STEPS, now: step}} style={styles.progressTrack}>
+      <Animated.View style={[styles.progressFill, fillStyle]} />
+    </View>
   );
 }
 
@@ -179,7 +205,7 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
         />
         <View pointerEvents="none" style={styles.backgroundOverlay} />
         <SafeAreaView style={styles.safeArea}>
-          <ScrollView contentContainerStyle={styles.returningContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollView contentContainerStyle={styles.returningContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <View style={styles.hero}>
               <View style={styles.mascotOrb}>
                 <Image source={mascotImages.empty} resizeMode="contain" style={styles.mascot} />
@@ -205,7 +231,7 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
               onRestart={restartForNewAccount}
               onShowAuth={showAuth}
             />
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </SafeAreaView>
       </View>
     );
@@ -221,7 +247,7 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
       />
       <View pointerEvents="none" style={styles.backgroundOverlay} />
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView
+        <KeyboardAwareScrollView
           testID="onboarding-scroll"
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -230,20 +256,23 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
           onTouchEnd={finishSwipe}>
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={copy.back}
-                disabled={!canGoBack}
-                onPress={goBack}
-                style={({pressed}) => [styles.backButton, !canGoBack && styles.backButtonHidden, pressed && canGoBack && styles.buttonPressed]}>
-                <Text style={styles.backLabel}>‹</Text>
-              </Pressable>
+              {canGoBack ? (
+                <Pressable
+                  testID="onboarding-back"
+                  accessibilityRole="button"
+                  accessibilityLabel={copy.back}
+                  hitSlop={6}
+                  onPress={goBack}
+                  style={({pressed}) => [styles.backButton, pressed && styles.backButtonPressed]}>
+                  <Svg width={24} height={24} viewBox="0 0 24 24" pointerEvents="none" accessible={false}>
+                    <Path d="M15 6 L9 12 L15 18" fill="none" stroke={challengeTheme.colors.cyanStrong} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
+                </Pressable>
+              ) : <View style={styles.progressSpacer} />}
               <Text style={styles.stepLabel}>{copy.step} {step} {copy.of} {TOTAL_STEPS}</Text>
               <View style={styles.progressSpacer} />
             </View>
-            <View accessibilityRole="progressbar" accessibilityValue={{min: 0, max: TOTAL_STEPS, now: step}} style={styles.progressTrack}>
-              <View style={[styles.progressFill, {width: `${(step / TOTAL_STEPS) * 100}%`}]} />
-            </View>
+            <OnboardingProgressBar step={step} />
           </View>
 
           {step === 1 ? (
@@ -334,7 +363,7 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
               onPress={advance}
             />
           ) : null}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </SafeAreaView>
     </View>
   );
@@ -348,12 +377,11 @@ const styles = StyleSheet.create({
   content: {flexGrow: 1, paddingHorizontal: 21, paddingTop: 14, paddingBottom: 28, gap: 21},
   returningContent: {flexGrow: 1, justifyContent: 'center', paddingHorizontal: 21, paddingVertical: 28, gap: 28},
   progressSection: {gap: 8},
-  progressHeader: {height: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
-  backButton: {width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 17, backgroundColor: 'rgba(2, 38, 71, 0.75)', borderWidth: 1, borderColor: challengeTheme.colors.border},
-  backButtonHidden: {opacity: 0},
-  backLabel: {fontFamily: typography.family, marginTop: -3, color: challengeTheme.colors.cyanStrong, fontSize: 31, lineHeight: 31, fontWeight: '400'},
+  progressHeader: {height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+  backButton: {width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: 'rgba(2, 38, 71, 0.75)', borderWidth: 1, borderColor: challengeTheme.colors.border},
+  backButtonPressed: {opacity: 0.8, transform: [{scale: 0.94}]},
   stepLabel: {fontFamily: typography.family, fontSize: 12, lineHeight: 17, fontWeight: '900', color: '#D1E4E4', letterSpacing: 0.35},
-  progressSpacer: {width: 34},
+  progressSpacer: {width: 44, height: 44},
   progressTrack: {height: 8, overflow: 'hidden', borderRadius: 99, backgroundColor: 'rgba(145, 200, 209, 0.2)', borderWidth: 1, borderColor: 'rgba(145, 200, 209, 0.18)'},
   progressFill: {height: '100%', borderRadius: 99, backgroundColor: challengeTheme.colors.cyanStrong},
   hero: {alignItems: 'center', gap: 8, paddingHorizontal: 10},

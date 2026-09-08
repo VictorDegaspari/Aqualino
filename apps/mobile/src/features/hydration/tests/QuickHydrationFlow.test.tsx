@@ -10,12 +10,13 @@ import type {RecordOutcome} from '../application/offlineHydrationService';
 import type {HydrationLogPage} from '@aqualino/contracts';
 import {hydrationLogsKey, mergeHydrationLogs} from '../application/hydrationHistory';
 import {hydrationService} from '../application/hydrationService';
-import {hydrationHomeKey} from '../presentation/useHydrationHome';
+import {hydrationHomeAccountKey} from '../presentation/useHydrationHome';
 import {QuickHydrationScreen} from '../presentation/QuickHydrationScreen';
 
+const hydrationHomeKey = hydrationHomeAccountKey('ana');
 const mockPreferences = {lastAmountMl: 300, selectAmount: jest.fn()};
 const mockApplyGamification = jest.fn();
-jest.mock('../application/hydrationService', () => ({hydrationService: {record: jest.fn(), pendingCount: jest.fn()}}));
+jest.mock('../application/hydrationService', () => ({hydrationService: {record: jest.fn(), pendingCount: jest.fn(), cachedOrRemote: jest.fn()}}));
 jest.mock('@react-native-community/netinfo', () => ({useNetInfo: () => ({isConnected: true})}));
 jest.mock('react-native-image-picker', () => ({launchCamera: jest.fn()}));
 jest.mock('../../auth/application/sessionStore', () => ({
@@ -58,7 +59,7 @@ async function setup(photoUri?: string, source = 'mobile') {
   const client = new QueryClient({defaultOptions: {queries: {retry: false, gcTime: Infinity}, mutations: {retry: false, gcTime: Infinity}}});
   client.setQueryData(hydrationHomeKey, {data, offline: false});
   const navigation = {popTo: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true), goBack: jest.fn()};
-  const props = {navigation, route: {key: 'quick', name: 'QuickHydration', params: {source, photoUri}}} as unknown as NativeStackScreenProps<RootStackParamList, 'QuickHydration'>;
+  const props = {navigation, route: {key: 'quick', name: 'QuickHydration', params: {source, photoUri, photoBase64: photoUri ? 'photo-data' : undefined}}} as unknown as NativeStackScreenProps<RootStackParamList, 'QuickHydration'>;
   const view = await render(
     <QueryClientProvider client={client}>
       <SafeAreaProvider initialMetrics={{frame: {x: 0, y: 0, width: 375, height: 812}, insets: {top: 44, right: 0, bottom: 34, left: 0}}}>
@@ -71,6 +72,7 @@ async function setup(photoUri?: string, source = 'mobile') {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  service.cachedOrRemote.mockResolvedValue({data, offline: false});
   service.record.mockResolvedValue(saved);
   service.pendingCount.mockResolvedValue(0);
 });
@@ -82,7 +84,7 @@ test('requires a photo before recording even when opened by a shortcut', async (
   await fireEvent.press(volume);
   expect(service.record).not.toHaveBeenCalled();
 
-  jest.mocked(launchCamera).mockResolvedValue({assets: [{uri: 'file:///cup.jpg'}]});
+  jest.mocked(launchCamera).mockResolvedValue({assets: [{uri: 'file:///cup.jpg', base64: 'photo-data'}]});
   await fireEvent.press(view.getByRole('button', {name: 'Tirar foto do copo'}));
   expect(view.getByLabelText('Foto do seu copo ou garrafa')).toBeTruthy();
   expect(view.getByRole('button', {name: 'Registrar 300 ml de água'})).toBeEnabled();
@@ -112,7 +114,7 @@ test('updates the Home drop before returning and prevents repeated taps during s
     const home = client.getQueryData<{data: HydrationHomeData}>(hydrationHomeKey)!;
     expect(home.data.today.total_ml).toBe(300);
     expect(home.data.week.days[0]).toMatchObject({total_ml: 300, percentage: 15, state: 'in_progress'});
-    expect(client.getQueryData<HydrationLogPage>([...hydrationLogsKey, '2026-09-02'])?.data).toEqual([saved.result.log]);
+    expect(client.getQueryData<HydrationLogPage>([...hydrationLogsKey, 'ana', '2026-09-02'])?.data).toEqual([saved.result.log]);
   });
   await act(() => finish(saved));
   await waitFor(() => expect(navigation.popTo).toHaveBeenCalledWith('Home', {recordedAmountMl: 300}));
@@ -129,7 +131,7 @@ test('returns with the updated drop when the drink is saved offline', async () =
   expect(home.offline).toBe(true);
   expect(mockApplyGamification).not.toHaveBeenCalled();
   expect(home.data.week.days[0]).toMatchObject({total_ml: 300, percentage: 15});
-  expect(client.getQueryData<HydrationLogPage>([...hydrationLogsKey, '2026-09-02'])?.data).toEqual([
+  expect(client.getQueryData<HydrationLogPage>([...hydrationLogsKey, 'ana', '2026-09-02'])?.data).toEqual([
     expect.objectContaining({amount_ml: 300, client_event_id: 'event', local_date: '2026-09-02'}),
   ]);
 });
@@ -141,7 +143,7 @@ test('keeps the photo and allows retry if saving fails', async () => {
   await waitFor(() => expect(view.getByRole('alert')).toHaveTextContent('Não foi possível salvar.'));
   expect(navigation.popTo).not.toHaveBeenCalled();
   expect(client.getQueryData(hydrationHomeKey)).toEqual({data, offline: false});
-  expect(client.getQueryData([...hydrationLogsKey, '2026-09-02'])).toBeUndefined();
+  expect(client.getQueryData([...hydrationLogsKey, 'ana', '2026-09-02'])).toBeUndefined();
   expect(view.getByLabelText('Foto do seu copo ou garrafa')).toBeTruthy();
 
   await fireEvent.press(view.getByRole('button', {name: 'Registrar 300 ml de água'}));
@@ -159,7 +161,7 @@ test('does not offer a duplicate drink when only refreshing the queue counter fa
 
 test('reconciles a replay with existing history without counting the drink twice', async () => {
   const {view, client, navigation} = await setup('file:///cup.jpg');
-  const queryKey = [...hydrationLogsKey, '2026-09-02'];
+  const queryKey = [...hydrationLogsKey, 'ana', '2026-09-02'];
   const earlier = {...saved.result.log, id: 'earlier', client_event_id: 'earlier', amount_ml: 200, occurred_at: '2026-09-02T11:00:00Z'};
   client.setQueryData(queryKey, mergeHydrationLogs([earlier, {...saved.result.log, id: 'event'}]));
   service.record.mockResolvedValue({...saved, result: {...saved.result, idempotent_replay: true}});

@@ -1,11 +1,10 @@
+import {useTranslation} from '../../../shared/i18n/useTranslation';
 import React, {useState} from 'react';
-import {RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import type {HydrationHomeData} from '../../hydration/data/hydrationRemoteRepository';
 import {PrimaryButton} from '../../../shared/components/PrimaryButton';
-import {ChallengeBackground} from './challenge/ChallengeBackground';
 import {ChallengeHeader} from './challenge/ChallengeHeader';
-import {ChallengeSceneDecoration} from './challenge/ChallengeSceneDecoration';
 import {ChallengeTimeline} from './challenge/ChallengeTimeline';
 import {ChallengeModeToggle, type ChallengeMode} from './challenge/ChallengeModeToggle';
 import {DrinkWaterButton} from './challenge/DrinkWaterButton';
@@ -13,11 +12,15 @@ import {ChallengeStartCard} from './challenge/ChallengeStartCard';
 import {SoloRewardDialog} from './challenge/SoloRewardDialog';
 import {challengeTheme} from './challenge/challengeTheme';
 import {HomeLoading} from './HomeLoading';
+import {GroupChallengePanel} from './challenge/GroupChallengePanel';
+import {GroupChallengeTrophy} from './challenge/GroupChallengeTrophy';
+import {defaultHomeThemeId, type HomeThemeId} from '../domain/homeThemes';
+import {HomeScene} from './HomeScene';
+import {HomeRefreshScrollView} from './HomeRefreshScrollView';
 
 interface Props {
   data?: HydrationHomeData;
   loading: boolean;
-  refreshing?: boolean;
   error?: string;
   offline: boolean;
   syncing: boolean;
@@ -29,7 +32,9 @@ interface Props {
   xp: number;
   level?: number;
   motionEnabled?: boolean;
+  homeThemeId?: HomeThemeId;
   onRetry: () => void;
+  onRefresh?: () => Promise<unknown> | void;
   onOpenHydration: () => void;
   onOpenInventory: () => void;
   startingChallenge?: boolean;
@@ -38,7 +43,8 @@ interface Props {
   onClaimReward?: (id: string) => Promise<unknown>;
 }
 
-export function HomeView({motionEnabled = true, ...props}: Props): React.JSX.Element {
+export function HomeView({motionEnabled = true, homeThemeId = defaultHomeThemeId, ...props}: Props): React.JSX.Element {
+  const {locale, t} = useTranslation();
   const [challengeMode, setChallengeMode] = useState<ChallengeMode>('solo');
   const [rewardOpen, setRewardOpen] = useState(false);
 
@@ -50,7 +56,7 @@ export function HomeView({motionEnabled = true, ...props}: Props): React.JSX.Ele
     return (
       <View style={styles.center}>
         <Text accessibilityRole="alert" style={styles.error}>{props.error}</Text>
-        <PrimaryButton label="Tentar novamente" onPress={props.onRetry} />
+        <PrimaryButton label={t("Tentar novamente", "Try again", "Intentar de nuevo")} onPress={props.onRetry} />
       </View>
     );
   }
@@ -61,11 +67,15 @@ export function HomeView({motionEnabled = true, ...props}: Props): React.JSX.Ele
   const groupAvailable = Boolean(challenges?.group_name);
   const mode = challengeMode === 'group' && groupAvailable ? 'group' : 'solo';
   const challenge = challenges?.[mode];
+  const showTimeline = challenge?.status === 'active' && challenge.participating !== false;
+  const groupPanel = mode === 'group' ? <GroupChallengePanel locale={locale} challenge={challenge} result={challenges?.group_result} rules={challenges?.group_rules} offline={props.offline || props.pending > 0} /> : null;
+  const startCard = <ChallengeStartCard mode={mode} challenge={challenge} today={today} motionEnabled={motionEnabled}
+    canStart={mode === 'solo' || Boolean(challenges?.can_start_group)} starting={props.startingChallenge}
+    error={props.challengeError} onStart={() => props.onStartChallenge?.(mode)} onReward={() => setRewardOpen(true)} />;
 
   return (
     <View style={styles.page}>
-      <ChallengeBackground />
-      {motionEnabled ? <ChallengeSceneDecoration /> : null}
+      <HomeScene themeId={homeThemeId} motionEnabled={motionEnabled} />
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.header}>
           <ChallengeHeader
@@ -80,41 +90,43 @@ export function HomeView({motionEnabled = true, ...props}: Props): React.JSX.Ele
           {props.offline || props.pending > 0 || props.syncing ? (
             <Text accessibilityLiveRegion="polite" style={styles.offline}>
               {props.syncing
-                ? 'Sincronizando…'
+                ? t("Sincronizando…", "Syncing…", "Sincronizando…")
                 : props.pending > 0
-                  ? `${props.pending} registro(s) aguardando sincronização`
-                  : 'Modo offline'}
+                  ? t(`${props.pending} registro(s) aguardando sincronização`, `${props.pending} log(s) awaiting sync`, `${props.pending} registro(s) pendientes de sincronización`)
+                  : t("Modo offline", "Offline mode", "Modo sin conexión")}
             </Text>
           ) : null}
         </View>
 
         <ChallengeModeToggle mode={mode} groupAvailable={groupAvailable} onChange={setChallengeMode} />
-        {challenge?.status === 'active' ? (
+        {showTimeline ? groupPanel : null}
+        {showTimeline ? (
           <ChallengeTimeline
             week={challenge.progress}
             mode={mode}
             reward={challenge.reward}
             onReward={() => setRewardOpen(true)}
             motionEnabled={motionEnabled}
-            refreshing={props.refreshing}
-            onRefresh={props.onRetry}
+            onRefresh={props.onRefresh ?? props.onRetry}
+            footer={mode === 'group' ? <GroupChallengeTrophy challenge={challenge} /> : undefined}
           />
-        ) : <ScrollView contentContainerStyle={styles.startContent} refreshControl={<RefreshControl refreshing={Boolean(props.refreshing)} onRefresh={props.onRetry} tintColor={challengeTheme.colors.cyan} />}>
-          <ChallengeStartCard mode={mode} challenge={challenge} today={today} motionEnabled={motionEnabled}
-            canStart={mode === 'solo' || Boolean(challenges?.can_start_group)} starting={props.startingChallenge}
-            error={props.challengeError} onStart={() => props.onStartChallenge?.(mode)} onReward={() => setRewardOpen(true)} />
-        </ScrollView>}
+        ) : <HomeRefreshScrollView contentContainerStyle={[styles.startContent, mode === 'group' && styles.groupStartContent]} motionEnabled={motionEnabled} onRefresh={props.onRefresh ?? props.onRetry}>
+          {mode === 'group' ? <View style={styles.groupStartPanel}>
+            {startCard}
+            {groupPanel}
+          </View> : startCard}
+        </HomeRefreshScrollView>}
 
-        <View style={styles.fixedActions}>
+        {mode === 'solo' || showTimeline ? <View style={styles.fixedActions}>
           <DrinkWaterButton onPress={props.onOpenHydration} />
 
           {props.recordedAmountMl ? (
-            <Text accessibilityLiveRegion="polite" style={styles.confirmation}>+{props.recordedAmountMl} ml registrados!</Text>
+            <Text accessibilityLiveRegion="polite" style={styles.confirmation}>{t(`+${props.recordedAmountMl} ml registrados!`, `+${props.recordedAmountMl} ml recorded!`, `¡+${props.recordedAmountMl} ml registrados!`)}</Text>
           ) : (today?.total_ml ?? 0) === 0 ? (
-            <Text style={styles.empty}>Sua primeira gota de hoje está a um toque.</Text>
+            <Text style={styles.empty}>{t("Sua primeira gota de hoje está a um toque.", "Your first drop today is one tap away.", "Tu primera gota de hoy está a un toque.")}</Text>
           ) : null}
 
-        </View>
+        </View> : null}
 
       </SafeAreaView>
       {rewardOpen && challenges?.solo ? <SoloRewardDialog challenge={challenges.solo} onClaim={props.onClaimReward ?? (async () => undefined)} onClose={() => setRewardOpen(false)} /> : null}
@@ -129,6 +141,11 @@ const styles = StyleSheet.create({
   error: {color: challengeTheme.colors.danger, textAlign: 'center'},
   header: {paddingHorizontal: 16, paddingTop: 7},
   startContent: {flexGrow: 1},
+  groupStartContent: {justifyContent: 'center', paddingHorizontal: 18, paddingVertical: 20},
+  groupStartPanel: {
+    width: '100%', maxWidth: 420, alignSelf: 'center', paddingBottom: 16,
+    borderRadius: 26, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: '#102B3B',
+  },
   fixedActions: {paddingHorizontal: 16, paddingTop: 2, paddingBottom: 3},
   offline: {
     marginBottom: 8, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10,

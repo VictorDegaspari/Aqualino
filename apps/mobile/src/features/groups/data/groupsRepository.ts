@@ -19,6 +19,9 @@ export const groupsRepository = {
   renewInvite(): Promise<PrivateGroup> {
     return apiRequest('/groups/current/invite', {...requestOptions, method: 'POST'});
   },
+  updatePhotoReview(enabled: boolean): Promise<PrivateGroup> {
+    return apiRequest('/groups/current/settings', {...requestOptions, method: 'PATCH', body: {photo_review_enabled: enabled}});
+  },
   leave(): Promise<null> {
     return apiRequest('/groups/current/membership', {...requestOptions, method: 'DELETE'});
   },

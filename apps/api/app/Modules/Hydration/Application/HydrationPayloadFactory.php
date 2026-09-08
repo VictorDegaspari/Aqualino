@@ -32,6 +32,8 @@ class HydrationPayloadFactory
                 'local_date' => $log->local_date->toDateString(),
                 'source' => $log->source,
                 'client_event_id' => $log->client_event_id,
+                'invalidated_at' => $log->invalidated_at?->utc()->toIso8601String(),
+                'review_expires_at' => $log->review_expires_at?->utc()->toIso8601String(),
             ],
             'idempotent_replay' => $idempotentReplay,
             'today' => $today,

@@ -28,3 +28,13 @@ test('does not project markings from outside the challenge or from future dates'
   ]);
   expect(updated?.solo?.progress.total_ml).toBe(0);
 });
+
+test('keeps the server leaderboard unchanged while projecting the participant drop', () => {
+  const group = {...challenges.solo!, mode: 'group' as const, participating: true, leaderboard: [
+    {user_id: 'u', display_name: 'Ana', avatar_url: null, is_you: true, total_ml: 0, goal_ml: 300, percentage: 0, points: 0, rank: null, tied: false, medal: null},
+  ]};
+  const updated = projectPendingChallenges({...challenges, group}, [event]);
+  expect(updated?.group?.progress.total_ml).toBe(300);
+  expect(updated?.group?.leaderboard).toEqual(group.leaderboard);
+  expect(projectPendingChallenges({...challenges, group: {...group, participating: false}}, [event])?.group?.progress.total_ml).toBe(0);
+});

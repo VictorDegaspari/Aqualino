@@ -67,8 +67,10 @@ export function RemindersScreen(): React.JSX.Element {
     try {
       await toggleReminder(id, enabled);
       if (enabled) setPermissionIssue(undefined);
+      return true;
     } catch (error) {
       reportError(error);
+      return false;
     } finally {
       setBusyId(undefined);
     }
