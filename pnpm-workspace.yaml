@@ -11,3 +11,4 @@ patchedDependencies:
   react-native-nitro-modules@0.37.1: patches/react-native-nitro-modules@0.37.1.patch
   react-native-nitro-sqlite@9.7.0: patches/react-native-nitro-sqlite@9.7.0.patch
   react-native-safe-area-context@5.8.1: patches/react-native-safe-area-context@5.8.1.patch
+  rive-react-native@9.8.5: patches/rive-react-native@9.8.5.patch

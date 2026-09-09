@@ -3,6 +3,7 @@ const path = require('path');
 
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, '../..');
+const defaultConfig = getDefaultConfig(projectRoot);
 
 /**
  * Metro configuration
@@ -13,6 +14,7 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 const config = {
   watchFolders: [workspaceRoot],
   resolver: {
+    assetExts: [...defaultConfig.resolver.assetExts, 'riv'],
     nodeModulesPaths: [
       path.resolve(projectRoot, 'node_modules'),
       path.resolve(workspaceRoot, 'node_modules'),
@@ -20,4 +22,4 @@ const config = {
   },
 };
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+module.exports = mergeConfig(defaultConfig, config);

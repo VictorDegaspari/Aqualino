@@ -5,7 +5,7 @@ import {Image, Pressable, StyleSheet, Text, TextInput, type GestureResponderEven
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Animated, {cancelAnimation, Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming} from 'react-native-reanimated';
 import Svg, {Path} from 'react-native-svg';
-import {mascotImages} from '../../../assets/mascot/mascotImages';
+import {OnboardingMascot} from './OnboardingMascot';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
 import {LanguageSelector} from '../../../shared/components/LanguageSelector';
 import {KeyboardAwareScrollView} from '../../../shared/components/KeyboardAwareScrollView';
@@ -208,7 +208,7 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
           <KeyboardAwareScrollView contentContainerStyle={styles.returningContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <View style={styles.hero}>
               <View style={styles.mascotOrb}>
-                <Image source={mascotImages.empty} resizeMode="contain" style={styles.mascot} />
+                <OnboardingMascot style={styles.mascot} />
               </View>
               <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
               <Text accessibilityRole="header" style={styles.title}>{stepThreeTitle}</Text>
@@ -279,7 +279,7 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
             <>
               <View style={styles.hero}>
                 <View style={styles.mascotOrb}>
-                  <Image source={mascotImages.empty} resizeMode="contain" style={styles.mascot} />
+                  <OnboardingMascot style={styles.mascot} />
                 </View>
                 <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
                 <Text accessibilityRole="header" style={styles.title}>{copy.title}</Text>
@@ -302,7 +302,7 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
                   <Text accessibilityRole="header" style={styles.title}>{copy.goalTitle}</Text>
                   <Text style={styles.subtitle}>{copy.goalSubtitle}</Text>
                 </View>
-                <Image source={mascotImages.empty} resizeMode="contain" style={styles.goalMascot} />
+                <OnboardingMascot style={styles.goalMascot} />
               </View>
 
               <View style={styles.panel}>
@@ -330,7 +330,7 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
             <>
               <View style={[styles.hero, (accountMode === 'login' || accountMode === 'register') && styles.authHero]}>
                 <View style={styles.mascotOrb}>
-                  <Image source={mascotImages.empty} resizeMode="contain" style={styles.mascot} />
+                  <OnboardingMascot style={styles.mascot} />
                 </View>
                 <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
                 <Text accessibilityRole="header" style={styles.title}>{stepThreeTitle}</Text>

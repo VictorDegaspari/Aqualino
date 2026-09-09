@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
-import {mascotImages} from '../../../assets/mascot/mascotImages';
+import {OnboardingMascot} from './OnboardingMascot';
 import {LanguageSelector} from '../../../shared/components/LanguageSelector';
 import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
 import {AppError} from '../../../shared/errors/AppError';
@@ -70,7 +70,7 @@ export function OnboardingScreen(): React.JSX.Element {
           <ScrollView contentContainerStyle={styles.syncContent} showsVerticalScrollIndicator={false}>
             <View style={styles.hero}>
               <View style={styles.iconOrb}>
-                <Image source={mascotImages.empty} resizeMode="contain" style={styles.syncMascot} />
+                <OnboardingMascot style={styles.syncMascot} />
               </View>
               <Text accessibilityRole="header" style={styles.title}>{copy.savingTitle}</Text>
               <Text style={styles.subtitle}>{copy.savingSubtitle}</Text>
@@ -111,10 +111,8 @@ export function OnboardingScreen(): React.JSX.Element {
                 <Text style={styles.sectionTitle}>{copy.goalTitle}</Text>
                 <Text style={styles.sectionSubtitle}>{copy.goalSubtitle}</Text>
               </View>
-              <Image
+              <OnboardingMascot
                 accessibilityLabel={copy.goalMascotLabel}
-                source={mascotImages.empty}
-                resizeMode="contain"
                 style={styles.goalMascot}
               />
             </View>

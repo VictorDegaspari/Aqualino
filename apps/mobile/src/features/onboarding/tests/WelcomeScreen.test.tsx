@@ -3,6 +3,8 @@ import {act, fireEvent, render, waitFor} from '@testing-library/react-native';
 import {AppError} from '../../../shared/errors/AppError';
 import {WelcomeScreen} from '../presentation/WelcomeScreen';
 
+jest.mock('@react-navigation/native', () => ({useIsFocused: () => true}));
+
 const mockRestartWelcome = jest.fn();
 const mockCompleteWelcome = jest.fn();
 const mockSelectLocale = jest.fn();
