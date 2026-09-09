@@ -43,3 +43,17 @@ test('fails closed if the monotonic source resets or the reference is malformed'
   elapsed = 0;
   expect(() => clock.recordedAt()).toThrow(expect.objectContaining({code: 'HYDRATION_TIME_UNVERIFIED'}));
 });
+
+test('restores a saved reference after reopening offline without extending its expiry', () => {
+  let wall = Date.parse(serverTime);
+  const clock = new TrustedHydrationClock(() => wall, () => 100);
+  clock.synchronize(serverTime);
+  const saved = clock.snapshot()!;
+  wall += 3600000;
+  const reopened = new TrustedHydrationClock(() => wall, () => 0);
+  reopened.restore(saved);
+  expect(reopened.recordedAt()).toBe('2026-09-03T03:59:30.000Z');
+  expect(reopened.snapshot()).toEqual(saved);
+  wall += 86400000;
+  expect(() => reopened.restore(saved)).toThrow(expect.objectContaining({code: 'HYDRATION_TIME_UNVERIFIED'}));
+});

@@ -1,6 +1,6 @@
 import React from 'react';
 import {act, fireEvent, render, waitFor} from '@testing-library/react-native';
-import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import {QueryClient, QueryClientProvider, onlineManager} from '@tanstack/react-query';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {launchCamera} from 'react-native-image-picker';
@@ -16,8 +16,9 @@ import {QuickHydrationScreen} from '../presentation/QuickHydrationScreen';
 const hydrationHomeKey = hydrationHomeAccountKey('ana');
 const mockPreferences = {lastAmountMl: 300, selectAmount: jest.fn()};
 const mockApplyGamification = jest.fn();
+let mockConnected = true;
 jest.mock('../application/hydrationService', () => ({hydrationService: {record: jest.fn(), pendingCount: jest.fn(), cachedOrRemote: jest.fn()}}));
-jest.mock('@react-native-community/netinfo', () => ({useNetInfo: () => ({isConnected: true})}));
+jest.mock('@react-native-community/netinfo', () => ({useNetInfo: () => ({isConnected: mockConnected})}));
 jest.mock('react-native-image-picker', () => ({launchCamera: jest.fn()}));
 jest.mock('../../auth/application/sessionStore', () => ({
   useSessionStore: (selector: (state: unknown) => unknown) => selector({user: {id: 'ana', profile: {favorite_volumes_ml: [200, 300, 500]}}, applyGamification: mockApplyGamification}),
@@ -34,7 +35,7 @@ const data: HydrationHomeData = {
     days: [{date: '2026-09-02', weekday: 3, state: 'no_record', total_ml: 0, goal_ml: 2000, percentage: 0, is_today: true, is_trophy: false, protection: null}],
   },
   mascot: {
-    schema_version: 2, generated_at: '2026-09-02T12:00:00Z', user_timezone: 'America/Sao_Paulo', last_log_at: null,
+    schema_version: 3, frozen_dates: [], generated_at: '2026-09-02T12:00:00Z', user_timezone: 'America/Sao_Paulo', last_log_at: null,
     days_since_last_log: null, last_log_semantic_key: 'no_history', current_streak: 0, today_total_ml: 0,
     daily_goal_ml: 2000, condition: 'empty', decoration: null, animation: 'welcoming', static_asset: 'aqualino_empty',
   },
@@ -72,6 +73,8 @@ async function setup(photoUri?: string, source = 'mobile') {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockConnected = true;
+  onlineManager.setOnline(true);
   service.cachedOrRemote.mockResolvedValue({data, offline: false});
   service.record.mockResolvedValue(saved);
   service.pendingCount.mockResolvedValue(0);
@@ -104,7 +107,8 @@ test('updates the Home drop before returning and prevents repeated taps during s
   const {view, client, navigation} = await setup('file:///cup.jpg');
   await fireEvent.press(view.getByRole('button', {name: 'Registrar 300 ml de água'}));
   await waitFor(() => expect(service.record).toHaveBeenCalledTimes(1));
-  expect(view.getByText('Registrando 300 ml…')).toBeTruthy();
+  expect(view.queryByText('Registrando 300 ml…')).toBeNull();
+  expect(view.queryByRole('progressbar')).toBeNull();
   await fireEvent.press(view.getByRole('button', {name: 'Registrar 500 ml de água'}));
   expect(service.record).toHaveBeenCalledTimes(1);
   expect(navigation.popTo).not.toHaveBeenCalled();
@@ -122,6 +126,8 @@ test('updates the Home drop before returning and prevents repeated taps during s
 });
 
 test('returns with the updated drop when the drink is saved offline', async () => {
+  mockConnected = false;
+  onlineManager.setOnline(false);
   service.record.mockResolvedValue(queued);
   service.pendingCount.mockResolvedValue(1);
   const {view, client, navigation} = await setup('file:///cup.jpg');
@@ -172,3 +178,5 @@ test('reconciles a replay with existing history without counting the drink twice
   expect(client.getQueryData<HydrationLogPage>(queryKey)?.data[0].id).toBe('log');
   expect(client.getQueryData<HydrationLogPage>(queryKey)?.meta.total).toBe(2);
 });
+
+afterEach(() => onlineManager.setOnline(true));

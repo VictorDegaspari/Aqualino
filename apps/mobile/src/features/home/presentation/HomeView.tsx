@@ -17,6 +17,7 @@ import {GroupChallengeTrophy} from './challenge/GroupChallengeTrophy';
 import {defaultHomeThemeId, type HomeThemeId} from '../domain/homeThemes';
 import {HomeScene} from './HomeScene';
 import {HomeRefreshScrollView} from './HomeRefreshScrollView';
+import {HydrationSuccessFeedback} from './HydrationSuccessFeedback';
 
 interface Props {
   data?: HydrationHomeData;
@@ -26,6 +27,7 @@ interface Props {
   syncing: boolean;
   pending: number;
   recordedAmountMl?: number;
+  onDismissRecorded?: () => void;
   displayName: string;
   avatarId?: string | null;
   streak: number;
@@ -92,7 +94,7 @@ export function HomeView({motionEnabled = true, homeThemeId = defaultHomeThemeId
               {props.syncing
                 ? t("Sincronizando…", "Syncing…", "Sincronizando…")
                 : props.pending > 0
-                  ? t(`${props.pending} registro(s) aguardando sincronização`, `${props.pending} log(s) awaiting sync`, `${props.pending} registro(s) pendientes de sincronización`)
+                  ? t(`${props.pending} para sincronizar`, `${props.pending} to sync`, `${props.pending} por sincronizar`)
                   : t("Modo offline", "Offline mode", "Modo sin conexión")}
             </Text>
           ) : null}
@@ -121,7 +123,11 @@ export function HomeView({motionEnabled = true, homeThemeId = defaultHomeThemeId
           <DrinkWaterButton onPress={props.onOpenHydration} />
 
           {props.recordedAmountMl ? (
-            <Text accessibilityLiveRegion="polite" style={styles.confirmation}>{t(`+${props.recordedAmountMl} ml registrados!`, `+${props.recordedAmountMl} ml recorded!`, `¡+${props.recordedAmountMl} ml registrados!`)}</Text>
+            <HydrationSuccessFeedback
+              amountMl={props.recordedAmountMl}
+              accessibilityLabel={t(`${props.recordedAmountMl} ml registrados`, `${props.recordedAmountMl} ml recorded`, `${props.recordedAmountMl} ml registrados`)}
+              onDismiss={props.onDismissRecorded}
+            />
           ) : (today?.total_ml ?? 0) === 0 ? (
             <Text style={styles.empty}>{t("Sua primeira gota de hoje está a um toque.", "Your first drop today is one tap away.", "Tu primera gota de hoy está a un toque.")}</Text>
           ) : null}
@@ -148,10 +154,9 @@ const styles = StyleSheet.create({
   },
   fixedActions: {paddingHorizontal: 16, paddingTop: 2, paddingBottom: 3},
   offline: {
-    marginBottom: 8, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10,
-    borderWidth: 1, borderColor: challengeTheme.colors.border, backgroundColor: challengeTheme.colors.panelSoft,
-    color: '#B2EEF4', textAlign: 'center', fontSize: 11,
+    alignSelf: 'center', marginBottom: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8,
+    backgroundColor: challengeTheme.colors.panelSoft,
+    color: '#B2EEF4', textAlign: 'center', fontSize: 10, lineHeight: 14,
   },
   empty: {height: 15, marginTop: 2, color: '#9FC7DD', textAlign: 'center', fontSize: 10, lineHeight: 13},
-  confirmation: {marginTop: 2, color: challengeTheme.colors.cyanStrong, textAlign: 'center', fontSize: 13, lineHeight: 18, fontWeight: '800'},
 });

@@ -48,17 +48,18 @@ O módulo exposto ao JavaScript está em [`specs/NativeAqualinoWidget.ts`](../..
 
 ## Contrato do snapshot
 
-O contrato público fica em [`packages/contracts/src/index.ts`](../../../../../packages/contracts/src/index.ts). O schema atual é `2`.
+O contrato público fica em [`packages/contracts/src/index.ts`](../../../../../packages/contracts/src/index.ts). O schema atual é `3`.
 
 | Campo | Uso |
 | --- | --- |
-| `schema_version` | Precisa ser `2`; outra versão produz o estado seguro desconectado. |
+| `schema_version` | Precisa ser `3`; outra versão produz o estado seguro desconectado. |
 | `generated_at` | Data ISO-8601 da geração; ancora os checks ao dia salvo para não marcar um novo dia usando água de um snapshot anterior. |
 | `user_timezone` | Calcula os cinco dias civis no fuso do perfil. |
 | `last_log_at` | Mantido no contrato para semântica e evolução do snapshot. |
 | `days_since_last_log` | Ajuda a migrar snapshots antigos no cache React Native. |
 | `last_log_semantic_key` | Semântica do último registro usada pela atualização otimista. |
 | `current_streak` | Quantidade de dias consecutivos mostrada no título e nos checks. |
+| `frozen_dates` | Datas locais da semana protegidas por poção consumida; aparecem como gotas congeladas azuis, separadas das cápsulas normais. |
 | `today_total_ml` | Determina se o dia atual já conta para a sequência; o mínimo é 50 ml. |
 | `daily_goal_ml` | Permite identificar meta atingida e escolher apresentação do mascote. |
 | `condition` | Seleciona frases, cores e humor: `empty`, `happy`, `angry`, `boiling` ou `skeleton`. |
@@ -95,7 +96,9 @@ Os cinco marcadores seguem a semana de segunda a domingo no fuso do perfil, da e
 
 Cada condição possui três combinações de frase e paleta. A variação é determinística em janelas de três horas, portanto a apresentação muda periodicamente sem trocar a cada recomposição.
 
-Uma sequência de três ou mais dias tem precedência sobre a condição e sobre a variação temporal. Ela usa uma apresentação fixa de celebração, com Aqualino Strong, fundo violeta, dias pendentes escuros e cápsula dourada para a sequência concluída.
+Quando há congelamento na faixa visível, os dois tamanhos usam fundo violeta, título dourado e “Volta logo!” enquanto falta água hoje; após registrar, mostram “Sequência protegida!”. As gotas congeladas interrompem as cápsulas douradas.
+
+Sem congelamento visível, uma sequência de três ou mais dias tem precedência sobre a condição e sobre a variação temporal. Ela usa uma apresentação fixa de celebração, com Aqualino Strong, fundo violeta, dias pendentes escuros e cápsula dourada para a sequência concluída.
 
 - `empty`: Aqualino feliz e convite para o primeiro registro;
 - `happy`: mensagens positivas; pode usar Aqualino forte quando a meta foi atingida;
@@ -141,6 +144,8 @@ O snapshot é gravado nos seguintes momentos:
 4. registro de água atualiza primeiro o total otimista local;
 5. confirmação da API substitui o snapshot pelo valor reconciliado;
 6. sincronização da outbox offline repete a reconciliação quando a rede retorna.
+
+O servidor consome a proteção previamente ativada ao identificar uma falta elegível em dia encerrado, tanto na leitura da Home/snapshot quanto pelo comando `hydration:apply-streak-freezes`, agendado a cada minuto no fuso do perfil. A proteção permanece suspensa durante batalha de grupo e não completa metas nem concede água ou recompensa do desafio. O widget recebe o resultado na próxima sincronização do aplicativo; o agendador não grava no aparelho. O cache v1/v2 migra as datas já conhecidas em `week.days[].protection`, sem consumir poções localmente.
 
 Falhas no widget são deliberadamente capturadas e nunca podem impedir login, logout, abertura da Home ou registro de água.
 
@@ -219,6 +224,21 @@ Ao substituir um mascote:
 4. evite incluir uma segunda cópia do mesmo bitmap no APK/AAB;
 5. valide em fundo claro e escuro para detectar halos de transparência.
 
+### Gota congelada
+
+Asset criado com a ferramenta integrada de geração de imagens, usando `day-missed.png` como referência. Cópias finais com transparência:
+
+- `apps/mobile/src/assets/challenge/static/day-frozen.png`;
+- `apps/mobile/android/app/src/main/res/drawable-nodpi/aqualino_frozen_drop.png`;
+- `apps/mobile/ios/Aqualino/Images.xcassets/aqualino_frozen_drop.imageset/aqualino_frozen_drop.png`.
+
+<details>
+<summary>Prompt final do asset</summary>
+
+Create a frozen variant of this game UI water-drop marker for the Aqualino hydration app. Preserve the centered upright teardrop silhouette, framing and small elliptical platform beneath it. Replace the purple missed-day styling with beautiful translucent cyan and ice blue frozen water, faceted crystalline ice shading, frosty bright rim, a few subtle icicle tips near the bottom. Replace the exclamation mark with a bold, simple white snowflake, readable at 36 pixels. Polished casual mobile game sprite, luminous icy blue, soft 3D volume, clean edges. Exactly one standalone marker, centered, no text, no extra scenery, truly transparent background with alpha. Keep the entire drop and platform within the image. This is the final production asset for both app weekly path and home-screen widgets.
+
+</details>
+
 ## Ícone dinâmico do aplicativo
 
 O snapshot autenticado também solicita o humor do ícone:
@@ -269,7 +289,7 @@ Testes automatizados atuais cobrem mapeamento de humor do ícone, escrita otimis
 ### Widget continua desconectado após login
 
 - abra a Home para forçar a leitura remota ou do cache;
-- confirme que o TurboModule retorna schema `2`;
+- confirme que o TurboModule retorna schema `3`;
 - no Android, confira `aqualino_widget/snapshot_json` no armazenamento privado;
 - no iOS, confira App Group e assinatura dos dois targets;
 - remova e adicione novamente apenas depois de confirmar que o snapshot foi gravado.

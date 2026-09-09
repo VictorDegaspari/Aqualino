@@ -3,6 +3,8 @@ import {AppError} from '../../../shared/errors/AppError';
 const MAX_CLOCK_DIFFERENCE_MS = 2 * 60 * 1000;
 const MAX_REFERENCE_AGE_MS = 24 * 60 * 60 * 1000;
 
+export interface HydrationClockReference {serverMs: number; wallMs: number}
+
 export class TrustedHydrationClock {
   private reference?: {serverMs: number; monotonicMs: number};
 
@@ -16,6 +18,18 @@ export class TrustedHydrationClock {
     const monotonicMs = this.monotonicNow();
     if (!Number.isFinite(serverMs) || !Number.isFinite(monotonicMs)) return;
     this.reference = {serverMs, monotonicMs};
+  }
+
+  snapshot(): HydrationClockReference | undefined {
+    if (!this.reference) return undefined;
+    return {serverMs: this.reference.serverMs, wallMs: this.wallNow() - (this.monotonicNow() - this.reference.monotonicMs)};
+  }
+
+  restore(reference: HydrationClockReference): void {
+    const elapsed = this.wallNow() - reference.wallMs;
+    if (!Number.isFinite(elapsed) || elapsed < 0 || elapsed > MAX_REFERENCE_AGE_MS) throw this.unverified();
+    if (!Number.isFinite(reference.serverMs) || Math.abs(reference.serverMs - reference.wallMs) > MAX_CLOCK_DIFFERENCE_MS) throw this.unverified();
+    this.reference = {serverMs: reference.serverMs, monotonicMs: this.monotonicNow() - elapsed};
   }
 
   recordedAt(): string {

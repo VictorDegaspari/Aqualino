@@ -58,7 +58,7 @@ export const ChallengeDay = memo(function ChallengeDayView({day, index, scale, m
         {day.is_today ? (
           <CurrentWaterDrop scale={scale} totalMl={day.total_ml} goalMl={day.goal_ml} motionEnabled={motionEnabled} />
         ) : (
-          <ChallengeAsset name={stateAssets[day.state]} style={layout.markerImage} />
+          <ChallengeAsset name={day.protection === 'streak_freeze' ? 'dayFrozen' : stateAssets[day.state]} style={layout.markerImage} />
         )}
       </Pressable>
 

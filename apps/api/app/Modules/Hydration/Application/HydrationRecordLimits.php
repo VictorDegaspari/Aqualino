@@ -13,6 +13,8 @@ class HydrationRecordLimits
 
     public const INTERVAL_SECONDS = 900;
 
+    public const SYNC_WINDOW_HOURS = 24;
+
     public function assertCanRecord(User $user, CarbonImmutable $occurredAt): void
     {
         $day = $occurredAt->setTimezone($user->profile->timezone)->startOfDay();

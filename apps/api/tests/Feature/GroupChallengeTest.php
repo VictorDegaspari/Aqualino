@@ -22,6 +22,34 @@ class GroupChallengeTest extends TestCase
 {
     use RefreshDatabase;
 
+    #[TestWith(['2026-09-04T02:59:59Z', 15])]
+    #[TestWith(['2026-09-04T03:00:00Z', 0])]
+    #[TestWith(['2026-09-04T03:10:00Z', 0])]
+    public function test_group_midnight_cutoff_preserves_personal_history_in_the_users_timezone(string $receivedAt, int $points): void
+    {
+        [$users] = $this->group([2000, 2000]);
+        $this->start();
+        $users[0]->profile->update(['timezone' => 'Asia/Tokyo']);
+        $this->travelTo(CarbonImmutable::parse($receivedAt));
+        $this->postJson('/api/v1/hydration/logs', ['amount_ml' => 300, 'client_event_id' => (string) Str::uuid(), 'occurred_at' => '2026-09-04T02:30:00Z'])
+            ->assertCreated()->assertJsonPath('data.log.local_date', '2026-09-04');
+        $this->home()->assertJsonPath('data.challenges.group.progress.days.0.total_ml', $points > 0 ? 300 : 0);
+        $row = collect($this->home()->json('data.challenges.group.leaderboard'))->firstWhere('user_id', $users[0]->id);
+        $this->assertSame($points, $row['points']);
+        $this->getJson('/api/v1/hydration/logs?local_date=2026-09-04')->assertJsonPath('data.0.amount_ml', 300);
+        $this->assertDatabaseCount('hydration_logs', 1);
+    }
+
+    public function test_previous_day_sync_is_personal_and_does_not_open_a_team_photo_vote(): void
+    {
+        [$users] = $this->group([2000, 2000, 2000]);
+        $this->start();
+        $this->travelTo(CarbonImmutable::parse('2026-09-04T03:00:00Z'));
+        $this->postJson('/api/v1/hydration/logs', ['amount_ml' => 300, 'client_event_id' => (string) Str::uuid(), 'occurred_at' => '2026-09-04T02:30:00Z'])->assertCreated();
+        $this->assertDatabaseHas('hydration_logs', ['user_id' => $users[0]->id, 'review_group_id' => null, 'review_expires_at' => null, 'amount_ml' => 300]);
+        $this->home()->assertJsonPath('data.challenges.group.progress.total_ml', 0);
+    }
+
     public function test_requires_two_members_and_cancels_if_the_roster_is_no_longer_eligible_at_start(): void
     {
         [$users, $group] = $this->group([2000]);
@@ -166,21 +194,21 @@ class GroupChallengeTest extends TestCase
         $this->postJson("/api/v1/hydration/challenges/{$id}/reward")->assertNotFound();
     }
 
-    public function test_offline_logs_count_during_grace_and_cannot_rewrite_a_final_result_even_if_scheduler_is_late(): void
+    public function test_offline_logs_after_midnight_never_count_even_during_settlement_or_after_finalization(): void
     {
         [$users] = $this->group([2000, 2000]);
         $id = $this->start();
         $this->travelTo(CarbonImmutable::parse('2026-09-10T03:14:59Z'));
-        $this->log($users[0], '2026-09-09T20:00:00Z', 1000);
+        $this->log($users[0], '2026-09-09T20:00:00Z', 1000, now()->toIso8601String());
         $this->travelTo(CarbonImmutable::parse('2026-09-10T03:15:00Z'));
-        $this->log($users[1], '2026-09-09T20:00:00Z', 2000);
+        $this->log($users[1], '2026-09-09T20:00:00Z', 2000, now()->toIso8601String());
         $this->travelTo(CarbonImmutable::parse('2026-09-10T04:00:00Z'));
         $rows = $this->home()->json('data.challenges.group_result.leaderboard');
-        $this->assertSame([50, 0], array_column($rows, 'points'));
-        $this->assertSame([1, null], array_column($rows, 'rank'));
+        $this->assertSame([0, 0], array_column($rows, 'points'));
+        $this->assertSame([null, null], array_column($rows, 'rank'));
         $this->log($users[1], '2026-09-08T20:00:00Z', 2000);
         $this->assertSame($rows, $this->home()->json('data.challenges.group_result.leaderboard'));
-        $this->assertSame(1, GroupChallengeParticipant::query()->where('challenge_id', $id)->whereNotNull('reward_granted_at')->count());
+        $this->assertSame(0, GroupChallengeParticipant::query()->where('challenge_id', $id)->whereNotNull('reward_granted_at')->count());
     }
 
     public function test_zero_points_never_award_a_podium_or_reward_and_outsiders_cannot_see_the_board(): void
@@ -335,13 +363,14 @@ class GroupChallengeTest extends TestCase
         return $this->getJson('/api/v1/hydration/today');
     }
 
-    private function log(User $user, string $occurredAt, int $amount): void
+    private function log(User $user, string $occurredAt, int $amount, ?string $receivedAt = null): void
     {
         $moment = CarbonImmutable::parse($occurredAt);
-        HydrationLog::query()->create([
+        $log = HydrationLog::query()->create([
             'user_id' => $user->id, 'amount_ml' => $amount, 'occurred_at' => $moment,
             'local_date' => $moment->setTimezone($user->profile->timezone)->toDateString(),
             'timezone_at_event' => $user->profile->timezone, 'source' => 'mobile', 'client_event_id' => (string) Str::uuid(), 'xp_awarded' => 0,
         ]);
+        $log->forceFill(['created_at' => $receivedAt ? CarbonImmutable::parse($receivedAt) : $moment])->save();
     }
 }

@@ -11,9 +11,10 @@ use Illuminate\Support\Collection;
 class GroupChallengeScoring
 {
     public const RULES = [
-        'version' => 'group-v1', 'ranking' => 'competition', 'daily_points_cap' => 100, 'total_points_cap' => 700,
+        'version' => 'group-v2', 'ranking' => 'competition', 'daily_points_cap' => 100, 'total_points_cap' => 700,
         'points_decimals' => 2, 'goal_policy' => 'frozen_at_start', 'minimum_reward_points' => 0.01,
         'sync_grace_minutes' => 15,
+        'daily_sync_deadline' => 'local_midnight',
         'rewards' => [
             ['type' => 'xp', 'amount' => 100, 'probability' => 70],
             ['type' => 'streak_freeze', 'amount' => 1, 'probability' => 20],
@@ -30,7 +31,9 @@ class GroupChallengeScoring
             ->where('occurred_at', '<', $challenge->ends_at)
             ->where('occurred_at', '<=', CarbonImmutable::now('UTC'))
             ->where('created_at', '<', $challenge->ends_at->addMinutes($challenge->rules['sync_grace_minutes']))
-            ->get(['user_id', 'occurred_at', 'amount_ml'])
+            ->get(['user_id', 'occurred_at', 'created_at', 'amount_ml'])
+            ->filter(fn (HydrationLog $log): bool => $log->created_at->setTimezone($challenge->timezone)->toDateString()
+                === $log->occurred_at->setTimezone($challenge->timezone)->toDateString())
             ->groupBy('user_id');
         $rows = $participants->map(function (GroupChallengeParticipant $participant) use ($challenge, $logs): array {
             $progress = $participant->final_progress ?? $this->progress($challenge, $participant->goal_ml, $logs->get($participant->user_id, collect()));

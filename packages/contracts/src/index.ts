@@ -146,6 +146,7 @@ export interface GroupChallengeRules {
   goal_policy: 'frozen_at_start';
   minimum_reward_points: number;
   sync_grace_minutes: number;
+  daily_sync_deadline?: 'local_midnight';
   rewards: {type: 'xp' | InventoryItemCode; amount: number; probability: number}[];
 }
 
@@ -173,7 +174,8 @@ export interface HydrationChallenges {
 }
 
 export interface WidgetSnapshot {
-  schema_version: 2;
+  schema_version: 3;
+  frozen_dates: string[];
   generated_at: string;
   user_timezone: string;
   last_log_at: string | null;

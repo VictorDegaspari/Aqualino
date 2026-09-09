@@ -6,11 +6,45 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class HydrationRecordLimitsTest extends TestCase
 {
     use RefreshDatabase;
+
+    #[TestWith([86399, true])]
+    #[TestWith([86400, true])]
+    #[TestWith([86401, false])]
+    public function test_offline_sync_is_accepted_only_within_twenty_four_hours(int $age, bool $accepted): void
+    {
+        $this->travelTo(now()->setDate(2026, 9, 8)->setTime(12, 0, 0));
+        $user = $this->user();
+        $input = [...$this->input(), 'occurred_at' => now()->subSeconds($age)->toIso8601String()];
+        $response = $this->postJson('/api/v1/hydration/logs', $input);
+        if ($accepted) {
+            $response->assertCreated()->assertJsonPath('data.log.local_date', '2026-09-07');
+            $this->assertDatabaseHas('hydration_logs', ['user_id' => $user->id, 'client_event_id' => $input['client_event_id'], 'amount_ml' => 300]);
+        } else {
+            $response->assertUnprocessable()->assertJsonPath('error.fields.sync_deadline.0', 'O prazo de 24 horas para sincronizar esta marcação terminou.');
+            $this->assertDatabaseCount('hydration_logs', 0);
+            $this->assertDatabaseCount('daily_user_stats', 0);
+            $this->assertSame(0, $user->fresh()->xp_total);
+        }
+    }
+
+    public function test_an_acknowledgement_lost_before_the_deadline_can_be_retried_after_it_without_duplication(): void
+    {
+        $this->freezeTime();
+        $user = $this->user();
+        $input = [...$this->input(), 'occurred_at' => now()->toIso8601String()];
+        $this->postJson('/api/v1/hydration/logs', $input)->assertCreated();
+        $xp = $user->fresh()->xp_total;
+        $this->travel(25)->hours();
+        $this->postJson('/api/v1/hydration/logs', $input)->assertOk()->assertJsonPath('data.idempotent_replay', true);
+        $this->assertDatabaseCount('hydration_logs', 1);
+        $this->assertSame($xp, $user->fresh()->xp_total);
+    }
 
     public function test_daily_limit_includes_invalidated_records_and_resets_at_local_midnight(): void
     {

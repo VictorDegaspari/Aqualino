@@ -28,7 +28,8 @@ class HydrationReviewService
             return [];
         }
         $group = Group::withTrashed()->whereKey($membership->group_id)->lockForUpdate()->firstOrFail();
-        if (! $group->photo_review_enabled || $group->trashed()) {
+        if (! $group->photo_review_enabled || $group->trashed()
+            || $occurredAt->setTimezone($group->timezone)->toDateString() !== CarbonImmutable::now($group->timezone)->toDateString()) {
             return [];
         }
         $members = GroupMembership::withTrashed()->where('group_id', $membership->group_id)

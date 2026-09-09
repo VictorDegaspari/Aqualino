@@ -34,7 +34,7 @@ pnpm -r typecheck
 pnpm openapi:lint
 ```
 
-A API requer as migrations de grupos, `2026_09_07_161529_add_group_challenge_scoring.php` e `2026_09_07_171627_add_hydration_photo_reviews.php`. Fotos ficam no volume persistente privado `hydration_photos`. Para atualizar a API Docker local, que copia o código para a imagem:
+A API requer as migrations de grupos, `2026_09_07_161529_add_group_challenge_scoring.php` e `2026_09_07_171627_add_hydration_photo_reviews.php`. No ambiente local, fotos ficam no volume persistente privado `hydration_photos`. Para atualizar a API Docker local, que copia o código para a imagem:
 
 ```sh
 docker compose build api horizon scheduler
@@ -44,6 +44,12 @@ docker compose exec nginx nginx -s reload
 ```
 
 Os testes de backend ficam em `apps/api/tests/Feature/GroupControllerTest.php` e `apps/api/tests/Feature/GroupChallengeTest.php`. Execute em um banco de testes isolado; nunca use `migrate:fresh` no banco de desenvolvimento.
+
+### Próxima implementação: fotos privadas no Cloudflare R2
+
+Em produção, as fotos de marcações devem migrar para um bucket R2 privado, na classe Standard. A API continuará validando a imagem e enviando o arquivo; o aplicativo não receberá permissão de escrita direta no bucket. O endpoint autenticado `GET /hydration/logs/{id}/photo` continuará aplicando a elegibilidade e poderá devolver uma URL de leitura assinada de curta duração, limitada a cinco minutos.
+
+Cada foto será removida 14 dias após o envio. Um job diário apagará o objeto e limpará sua referência no banco; uma regra de ciclo de vida para o prefixo `hydration/`, com expiração em 21 dias, cobrirá objetos órfãos. A exclusão da conta também deverá remover as fotos imediatamente. A classe Standard é adequada para essa retenção curta; Infrequent Access exige permanência mínima de 30 dias.
 
 ## Revisão de marcações
 

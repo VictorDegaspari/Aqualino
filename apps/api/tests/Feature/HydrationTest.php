@@ -40,7 +40,7 @@ class HydrationTest extends TestCase
             ->assertJsonPath('data.today.total_ml', 300)
             ->assertJsonPath('data.gamification.xp_awarded', 10)
             ->assertJsonPath('data.gamification.streak', 1)
-            ->assertJsonPath('data.widget.schema_version', 2)
+            ->assertJsonPath('data.widget.schema_version', 3)
             ->assertJsonPath('data.widget.current_streak', 1)
             ->assertJsonPath('data.mascot.condition', 'happy')
             ->assertJsonPath('data.idempotent_replay', false);
@@ -180,7 +180,7 @@ class HydrationTest extends TestCase
 
     public function test_a_valid_offline_record_keeps_its_original_day_when_synchronized_later(): void
     {
-        CarbonImmutable::setTestNow('2026-09-04T12:00:00Z');
+        CarbonImmutable::setTestNow('2026-09-03T12:00:00Z');
         $user = $this->authenticatedUser();
         $payload = [
             'amount_ml' => 300,

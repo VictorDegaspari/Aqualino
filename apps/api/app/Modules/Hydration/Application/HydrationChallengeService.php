@@ -14,6 +14,8 @@ use App\Modules\Hydration\Infrastructure\Models\HydrationLog;
 use App\Modules\Inventory\Application\CreditInventoryItem;
 use App\Modules\Inventory\Domain\InventoryItemCode;
 use App\Modules\Inventory\Domain\InventoryTransactionSource;
+use App\Modules\Inventory\Domain\StreakPotionEffectStatus;
+use App\Modules\Inventory\Infrastructure\Models\StreakPotionEffect;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -138,6 +140,11 @@ class HydrationChallengeService
         $timezone = $challenge->timezone;
         $startsOn = $challenge->starts_at->setTimezone($timezone)->startOfDay();
         $today = CarbonImmutable::now($timezone)->startOfDay();
+        $protections = StreakPotionEffect::query()->whereBelongsTo($user)
+            ->where('scope_type', 'hydration')
+            ->where('status', StreakPotionEffectStatus::Consumed->value)
+            ->whereBetween('target_local_date', [$startsOn->toDateString(), $startsOn->addDays(6)->toDateString()])
+            ->get()->keyBy(fn (StreakPotionEffect $effect): string => $effect->target_local_date->toDateString());
         $goals = HydrationGoal::query()->where('user_id', $user->id)
             ->whereDate('starts_on', '<=', $startsOn->addDays(6)->toDateString())
             ->where(fn ($query) => $query->whereNull('ends_on')->orWhereDate('ends_on', '>=', $startsOn->toDateString()))
@@ -159,7 +166,8 @@ class HydrationChallengeService
             $days[] = [
                 'date' => $date->toDateString(), 'weekday' => $date->isoWeekday(), 'state' => $state,
                 'total_ml' => $total, 'goal_ml' => $goal, 'percentage' => min(100, (int) round($total / max(1, $goal) * 100)),
-                'is_today' => $date->isSameDay($today), 'is_trophy' => false, 'protection' => null,
+                'is_today' => $date->isSameDay($today), 'is_trophy' => false,
+                'protection' => $protections->get($date->toDateString())?->item_code->value,
             ];
         }
 

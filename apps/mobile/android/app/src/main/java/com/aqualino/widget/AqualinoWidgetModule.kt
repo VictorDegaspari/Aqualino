@@ -79,7 +79,7 @@ class AqualinoWidgetModule(reactContext: ReactApplicationContext) : NativeAquali
 
   companion object {
     const val NAME = "NativeAqualinoWidget"
-    const val SCHEMA_VERSION = 2
+    const val SCHEMA_VERSION = 3
     const val PREFERENCES = "aqualino_widget"
     const val SNAPSHOT_KEY = "snapshot_json"
     const val PENDING_ACTION_KEY = "pending_action"

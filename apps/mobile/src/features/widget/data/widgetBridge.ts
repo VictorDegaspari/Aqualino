@@ -11,7 +11,7 @@ type NativeWidgetSnapshot = WidgetSnapshot & {is_authenticated: boolean};
 
 function sessionSnapshot(isAuthenticated: boolean): NativeWidgetSnapshot {
   return {
-    schema_version: 2,
+    schema_version: 3, frozen_dates: [],
     generated_at: new Date().toISOString(),
     user_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     last_log_at: null,

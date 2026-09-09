@@ -27,11 +27,12 @@ class HydrationController extends Controller
     public function today(Request $request): JsonResponse
     {
         $user = $request->user()->loadMissing('profile');
+        $mascot = $this->mascot->forUser($user);
 
         return response()->json(['data' => [
             'today' => $this->queries->today($user),
             'week' => $this->weeklyHydration->forUser($user),
-            'mascot' => $this->mascot->forUser($user),
+            'mascot' => $mascot,
             'challenges' => $this->challenges->current($user),
         ]]);
     }

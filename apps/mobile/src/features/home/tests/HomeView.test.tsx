@@ -26,7 +26,7 @@ const data: HydrationHomeData = {
     ],
   },
   mascot: {
-    schema_version: 2, generated_at: '2026-09-02T12:00:00Z', user_timezone: 'America/Sao_Paulo',
+    schema_version: 3, frozen_dates: [], generated_at: '2026-09-02T12:00:00Z', user_timezone: 'America/Sao_Paulo',
     last_log_at: null, days_since_last_log: null, last_log_semantic_key: 'no_history', today_total_ml: 0,
     current_streak: 0, daily_goal_ml: 2000, condition: 'empty', decoration: null, animation: 'welcoming',
     static_asset: 'aqualino_empty',
@@ -70,6 +70,14 @@ test('renders friendly empty state and opens the hydration picker', async () => 
   expect(props.onOpenHydration).toHaveBeenCalledTimes(1);
 });
 
+test('shows an animated check after registering water', async () => {
+  const view = await renderHome(<HomeView {...props} recordedAmountMl={300} />);
+
+  expect(view.getByTestId('hydration-success-feedback')).toBeTruthy();
+  expect(view.getByLabelText('300 ml registrados')).toBeTruthy();
+  expect(view.getByText('+300 ml')).toBeTruthy();
+});
+
 test('keeps group mode locked when the person has no active group', async () => {
   const view = await renderHome(<HomeView {...props} />);
 
@@ -102,7 +110,7 @@ test('offers the group start only when a real group is available', async () => {
 
 test('renders offline pending state', async () => {
   const view = await renderHome(<HomeView {...props} offline pending={2} />);
-  expect(view.getByText('2 registro(s) aguardando sincronização')).toBeTruthy();
+  expect(view.getByText('2 para sincronizar')).toBeTruthy();
 });
 
 test('renders successful progress and mascot state', async () => {
@@ -118,6 +126,7 @@ test('renders successful progress and mascot state', async () => {
   expect(view.queryByText('Desafio atual')).toBeNull();
   expect(view.getByRole('tab', {name: 'Grupo'})).toBeTruthy();
   expect(view.getByLabelText(/TER, 01\/09: Meta perdida.*Protegido por congelamento/)).toBeTruthy();
+  expect(view.getAllByTestId('challenge-asset-dayFrozen')).toHaveLength(1);
   expect(view.getByLabelText(/DOM, 06\/09: Futuro/)).toBeTruthy();
 });
 

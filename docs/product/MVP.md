@@ -157,13 +157,17 @@ A votação começa habilitada e pode ser desabilitada pelo líder. Mudanças af
 
 A anulação permanece no histórico e retira o volume, recalcula XP, sequência e pontos; prêmios relevantes aguardam as votações. Tanto solo quanto grupo compartilham o limite de 15 marcações por dia civil do perfil e intervalo mínimo de 15 minutos. Registros anulados ou excluídos não devolvem vagas. A câmera salva a foto junto da fila offline; o acesso remoto à foto exige autenticação e elegibilidade.
 
+#### Próxima implementação: retenção das fotos de votação
+
+As fotos privadas de marcações serão guardadas em um bucket Cloudflare R2 privado. A API validará e enviará cada arquivo, preservando o endpoint autenticado para autor e votantes elegíveis; se houver URL assinada de leitura, ela expirará em até cinco minutos. As fotos expirarão 14 dias após o envio, com exclusão imediata na remoção da conta. Um job diário removerá objeto e referência no banco, e uma regra de ciclo de vida de 21 dias no R2 funcionará como proteção para objetos órfãos.
+
 #### Pontuação e premiação
 
 Para cada integrante, a pontuação diária é o percentual da própria meta, limitado a 100 pontos. A pontuação final soma os sete dias, com máximo de 700 pontos. Beber acima da meta continua registrado, mas não aumenta a pontuação competitiva.
 
-A regra `group-v1` fixa a meta individual e o elenco no início da rodada. Mudanças posteriores da meta pessoal valem para as próximas rodadas. O percentual diário é arredondado para centésimos antes da soma; a comparação usa esses mesmos valores inteiros em centésimos para que um empate visível seja um empate real.
+A regra `group-v2` fixa a meta individual e o elenco no início da rodada. Mudanças posteriores da meta pessoal valem para as próximas rodadas. O percentual diário é arredondado para centésimos antes da soma; a comparação usa esses mesmos valores inteiros em centésimos para que um empate visível seja um empate real.
 
-Após o fim dos sete dias, a rodada fica em `settling` durante 15 minutos para sincronização. Contam registros ocorridos dentro da janela e persistidos antes desse prazo, mesmo quando o fechamento pelo scheduler atrasa. Depois do prazo e do encerramento das votações de fotos relevantes (até 12 horas após cada envio), o servidor grava o resultado, passa para `completed` e concede os prêmios na mesma transação. Novos registros continuam no histórico pessoal, mas não reescrevem um resultado fechado. Zero pontos não concede posição, medalha ou sorteio; uma rodada inteira sem pontos fica sem vencedores.
+O registro é salvo no aparelho e exibido imediatamente, com sincronização em segundo plano. O servidor aceita novos registros por até 24 horas após a marcação; reenvios de registros já aceitos continuam idempotentes após esse prazo. No grupo, só pontuam os registros recebidos no mesmo dia civil da marcação, no fuso da equipe. Após a meia-noite, registros ainda dentro das 24 horas ficam no histórico pessoal, sem pontuar ou abrir votação no grupo. Após os sete dias, a rodada mantém 15 minutos de `settling` para fechamento; esse intervalo não permite pontuar com registros do dia anterior. Depois do prazo e do encerramento das votações de fotos relevantes (até 12 horas após cada envio), o servidor grava o resultado, passa para `completed` e concede os prêmios na mesma transação. Novos registros continuam no histórico pessoal, mas não reescrevem um resultado fechado. Zero pontos não concede posição, medalha ou sorteio; uma rodada inteira sem pontos fica sem vencedores.
 
 O elenco permanece registrado após uma saída. Quem entrar depois do início só compete na próxima rodada. Se houver menos de duas pessoas no momento da largada, a rodada é cancelada. O histórico dos participantes usa soft deletes.
 

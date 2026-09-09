@@ -10,13 +10,16 @@ import {TrustedHydrationClock} from './trustedHydrationClock';
 import {projectPendingChallenges} from './projectPendingChallenges';
 import {projectRecordingLimits} from './projectRecordingLimits';
 import {hydrationLogDate} from './hydrationHistory';
+import {advanceHydrationDay} from './advanceHydrationDay';
 
 export type RecordOutcome =
   | {kind: 'synced'; result: RecordWaterResult}
-  | {kind: 'queued'; event: PendingHydration};
+  | {kind: 'queued'; event: PendingHydration; home?: HydrationHomeData};
 
 export class OfflineHydrationService {
   private creating = false;
+  private flushing?: Promise<{synced: number; rejected: number}>;
+  private syncRevision = 0;
   constructor(
     private readonly store: OutboxStore,
     private readonly remote: HydrationRemoteRepository,
@@ -24,13 +27,16 @@ export class OfflineHydrationService {
     private readonly clock: TrustedHydrationClock = new TrustedHydrationClock(),
   ) {}
 
-  async cachedOrRemote(): Promise<{data: HydrationHomeData; offline: boolean}> {
+  async cachedOrRemote(isConnected = true): Promise<{data: HydrationHomeData; offline: boolean}> {
     try {
+      if (!isConnected) throw new AppError('Sem conexão', 'NETWORK_UNAVAILABLE');
+      if (this.flushing) await this.flushing;
+      const revision = this.syncRevision;
       const data = await this.remote.getHome();
-      this.clock.synchronize(data.mascot.generated_at);
+      await this.synchronizeClock(data.mascot.generated_at);
       // A timed-out POST may already be included in these server totals.
       // Reconcile its id before projecting the remaining local events.
-      const queued = await this.store.pending();
+      const queued = await this.store.pending(false);
       const dates = new Set(queued.map(event => pendingHydrationLog(event, data.today.timezone).local_date));
       for (const date of dates) {
         const logs = await this.fetchRemoteLogs(date);
@@ -39,18 +45,21 @@ export class OfflineHydrationService {
           if (acceptedIds.has(event.clientEventId)) await this.store.remove(event.clientEventId);
         }
       }
+      // A flush can finish while GET requests are in flight; its newer totals win.
+      if (this.flushing) await this.flushing;
+      if (revision !== this.syncRevision) return {...await this.cachedOrRemote(false), offline: false};
       await this.store.saveHome(data);
       const projected = await this.withPending(data);
-      await this.writeWidgetSafely(projected.mascot);
+      this.writeWidgetSafely(projected.mascot);
       return {data: projected, offline: false};
     } catch (error) {
       if (error instanceof AppError && error.code === 'ACCOUNT_CHANGED') throw error;
       const cached = await this.store.loadHome();
       if (cached) {
-        const migrated = {...cached, mascot: migrateWidgetSnapshot(cached.mascot)};
-        await this.store.saveHome(migrated);
+        const migrated = {...cached, mascot: migrateWidgetSnapshot(cached.mascot, cached.week)};
+        if (cached.mascot.schema_version !== 3 || cached.mascot.current_streak === undefined || !cached.mascot.frozen_dates) await this.store.saveHome(migrated);
         const data = await this.withPending(migrated);
-        await this.writeWidgetSafely(data.mascot);
+        this.writeWidgetSafely(data.mascot);
         return {data, offline: true};
       }
       throw error;
@@ -60,14 +69,14 @@ export class OfflineHydrationService {
   async record(
     amountMl: number,
     source: PendingHydration['source'],
-    isConnected: boolean,
+    _isConnected: boolean,
     photoBase64?: string,
   ): Promise<RecordOutcome> {
     if (this.creating) throw new AppError('Aguarde a marcação atual.', 'HYDRATION_RECORD_BUSY');
     this.creating = true;
     let event: PendingHydration;
     try {
-      const occurredAt = await this.recordedAt(isConnected);
+      const occurredAt = await this.recordedAt();
       await this.assertLocalLimits(occurredAt);
       event = {
         clientEventId: createUuid(),
@@ -81,23 +90,17 @@ export class OfflineHydrationService {
     } finally {
       this.creating = false;
     }
-    await this.refreshCachedWidget();
-
-    if (!isConnected) {
-      return {kind: 'queued', event};
-    }
-
+    // The durable local write is the acknowledgement. Network and widget work
+    // must not keep the volume picker open.
+    let home: HydrationHomeData | undefined;
     try {
-      return await this.syncOne(event);
-    } catch (error) {
-      if (error instanceof AppError && (
-        error.code === 'NETWORK_UNAVAILABLE' || error.code === 'REQUEST_TIMEOUT' ||
-        (error.status !== undefined && error.status >= 500) || error.status === 429
-      )) {
-        return {kind: 'queued', event};
-      }
-      throw error;
+      const cached = await this.store.loadHome();
+      if (cached) home = await this.withPending(cached);
+    } catch {
+      // Cache projection failure must not undo an event already saved to SQLite.
     }
+    if (home) this.writeWidgetSafely(home.mascot);
+    return {kind: 'queued', event, home};
   }
 
   async logs(localDate: string, timezone: string, cached?: HydrationLogPage, isConnected = true): Promise<HydrationLogPage> {
@@ -111,7 +114,7 @@ export class OfflineHydrationService {
       fetchError = error;
     }
 
-    const pending = (await this.store.pending())
+    const pending = (await this.store.pending(false))
       .map(event => pendingHydrationLog(event, timezone))
       .filter(log => log.local_date === localDate);
     if (!remoteLogs && !cached && pending.length === 0) throw fetchError;
@@ -122,7 +125,12 @@ export class OfflineHydrationService {
     return mergeHydrationLogs(pending, remoteLogs?.data ?? confirmedCache ?? []);
   }
 
-  async flush(): Promise<{synced: number; rejected: number}> {
+  flush(): Promise<{synced: number; rejected: number}> {
+    this.flushing ??= this.flushPending().finally(() => {this.flushing = undefined;});
+    return this.flushing;
+  }
+
+  private async flushPending(): Promise<{synced: number; rejected: number}> {
     const counts = {synced: 0, rejected: 0};
     for (const event of await this.store.pending()) {
       try {
@@ -130,7 +138,7 @@ export class OfflineHydrationService {
         counts.synced++;
       } catch (error) {
         if (isPermanentRejection(error)) counts.rejected++;
-        if (error instanceof AppError && ['NETWORK_UNAVAILABLE', 'ACCOUNT_CHANGED'].includes(error.code)) {
+        if (!isPermanentRejection(error)) {
           break;
         }
       }
@@ -139,7 +147,7 @@ export class OfflineHydrationService {
   }
 
   async pendingCount(): Promise<number> {
-    return (await this.store.pending()).length;
+    return this.store.pendingCount();
   }
 
   async rememberChallenges(challenges: HydrationChallenges): Promise<void> {
@@ -165,7 +173,8 @@ export class OfflineHydrationService {
         client_event_id: event.clientEventId,
         ...(event.photoBase64 ? {photo_base64: event.photoBase64} : {}),
       });
-      this.clock.synchronize(result.widget.generated_at);
+      await this.synchronizeClock(result.widget.generated_at);
+      this.syncRevision++;
       await this.store.remove(event.clientEventId);
       const cached = await this.store.loadHome();
       if (cached) {
@@ -177,7 +186,7 @@ export class OfflineHydrationService {
           mascot: result.widget,
         });
       }
-      await this.writeWidgetSafely(result.widget);
+      this.writeWidgetSafely(result.widget);
       return {kind: 'synced', result};
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falha desconhecida';
@@ -190,21 +199,27 @@ export class OfflineHydrationService {
     }
   }
 
-  private async recordedAt(isConnected: boolean): Promise<string> {
+  private async synchronizeClock(serverTime: string): Promise<void> {
+    this.clock.synchronize(serverTime);
+    const reference = this.clock.snapshot();
+    if (reference) await this.store.saveClock(reference);
+  }
+
+  private async recordedAt(): Promise<string> {
     try {
       return this.clock.recordedAt();
     } catch (error) {
-      if (!isConnected) throw error;
-      const data = await this.remote.getHome();
-      this.clock.synchronize(data.mascot.generated_at);
-      await this.store.saveHome(data);
+      if (!(error instanceof AppError) || error.code !== 'HYDRATION_TIME_UNVERIFIED') throw error;
+      const reference = await this.store.loadClock();
+      if (!reference) throw error;
+      this.clock.restore(reference);
       return this.clock.recordedAt();
     }
   }
 
   private async assertLocalLimits(occurredAt: string): Promise<void> {
     const cached = await this.store.loadHome();
-    const pending = await this.store.pending();
+    const pending = await this.store.pending(false);
     const timestamp = Date.parse(occurredAt);
     const timezone = cached?.today.timezone ?? 'UTC';
     const date = hydrationLogDate(new Date(timestamp), timezone);
@@ -224,17 +239,24 @@ export class OfflineHydrationService {
 
   private async refreshCachedWidget(): Promise<void> {
     const cached = await this.store.loadHome();
-    if (cached) await this.writeWidgetSafely((await this.withPending(cached)).mascot);
+    if (cached) this.writeWidgetSafely((await this.withPending(cached)).mascot);
   }
 
   // Persist only server-confirmed totals. Removing a rejected event then also
   // removes its optimistic progress, including when the next fetch is offline.
   private async withPending(cached: HydrationHomeData): Promise<HydrationHomeData> {
-    const queued = await this.store.pending();
+    let now: string;
+    try {now = await this.recordedAt();} catch {now = cached.mascot.generated_at;}
+    cached = advanceHydrationDay(cached, now);
+    const queued = await this.store.pending(false);
     const pending = queued.filter(event =>
       pendingHydrationLog(event, cached.today.timezone).local_date === cached.today.local_date);
     if (pending.length === 0) return cached.challenges ? {...cached, challenges: projectPendingChallenges(cached.challenges, queued)} : cached;
-    const cachedMascot = migrateWidgetSnapshot(cached.mascot);
+    const cachedMascot = migrateWidgetSnapshot(cached.mascot, cached.week);
+    const yesterday = new Date(`${cached.today.local_date}T12:00:00Z`);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const continuesStreak = cachedMascot.last_log_semantic_key === 'yesterday' ||
+      cachedMascot.frozen_dates.includes(yesterday.toISOString().slice(0, 10));
     const total = cached.today.total_ml + pending.reduce((sum, event) => sum + event.amountMl, 0);
     const today = {
       ...cached.today,
@@ -251,15 +273,13 @@ export class OfflineHydrationService {
       week: updateHydrationWeek(cached.week, today),
       mascot: {
         ...cachedMascot,
-        schema_version: 2,
+        schema_version: 3,
         last_log_at: pending.reduce((latest, event) => event.occurredAt > latest ? event.occurredAt : latest, cachedMascot.last_log_at ?? ''),
         days_since_last_log: 0,
         last_log_semantic_key: 'today',
         current_streak: cached.today.total_ml >= 50
           ? cachedMascot.current_streak
-          : cachedMascot.last_log_semantic_key === 'yesterday'
-            ? cachedMascot.current_streak + 1
-            : 1,
+          : continuesStreak ? cachedMascot.current_streak + 1 : 1,
         today_total_ml: total,
         condition: 'happy',
         static_asset: 'aqualino_happy',
@@ -281,7 +301,7 @@ function isPermanentRejection(error: unknown): boolean {
     error.status >= 400 && error.status < 500 && ![401, 403, 408, 429].includes(error.status);
 }
 
-function migrateWidgetSnapshot(snapshot: WidgetSnapshot): WidgetSnapshot {
+function migrateWidgetSnapshot(snapshot: WidgetSnapshot, week: HydrationHomeData['week']): WidgetSnapshot {
   const legacyStreak = (snapshot as WidgetSnapshot & {current_streak?: unknown}).current_streak;
   const currentStreak = typeof legacyStreak === 'number' && Number.isFinite(legacyStreak)
     ? Math.max(0, Math.floor(legacyStreak))
@@ -289,5 +309,6 @@ function migrateWidgetSnapshot(snapshot: WidgetSnapshot): WidgetSnapshot {
       ? 1
       : 0;
 
-  return {...snapshot, schema_version: 2, current_streak: currentStreak};
+  return {...snapshot, schema_version: 3, current_streak: currentStreak,
+    frozen_dates: snapshot.frozen_dates ?? week.days.filter(day => day.protection === 'streak_freeze').map(day => day.date)};
 }

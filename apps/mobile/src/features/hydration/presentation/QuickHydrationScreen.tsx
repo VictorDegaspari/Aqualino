@@ -115,13 +115,18 @@ export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Elem
                 <AqualinoIcon name="waterPlus" size={32} color={challengeTheme.colors.cyanStrong} />
               </View>
               <View style={styles.heading}>
-                <Text style={styles.eyebrow}>{t("BEBI ÁGUA", "I DRANK WATER", "BEBÍ AGUA")}</Text>
                 <Text accessibilityRole="header" style={styles.title}>{t("Quanto você bebeu?", "How much did you drink?", "¿Cuánto bebiste?")}</Text>
               </View>
             </View>
-            <Text style={styles.subtitle}>{photoUri ? t("Toque no volume para registrar.", "Tap an amount to record it.", "Toca la cantidad para registrarla.") : t("Primeiro, tire uma foto do seu copo ou garrafa.", "First, take a photo of your glass or bottle.", "Primero, toma una foto de tu vaso o botella.")}</Text>
-            <Text style={styles.rules}>{t("Até 15 marcações por dia, com 15 minutos entre elas, no solo e no grupo. Com votação habilitada pelo líder e 3 ou mais pessoas no grupo, os outros membros poderão conferir sua foto e votar por 12 horas após a sincronização.", "Up to 15 logs per day, 15 minutes apart, in solo and group modes. With voting enabled by the leader and at least 3 members, the others can review your photo and vote for 12 hours after syncing.", "Hasta 15 registros al día, con 15 minutos entre ellos, en modo individual y de grupo. Si el líder activa la votación y hay al menos 3 miembros, los demás podrán revisar tu foto y votar durante 12 horas después de la sincronización.")}</Text>
-            {limits ? <Text accessibilityLiveRegion="polite" style={styles.rules}>{t(`${limits.recorded_today} de ${limits.daily_limit} marcações hoje.`, `${limits.recorded_today} of ${limits.daily_limit} logs today.`, `${limits.recorded_today} de ${limits.daily_limit} registros hoy.`)}{dailyLimitReached ? t(" Limite diário atingido. Novas marcações estarão disponíveis no próximo dia.", " Daily limit reached. New logs will be available tomorrow.", " Límite diario alcanzado. Podrás registrar de nuevo mañana.") : paused ? t(` Próximo registro às ${new Date(nextAllowedAt).toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'})}.`, ` Next log at ${new Date(nextAllowedAt).toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'})}.`, ` Próximo registro a las ${new Date(nextAllowedAt).toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'})}.`) : ''}</Text> : null}
+            <Text accessibilityLiveRegion="polite" style={styles.subtitle}>
+              {dailyLimitReached
+                ? t("Limite de hoje atingido. Volte amanhã.", "Today's limit reached. Come back tomorrow.", "Alcanzaste el límite de hoy. Vuelve mañana.")
+                : paused
+                  ? t(`Próximo registro às ${new Date(nextAllowedAt).toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'})}.`, `Next log at ${new Date(nextAllowedAt).toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'})}.`, `Próximo registro a las ${new Date(nextAllowedAt).toLocaleTimeString(locale, {hour: '2-digit', minute: '2-digit'})}.`)
+                  : hasPhoto
+                    ? t("Toque no volume para registrar.", "Tap an amount to record it.", "Toca la cantidad para registrarla.")
+                    : t("Tire uma foto do copo ou garrafa.", "Take a photo of your glass or bottle.", "Toma una foto de tu vaso o botella.")}
+            </Text>
 
             {photoUri ? (
               <View style={styles.photoPreview}>
@@ -146,11 +151,11 @@ export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Elem
                     key={volume}
                     accessibilityRole="button"
                     accessibilityLabel={t(`Registrar ${volume} ml de água`, `Record ${volume} ml of water`, `Registrar ${volume} ml de agua`)}
-                    accessibilityState={{disabled: busy || !hasPhoto || paused, busy: isPending}}
+                    accessibilityState={{disabled: busy || !hasPhoto || paused, busy: false}}
                     disabled={busy || !hasPhoto || paused}
                     onPress={() => {submit(volume);}}
                     style={({pressed}) => [styles.volumeButton, isPending && styles.volumeButtonSelected, ((!hasPhoto || busy || paused) && !isPending) && styles.dimmed, pressed && styles.volumeButtonPressed]}>
-                    {isPending ? <LoadingWaterDrop size={27} /> : <AqualinoIcon name="water" size={28} color={challengeTheme.colors.cyanStrong} />}
+                    <AqualinoIcon name="water" size={28} color={challengeTheme.colors.cyanStrong} />
                     <Text style={[styles.volumeLabel, isPending && styles.selectedText]}>{volume}</Text>
                     <Text style={[styles.volumeUnit, isPending && styles.selectedText]}>ml</Text>
                     {lastAmount === volume && !isPending ? <View style={styles.favoriteDot} /> : null}
@@ -159,9 +164,6 @@ export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Elem
               })}
             </View>
 
-            <Text accessibilityLiveRegion="polite" style={styles.status}>
-              {pendingAmount !== null ? t(`Registrando ${pendingAmount} ml…`, `Recording ${pendingAmount} ml…`, `Registrando ${pendingAmount} ml…`) : photoUri ? t("Sua gota acompanha cada gole.", "Your drop follows every sip.", "Tu gota acompaña cada sorbo.") : t("A foto libera o registro do volume.", "A photo unlocks amount recording.", "La foto permite registrar la cantidad.")}
-            </Text>
             {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
 
           </ScrollView>
@@ -172,7 +174,6 @@ export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Elem
 }
 
 const styles = StyleSheet.create({
-  rules: {fontSize: 12, lineHeight: 18, color: challengeTheme.colors.muted},
   page: {flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 10, 24, 0.62)'},
   sheet: {
     maxHeight: '88%', borderTopLeftRadius: 30, borderTopRightRadius: 30,
@@ -182,12 +183,11 @@ const styles = StyleSheet.create({
   handle: {alignSelf: 'center', width: 38, height: 4, marginTop: 10, borderRadius: 2, backgroundColor: challengeTheme.colors.borderStrong},
   content: {paddingHorizontal: 22, paddingTop: 22, paddingBottom: 20, gap: 14},
   header: {flexDirection: 'row', alignItems: 'center', gap: 12},
-  heading: {flex: 1, gap: 3},
+  heading: {flex: 1},
   iconOrb: {
     width: 54, height: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
     backgroundColor: challengeTheme.colors.panelSoft, borderWidth: 1, borderColor: challengeTheme.colors.border,
   },
-  eyebrow: {fontSize: 10, lineHeight: 14, letterSpacing: 1.4, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
   title: {fontSize: 23, lineHeight: 29, fontWeight: '900', color: challengeTheme.colors.text},
   subtitle: {color: challengeTheme.colors.muted, fontSize: 14, lineHeight: 20},
   buttons: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
@@ -203,7 +203,6 @@ const styles = StyleSheet.create({
   selectedText: {color: challengeTheme.colors.backgroundDeep},
   favoriteDot: {position: 'absolute', top: 10, right: 10, width: 5, height: 5, borderRadius: 3, backgroundColor: challengeTheme.colors.cyanStrong},
   dimmed: {opacity: 0.4},
-  status: {textAlign: 'center', fontSize: 13, lineHeight: 19, color: challengeTheme.colors.cyanStrong},
   error: {color: challengeTheme.colors.danger, fontSize: 13, lineHeight: 19},
   photoPreview: {height: 104, borderRadius: 16, overflow: 'hidden'},
   photo: {width: '100%', height: '100%'},

@@ -63,13 +63,13 @@ class HydrationXpMultiplierTest extends TestCase
     {
         $user = $this->member();
         $this->history($user, 10);
-        $input = [...$this->drink(), 'occurred_at' => '2026-09-02T12:00:00Z'];
+        $input = [...$this->drink(), 'occurred_at' => '2026-09-11T12:00:00Z'];
         $this->postJson('/api/v1/hydration/logs', $input)->assertCreated()
-            ->assertJsonPath('data.gamification.awarded_xp_multiplier', 1)->assertJsonPath('data.gamification.xp_awarded', 5);
+            ->assertJsonPath('data.gamification.awarded_xp_multiplier', 1.9)->assertJsonPath('data.gamification.xp_awarded', 10);
         $xp = $user->fresh()->xp_total;
         $this->travel(3)->days();
         $this->postJson('/api/v1/hydration/logs', $input)->assertOk()
-            ->assertJsonPath('data.idempotent_replay', true)->assertJsonPath('data.gamification.xp_awarded', 5);
+            ->assertJsonPath('data.idempotent_replay', true)->assertJsonPath('data.gamification.xp_awarded', 10);
         $this->assertSame($xp, $user->fresh()->xp_total);
     }
 
@@ -77,6 +77,7 @@ class HydrationXpMultiplierTest extends TestCase
     {
         $this->member();
         foreach ([8 => 10, 9 => 11, 10 => 12] as $day => $xp) {
+            $this->travelTo(CarbonImmutable::parse(sprintf('2026-09-%02dT18:00:00Z', $day)));
             $this->postJson('/api/v1/hydration/logs', [...$this->drink(), 'occurred_at' => sprintf('2026-09-%02dT12:00:00Z', $day)])
                 ->assertCreated()->assertJsonPath('data.gamification.xp_awarded', $xp);
         }

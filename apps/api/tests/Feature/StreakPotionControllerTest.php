@@ -9,6 +9,7 @@ use App\Modules\Identity\Infrastructure\Models\UserProfile;
 use App\Modules\Inventory\Application\CreditInventoryItem;
 use App\Modules\Inventory\Domain\InventoryItemCode;
 use App\Modules\Inventory\Domain\InventoryTransactionSource;
+use App\Modules\Inventory\Infrastructure\Models\InventoryTransaction;
 use App\Modules\Inventory\Infrastructure\Models\PotionUsageBlock;
 use App\Modules\Inventory\Infrastructure\Models\StreakPotionEffect;
 use Carbon\CarbonImmutable;
@@ -147,6 +148,91 @@ class StreakPotionControllerTest extends TestCase
         ]);
     }
 
+    public function test_opening_home_consumes_protection_without_another_water_record(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-09-02T13:00:00Z'));
+        $user = $this->authenticatedUser();
+        $this->dailyHydration($user, '2026-09-01');
+        $this->postJson('/api/v1/hydration/challenges', ['mode' => 'solo'])->assertOk();
+        $this->credit($user, InventoryItemCode::StreakFreeze, 2);
+        $this->postJson('/api/v1/inventory/streak-freezes', [
+            'client_action_id' => '5af20f22-7235-4f20-818c-95d279ff1afe',
+        ])->assertCreated();
+        $this->travelTo(CarbonImmutable::parse('2026-09-03T13:00:00Z'));
+
+        $this->getJson('/api/v1/hydration/today')->assertOk()
+            ->assertJsonPath('data.mascot.current_streak', 2)
+            ->assertJsonPath('data.mascot.frozen_dates', ['2026-09-02'])
+            ->assertJsonPath('data.week.days.2.protection', 'streak_freeze')
+            ->assertJsonPath('data.week.days.2.total_ml', 0)
+            ->assertJsonPath('data.week.days.2.state', 'missed')
+            ->assertJsonPath('data.challenges.solo.progress.days.0.protection', 'streak_freeze')
+            ->assertJsonPath('data.challenges.solo.progress.days.0.total_ml', 0)
+            ->assertJsonPath('data.challenges.solo.progress.completed_goal_days', 0)
+            ->assertJsonPath('data.challenges.solo.reward.state', 'locked')
+            ->assertJsonPath('data.today.total_ml', 0);
+        $this->getJson('/api/v1/widget/snapshot')->assertOk()
+            ->assertJsonPath('data.schema_version', 3)
+            ->assertJsonPath('data.current_streak', 2)
+            ->assertJsonPath('data.frozen_dates', ['2026-09-02']);
+        $this->getJson('/api/v1/hydration/today')->assertOk();
+        $this->assertDatabaseHas('inventory_balances', [
+            'user_id' => $user->id, 'item_code' => 'streak_freeze', 'quantity' => 1, 'reserved_quantity' => 0,
+        ]);
+        $this->assertSame(1, InventoryTransaction::query()
+            ->whereBelongsTo($user)->where('source_type', 'potion_use')->count());
+    }
+
+    public function test_scheduler_consumes_only_after_the_day_ends_in_the_profile_timezone(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-09-02T13:00:00Z'));
+        $user = $this->authenticatedUser();
+        $user->profile->update(['timezone' => 'America/Sao_Paulo']);
+        $this->dailyHydration($user, '2026-09-01');
+        $this->credit($user, InventoryItemCode::StreakFreeze);
+        $this->postJson('/api/v1/inventory/streak-freezes', [
+            'client_action_id' => '5af20f22-7235-4f20-818c-95d279ff1afe',
+        ])->assertCreated();
+
+        $this->travelTo(CarbonImmutable::parse('2026-09-03T02:59:00Z'));
+        $this->artisan('hydration:apply-streak-freezes')->assertSuccessful();
+        $this->assertDatabaseHas('streak_potion_effects', ['user_id' => $user->id, 'status' => 'armed']);
+
+        $this->travelTo(CarbonImmutable::parse('2026-09-03T03:00:00Z'));
+        $this->artisan('hydration:apply-streak-freezes')->assertSuccessful();
+        $this->artisan('hydration:apply-streak-freezes')->assertSuccessful();
+        $this->assertDatabaseHas('streak_potion_effects', ['user_id' => $user->id, 'status' => 'consumed']);
+        $this->assertDatabaseHas('user_streaks', ['user_id' => $user->id, 'current_streak' => 2]);
+        $this->assertDatabaseHas('inventory_balances', [
+            'user_id' => $user->id, 'item_code' => 'streak_freeze', 'quantity' => 0, 'reserved_quantity' => 0,
+        ]);
+    }
+
+    public function test_automatic_freeze_preserves_inventory_when_water_was_recorded_or_protection_is_not_armed(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-09-02T13:00:00Z'));
+        $hydrated = $this->authenticatedUser();
+        $this->dailyHydration($hydrated, '2026-09-01');
+        $this->dailyHydration($hydrated, '2026-09-02');
+        $this->credit($hydrated, InventoryItemCode::StreakFreeze);
+        $this->postJson('/api/v1/inventory/streak-freezes', [
+            'client_action_id' => '5af20f22-7235-4f20-818c-95d279ff1afe',
+        ])->assertCreated();
+        $unarmed = $this->authenticatedUser();
+        $this->dailyHydration($unarmed, '2026-09-01');
+        $this->credit($unarmed, InventoryItemCode::StreakFreeze);
+        $this->travelTo(CarbonImmutable::parse('2026-09-03T13:00:00Z'));
+
+        $this->artisan('hydration:apply-streak-freezes')->assertSuccessful();
+        $this->getJson('/api/v1/widget/snapshot')->assertOk()->assertJsonPath('data.frozen_dates', []);
+        foreach ([$hydrated, $unarmed] as $user) {
+            $this->assertDatabaseHas('inventory_balances', [
+                'user_id' => $user->id, 'item_code' => 'streak_freeze', 'quantity' => 1,
+            ]);
+        }
+        $this->assertDatabaseHas('streak_potion_effects', ['user_id' => $hydrated->id, 'status' => 'armed']);
+    }
+
     public function test_revival_recovers_a_single_break_within_48_hours(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-09-03T13:00:00Z'));
@@ -204,6 +290,8 @@ class StreakPotionControllerTest extends TestCase
         ])->assertConflict()->assertJsonPath('error.code', 'POTION_USAGE_BLOCKED_BY_GROUP_CHALLENGE');
 
         $this->travelTo(CarbonImmutable::parse('2026-09-04T13:00:00Z'));
+        $this->artisan('hydration:apply-streak-freezes')->assertSuccessful();
+        $this->getJson('/api/v1/hydration/today')->assertOk()->assertJsonPath('data.mascot.frozen_dates', []);
         $this->postJson('/api/v1/hydration/logs', [
             'amount_ml' => 300,
             'client_event_id' => 'a014df3e-7f81-42bc-a607-1446dc6b76aa',

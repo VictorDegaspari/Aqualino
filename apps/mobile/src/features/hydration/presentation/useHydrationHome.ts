@@ -10,6 +10,7 @@ import {hydrationLogsKey, mergeHydrationLogs, pendingHydrationLog} from '../appl
 import {useSessionStore} from '../../auth/application/sessionStore';
 import {projectRecordingLimits} from '../application/projectRecordingLimits';
 import {projectPendingChallenges} from '../application/projectPendingChallenges';
+import {advanceHydrationDay} from '../application/advanceHydrationDay';
 
 export const hydrationHomeKey = ['hydration', 'home'] as const;
 
@@ -17,7 +18,8 @@ export const hydrationHomeAccountKey = (userId?: string) => userId ? [...hydrati
 
 export function useHydrationHomeData() {
   const userId = useSessionStore(state => state.user?.id);
-  return useQuery({queryKey: hydrationHomeAccountKey(userId), queryFn: () => hydrationService.cachedOrRemote()});
+  const network = useNetInfo();
+  return useQuery({queryKey: hydrationHomeAccountKey(userId), networkMode: 'always', queryFn: () => hydrationService.cachedOrRemote(network.isConnected !== false)});
 }
 
 export function useHydrationHome() {
@@ -44,30 +46,12 @@ function useRecordHydration() {
   const applyGamification = useSessionStore(state => state.applyGamification);
 
   return useMutation({
+    networkMode: 'always',
     mutationFn: ({amountMl, source, photoBase64}: {amountMl: number; source: PendingHydration['source']; photoBase64?: string}) =>
       hydrationService.record(amountMl, source, network.isConnected !== false, photoBase64),
-    onMutate: async ({amountMl}) => {
+    onMutate: async () => {
       await queryClient.cancelQueries({queryKey: homeKey});
       const previous = queryClient.getQueryData<{data: HydrationHomeData; offline: boolean}>(homeKey);
-      if (previous) {
-        const total = previous.data.today.total_ml + amountMl;
-        const today = {
-          ...previous.data.today,
-          total_ml: total,
-          log_count: previous.data.today.log_count + 1,
-          percentage: Math.round((total / Math.max(previous.data.today.goal_ml, 1)) * 100),
-          goal_achieved: total >= previous.data.today.goal_ml,
-        };
-        queryClient.setQueryData(homeKey, {
-          ...previous,
-          data: {
-            ...previous.data,
-            today,
-            week: updateHydrationWeek(previous.data.week, today),
-            mascot: {...previous.data.mascot, condition: 'happy', static_asset: 'aqualino_happy'},
-          },
-        });
-      }
       return {previous, userId};
     },
     onError: (_error, _variables, context) => {
@@ -75,12 +59,12 @@ function useRecordHydration() {
         queryClient.setQueryData(homeKey, context.previous);
       }
     },
-    onSuccess: async (outcome, _variables, context) => {
+    onSuccess: (outcome, _variables, context) => {
       if (outcome.kind === 'synced' && context?.userId) {
         applyGamification(context.userId, outcome.result.gamification);
         queryClient.invalidateQueries({queryKey: ['groups']});
       }
-      await queryClient.cancelQueries({queryKey: hydrationLogsKey});
+      queryClient.cancelQueries({queryKey: hydrationLogsKey});
       const log = outcome.kind === 'synced' ? outcome.result.log : pendingHydrationLog(outcome.event, timezone);
       queryClient.setQueryData<HydrationLogPage>([...hydrationLogsKey, userId, log.local_date], current =>
         mergeHydrationLogs(current?.data ?? [], [log]));
@@ -102,15 +86,22 @@ function useRecordHydration() {
         }
       } else {
         const current = queryClient.getQueryData<{data: HydrationHomeData; offline: boolean}>(homeKey);
-        if (current) {
-          queryClient.setQueryData(homeKey, {...current, data: {...current.data, challenges: projectPendingChallenges(current.data.challenges, [outcome.event]), today: {...current.data.today, recording_limits: projectRecordingLimits(current.data.today.recording_limits, [outcome.event], current.data.today.log_count - 1)}}, offline: true});
+        const offline = network.isConnected === false;
+        if (outcome.home) {
+          queryClient.setQueryData(homeKey, {data: outcome.home, offline});
+        } else if (current) {
+          const home = advanceHydrationDay(current.data, outcome.event.occurredAt);
+          const total = home.today.total_ml + outcome.event.amountMl;
+          const today = {...home.today, total_ml: total, log_count: home.today.log_count + 1,
+            percentage: Math.round(total / Math.max(home.today.goal_ml, 1) * 100), goal_achieved: total >= home.today.goal_ml,
+            recording_limits: projectRecordingLimits(home.today.recording_limits, [outcome.event], home.today.log_count)};
+          queryClient.setQueryData(homeKey, {...current, data: {...home,
+            challenges: projectPendingChallenges(home.challenges, [outcome.event]), today, week: updateHydrationWeek(home.week, today),
+            mascot: {...home.mascot, today_total_ml: total, last_log_at: outcome.event.occurredAt, condition: 'happy', static_asset: 'aqualino_happy'}},
+            offline});
         }
       }
-      try {
-        setPending(await hydrationService.pendingCount());
-      } catch {
-        // A queue counter refresh must not turn a saved drink into a failed submission.
-      }
+      if (outcome.kind === 'queued') setPending(useSyncStatusStore.getState().pending + 1);
     },
   });
 }

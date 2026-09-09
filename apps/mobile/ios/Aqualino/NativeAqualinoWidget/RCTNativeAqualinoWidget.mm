@@ -40,7 +40,7 @@ static NSString *const AqualinoPendingActionKey = @"pending_action";
 
 - (NSNumber *)getSchemaVersion
 {
-  return @2;
+  return @3;
 }
 
 - (NSNumber *)setAppIconMood:(NSString *)mood

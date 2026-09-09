@@ -15,6 +15,7 @@ const challengeAssets = {
   dayCompleted: require('../../../../assets/challenge/static/day-completed.png'),
   dayLocked: require('../../../../assets/challenge/static/day-locked.png'),
   dayMissed: require('../../../../assets/challenge/static/day-missed.png'),
+  dayFrozen: require('../../../../assets/challenge/static/day-frozen.png'),
   dayEmpty: require('../../../../assets/challenge/static/day-empty.png'),
   dayProgress: require('../../../../assets/challenge/static/day-progress.png'),
   currentDrop: require('../../../../assets/challenge/static/water-drop-current.png'),
@@ -35,5 +36,5 @@ interface Props {
 }
 
 export function ChallengeAsset({name, style, resizeMode = 'contain'}: Props): React.JSX.Element {
-  return <Image source={challengeAssets[name]} resizeMode={resizeMode} style={style} />;
+  return <Image testID={`challenge-asset-${name}`} source={challengeAssets[name]} resizeMode={resizeMode} style={style} />;
 }

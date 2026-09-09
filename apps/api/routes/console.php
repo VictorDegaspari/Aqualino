@@ -15,3 +15,5 @@ Schedule::command('outbox:dispatch')
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 
 Schedule::command('groups:advance-challenges')->everyMinute()->withoutOverlapping();
+
+Schedule::command('hydration:apply-streak-freezes')->everyMinute()->withoutOverlapping();

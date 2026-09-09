@@ -7,7 +7,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-internal data class WidgetDay(val label: String, val completed: Boolean, val date: String)
+internal data class WidgetDay(val label: String, val completed: Boolean, val date: String, val frozen: Boolean = false)
 
 internal fun widgetWeekDays(
   timezone: String,
@@ -15,6 +15,7 @@ internal fun widgetWeekDays(
   totalMl: Int,
   generatedAt: String?,
   nowMillis: Long = System.currentTimeMillis(),
+  frozenDates: Set<String> = emptySet(),
 ): List<WidgetDay> {
   val zone = TimeZone.getTimeZone(timezone)
   val today = Calendar.getInstance(zone).apply { timeInMillis = nowMillis }
@@ -42,7 +43,8 @@ internal fun widgetWeekDays(
   val initials = arrayOf("S", "T", "Q", "Q", "S", "S", "D")
   return (0 until 5).map { index ->
     val date = cursor.civilDate()
-    val day = WidgetDay(initials[firstVisibleIndex + index], date <= todayDate && date in completedDates, date)
+    val frozen = date <= todayDate && date in frozenDates
+    val day = WidgetDay(initials[firstVisibleIndex + index], date <= todayDate && date in completedDates && !frozen, date, frozen)
     cursor.add(Calendar.DATE, 1)
     day
   }

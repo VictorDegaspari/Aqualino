@@ -37,7 +37,7 @@ function usePotionContent(): Record<InventoryItemCode, PotionContent> {
   return {
   streak_freeze: {
     name: t('Congelamento de streak', 'Streak freeze', 'Congelar racha'),
-    description: t('Protege a próxima falta elegível depois de ativado.', 'Protects the next eligible missed day after activation.', 'Protege el próximo día fallido elegible después de activarse.'),
+    description: t('Após ativar, é usada automaticamente no próximo dia sem registrar água.', 'Once activated, it is used automatically on the next day without a water log.', 'Al activarla, se usa automáticamente el próximo día sin registrar agua.'),
   },
   streak_revive: {
     name: t('Poção de reacender', 'Streak revival potion', 'Poción para recuperar la racha'),

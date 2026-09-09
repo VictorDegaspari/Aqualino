@@ -1,6 +1,7 @@
 import {open, type NitroSQLiteConnection, type SQLiteValue} from 'react-native-nitro-sqlite';
 import type {HydrationHomeData} from './hydrationRemoteRepository';
 import type {OutboxStore, PendingHydration} from './outboxStore';
+import type {HydrationClockReference} from '../application/trustedHydrationClock';
 
 interface PendingRow {
   [key: string]: SQLiteValue;
@@ -75,11 +76,11 @@ export class SQLiteOutboxStore implements OutboxStore {
     ]);
   }
 
-  async pending(): Promise<PendingHydration[]> {
+  async pending(includePhotos = true): Promise<PendingHydration[]> {
     await this.initialize();
     const {rows} = await this.getDatabase().executeAsync<PendingRow>(
-      `SELECT o.client_event_id, o.amount_ml, o.occurred_at, o.source, o.attempts, p.photo_base64
-       FROM hydration_outbox o LEFT JOIN hydration_outbox_photos p ON p.client_event_id = o.client_event_id
+      `SELECT o.client_event_id, o.amount_ml, o.occurred_at, o.source, o.attempts, ${includePhotos ? 'p.photo_base64' : 'NULL AS photo_base64'}
+       FROM hydration_outbox o ${includePhotos ? 'LEFT JOIN hydration_outbox_photos p ON p.client_event_id = o.client_event_id' : ''}
        ORDER BY o.created_at ASC LIMIT 100`,
     );
 
@@ -138,5 +139,21 @@ export class SQLiteOutboxStore implements OutboxStore {
   private getDatabase(): NitroSQLiteConnection {
     this.database ??= getSharedDatabase(this.databaseName);
     return this.database;
+  }
+
+  async saveClock(reference: HydrationClockReference): Promise<void> {
+    await this.initialize();
+    await this.getDatabase().executeAsync(
+      `INSERT INTO app_cache (cache_key, value, updated_at) VALUES ('hydration_clock', ?, ?)
+       ON CONFLICT(cache_key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+      [JSON.stringify(reference), new Date().toISOString()],
+    );
+  }
+
+  async loadClock(): Promise<HydrationClockReference | null> {
+    await this.initialize();
+    const {rows} = await this.getDatabase().executeAsync<CacheRow>("SELECT value FROM app_cache WHERE cache_key = 'hydration_clock' LIMIT 1");
+    const value = rows.item(0)?.value;
+    return value ? JSON.parse(value) as HydrationClockReference : null;
   }
 }

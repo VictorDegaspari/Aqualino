@@ -14,6 +14,7 @@ export function projectPendingChallenges(challenges: HydrationChallenges | undef
       const date = hydrationLogDate(new Date(event.occurredAt), progress.timezone);
       const day = progress.days.find(candidate => candidate.date === date);
       if (!day || date > progress.current_date) continue;
+      if (mode === 'group' && date !== progress.current_date) continue;
       const total = day.total_ml + event.amountMl;
       progress = updateHydrationWeek(progress, {
         local_date: date, timezone: progress.timezone, total_ml: total, goal_ml: day.goal_ml,

@@ -421,7 +421,7 @@ paths:
     post:
       operationId: createHydrationLog
       summary: Registra água de forma idempotente
-      description: Repetir o mesmo `client_event_id` para o mesmo usuário devolve o mesmo resultado lógico sem criar outro registro. Limite de 15 marcações por dia civil no fuso do perfil e intervalo mínimo de 900 segundos, incluindo registros anulados ou excluídos. Fotos obrigatórias se houver votação habilitada e mais de dois integrantes no grupo.
+      description: Repetir o mesmo `client_event_id` para o mesmo usuário devolve o mesmo resultado lógico sem criar outro registro. Limite de 15 marcações por dia civil no fuso do perfil e intervalo mínimo de 900 segundos, incluindo registros anulados ou excluídos. Novos registros devem chegar em até 24 horas após occurred_at. Para pontuar no grupo, devem chegar antes da meia-noite do dia da marcação no fuso da equipe; após esse limite, ficam apenas no histórico pessoal. Fotos obrigatórias se houver votação habilitada, mais de dois integrantes no grupo e o registro for recebido no mesmo dia.
       tags: [Hydration]
       requestBody:
         required: true
@@ -1889,7 +1889,7 @@ components:
         occurred_at:
           type: string
           format: date-time
-          description: Ausente significa o horário atual do servidor.
+          description: Ausente significa o horário atual do servidor. Não pode estar no futuro nem ter mais de 24 horas no primeiro envio. Reenvios de eventos já aceitos continuam idempotentes após esse prazo.
         source:
           type: string
           enum: [mobile, widget, shortcut, import]
@@ -2101,11 +2101,11 @@ components:
           $ref: '#/components/schemas/PotionActionResult'
     WidgetSnapshot:
       type: object
-      required: [schema_version, generated_at, user_timezone, last_log_at, days_since_last_log, last_log_semantic_key, current_streak, today_total_ml, daily_goal_ml, condition, decoration, animation, static_asset]
+      required: [schema_version, generated_at, user_timezone, last_log_at, days_since_last_log, last_log_semantic_key, current_streak, frozen_dates, today_total_ml, daily_goal_ml, condition, decoration, animation, static_asset]
       properties:
         schema_version:
           type: integer
-          const: 2
+          const: 3
         generated_at:
           type: string
           format: date-time
@@ -2123,6 +2123,13 @@ components:
         current_streak:
           type: integer
           minimum: 0
+        frozen_dates:
+          type: array
+          uniqueItems: true
+          description: Datas locais protegidas por congelamento na semana civil atual.
+          items:
+            type: string
+            format: date
         today_total_ml:
           type: integer
           minimum: 0

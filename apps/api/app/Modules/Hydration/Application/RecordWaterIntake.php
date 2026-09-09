@@ -60,6 +60,12 @@ class RecordWaterIntake
             ]);
         }
 
+        if ($occurredAt->isBefore($receivedAt->subHours(HydrationRecordLimits::SYNC_WINDOW_HOURS))) {
+            throw ValidationException::withMessages([
+                'sync_deadline' => ['O prazo de 24 horas para sincronizar esta marcação terminou.'],
+            ]);
+        }
+
         $timezone = $user->profile->timezone;
         $localDate = $occurredAt->setTimezone($timezone)->toDateString();
 

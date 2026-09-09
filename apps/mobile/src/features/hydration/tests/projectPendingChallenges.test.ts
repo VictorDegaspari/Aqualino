@@ -38,3 +38,11 @@ test('keeps the server leaderboard unchanged while projecting the participant dr
   expect(updated?.group?.leaderboard).toEqual(group.leaderboard);
   expect(projectPendingChallenges({...challenges, group: {...group, participating: false}}, [event])?.group?.progress.total_ml).toBe(0);
 });
+
+test('keeps a previous day pending log in solo progress but removes it from the group after midnight', () => {
+  const progress = {...challenges.solo!.progress, current_date: '2026-09-03'};
+  const state = {...challenges, solo: {...challenges.solo!, progress}, group: {...challenges.solo!, mode: 'group' as const, progress}};
+  const updated = projectPendingChallenges(state, [event]);
+  expect(updated?.solo?.progress.total_ml).toBe(300);
+  expect(updated?.group?.progress.total_ml).toBe(0);
+});

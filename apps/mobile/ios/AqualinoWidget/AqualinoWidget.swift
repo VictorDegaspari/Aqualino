@@ -4,7 +4,7 @@ import WidgetKit
 
 private let appGroup = "group.br.com.aqualino.shared"
 private let snapshotKey = "snapshot_json"
-private let schemaVersion = 2
+private let schemaVersion = 3
 
 private let variationInterval: TimeInterval = 3 * 60 * 60
 private let strongStreakDays = 3
@@ -29,6 +29,7 @@ struct WidgetSnapshot: Codable {
   let lastLogAt: Date?
   let daysSinceLastLog: Int?
   let currentStreak: Int
+  let frozenDates: [String]
   let todayTotalMl: Int
   let dailyGoalMl: Int
   let userTimezone: String
@@ -42,6 +43,7 @@ struct WidgetSnapshot: Codable {
     case lastLogAt = "last_log_at"
     case daysSinceLastLog = "days_since_last_log"
     case currentStreak = "current_streak"
+    case frozenDates = "frozen_dates"
     case todayTotalMl = "today_total_ml"
     case dailyGoalMl = "daily_goal_ml"
     case userTimezone = "user_timezone"
@@ -56,6 +58,7 @@ struct WidgetSnapshot: Codable {
     lastLogAt: nil,
     daysSinceLastLog: nil,
     currentStreak: 0,
+    frozenDates: [],
     todayTotalMl: 0,
     dailyGoalMl: 2_000,
     userTimezone: TimeZone.current.identifier,
@@ -70,6 +73,7 @@ struct WidgetSnapshot: Codable {
     lastLogAt: Date(),
     daysSinceLastLog: 0,
     currentStreak: 3,
+    frozenDates: [],
     todayTotalMl: 2_000,
     dailyGoalMl: 2_000,
     userTimezone: TimeZone.current.identifier,
@@ -120,6 +124,8 @@ private struct WidgetDay: Identifiable {
   let id: Int
   let label: String
   let completed: Bool
+  let frozen: Bool
+  let date: String
 }
 
 private struct WidgetDayRun: Identifiable {
@@ -300,12 +306,18 @@ struct AqualinoWidgetView: View {
 
       HStack(spacing: spacing) {
         ForEach(dayRuns) { run in
-          if run.completed {
+          if let day = run.days.first, day.frozen {
+            Image("aqualino_frozen_drop")
+              .resizable()
+              .scaledToFit()
+              .frame(width: markerSize, height: markerSize)
+              .accessibilityLabel("\(day.date): sequência protegida por congelamento")
+          } else if run.completed {
             HStack(spacing: spacing) {
               ForEach(run.days) { _ in
                 Image(systemName: "checkmark")
                   .font(.system(size: checkSize, weight: .black))
-                  .foregroundStyle(presentation.palette.heading)
+                  .foregroundStyle(.white)
                   .frame(width: markerSize, height: markerSize)
               }
             }
@@ -357,13 +369,22 @@ struct AqualinoWidgetView: View {
     let completedDates = Set((0..<min(max(entry.snapshot.currentStreak, 0), 7)).compactMap { offset in
       calendar.date(byAdding: .day, value: -offset, to: completedEnd)
     })
+    let dateFormatter = DateFormatter()
+    dateFormatter.calendar = calendar
+    dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+    dateFormatter.timeZone = calendar.timeZone
+    dateFormatter.dateFormat = "yyyy-MM-dd"
 
     return (0..<5).map { index in
       let day = calendar.date(byAdding: .day, value: firstVisibleIndex + index - todayIndex, to: today)!
+      let date = dateFormatter.string(from: day)
+      let frozen = day <= today && entry.snapshot.frozenDates.contains(date)
       return WidgetDay(
         id: index,
         label: initials[firstVisibleIndex + index],
-        completed: day <= today && completedDates.contains(day)
+        completed: day <= today && completedDates.contains(day) && !frozen,
+        frozen: frozen,
+        date: date
       )
     }
   }
@@ -375,6 +396,14 @@ private func widgetPresentation(for snapshot: WidgetSnapshot, at date: Date) -> 
       phrase: "Você está desconectado da conta",
       mascotAsset: "aqualino_sad",
       palette: disconnectedSpace
+    )
+  }
+
+  if hasVisibleFrozenDay(snapshot, at: date) {
+    return WidgetPresentation(
+      phrase: snapshot.todayTotalMl >= 50 ? "Sequência protegida!" : "Volta logo!",
+      mascotAsset: "aqualino_strong",
+      palette: frozenStreak
     )
   }
 
@@ -439,6 +468,22 @@ private func color(_ hex: UInt32) -> Color {
   )
 }
 
+private func hasVisibleFrozenDay(_ snapshot: WidgetSnapshot, at date: Date) -> Bool {
+  var calendar = Calendar(identifier: .gregorian)
+  calendar.timeZone = TimeZone(identifier: snapshot.userTimezone) ?? .current
+  let today = calendar.startOfDay(for: date)
+  let todayIndex = (calendar.component(.weekday, from: today) + 5) % 7
+  let firstDay = calendar.date(byAdding: .day, value: -min(todayIndex, 4), to: today)!
+  let formatter = DateFormatter()
+  formatter.calendar = calendar
+  formatter.locale = Locale(identifier: "en_US_POSIX")
+  formatter.timeZone = calendar.timeZone
+  formatter.dateFormat = "yyyy-MM-dd"
+  let first = formatter.string(from: firstDay)
+  let last = formatter.string(from: today)
+  return snapshot.frozenDates.contains { $0 >= first && $0 <= last }
+}
+
 private let happyBlue = WidgetPalette(background: color(0x087FC7), heading: color(0xF2FBFF), copy: color(0xD9F5FF), pending: color(0x075C92), completed: color(0x50CFF4))
 private let happyTeal = WidgetPalette(background: color(0x087E8B), heading: color(0xF0FFFF), copy: color(0xD4FAF6), pending: color(0x075B64), completed: color(0x5BDED2))
 private let happyPurple = WidgetPalette(background: color(0x6552C7), heading: color(0xFFF3FF), copy: color(0xF1E4FF), pending: color(0x49399A), completed: color(0xB996FF))
@@ -449,6 +494,7 @@ private let strongOrange = WidgetPalette(background: color(0xE5683A), heading: c
 private let strongPurple = WidgetPalette(background: color(0x7445B8), heading: color(0xFFF5FF), copy: color(0xF2DEFF), pending: color(0x523083), completed: color(0xC18AF1))
 private let strongPink = WidgetPalette(background: color(0xD81B90), heading: color(0xFFE4F3), copy: color(0xFFD3EA), pending: color(0xA8146C), completed: color(0xEF77BE))
 private let strongStreak = WidgetPalette(background: color(0x7C24B8), heading: color(0xFFF7FF), copy: color(0xF8DFFF), pending: color(0x4A126E), completed: color(0xFFD24A))
+private let frozenStreak = WidgetPalette(background: color(0x650878), heading: color(0xFFB000), copy: color(0xE4C9EB), pending: color(0x461052), completed: color(0xFFA600))
 private let disconnectedSpace = WidgetPalette(background: color(0x090D2E), heading: color(0xF8F1FF), copy: color(0xEBDFFF), pending: color(0x26204F), completed: color(0x9D65D8))
 
 @main

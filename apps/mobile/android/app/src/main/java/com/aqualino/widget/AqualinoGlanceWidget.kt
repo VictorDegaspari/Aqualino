@@ -53,6 +53,7 @@ data class AqualinoWidgetSnapshot(
   val condition: String = "empty",
   val isAuthenticated: Boolean = false,
   val generatedAt: String? = null,
+  val frozenDates: Set<String> = emptySet(),
 )
 
 private data class WidgetPalette(
@@ -314,7 +315,7 @@ private fun WeekStrip(
   checkSize: Int,
   labelSize: Int,
 ) {
-  val days = widgetWeekDays(snapshot.timezone, snapshot.currentStreak, snapshot.totalMl, snapshot.generatedAt)
+  val days = widgetWeekDays(snapshot.timezone, snapshot.currentStreak, snapshot.totalMl, snapshot.generatedAt, frozenDates = snapshot.frozenDates)
   Column(horizontalAlignment = Alignment.Start) {
     Row(verticalAlignment = Alignment.CenterVertically) {
       days.forEachIndexed { index, day ->
@@ -335,7 +336,15 @@ private fun WeekStrip(
     Row(verticalAlignment = Alignment.CenterVertically) {
       var index = 0
       while (index < days.size) {
-        if (days[index].completed) {
+        if (days[index].frozen) {
+          Image(
+            provider = ImageProvider(com.aqualino.R.drawable.aqualino_frozen_drop),
+            contentDescription = "${days[index].date}: sequência protegida por congelamento",
+            modifier = GlanceModifier.size(markerSize.dp),
+            contentScale = ContentScale.Fit,
+          )
+          index++
+        } else if (days[index].completed) {
           val runStart = index
           while (index < days.size && days[index].completed) index++
           CompletedDayRun(
@@ -387,7 +396,7 @@ private fun CompletedDayRun(
           Text(
             text = "✓",
             style = TextStyle(
-              color = ColorProvider(palette.heading),
+              color = ColorProvider(Color.White),
               fontSize = checkSize.sp,
               fontWeight = FontWeight.Bold,
             ),
@@ -418,6 +427,9 @@ private fun snapshotFromJson(raw: String?): AqualinoWidgetSnapshot? {
       condition = json.optString("condition", "empty"),
       isAuthenticated = json.optBoolean("is_authenticated", true),
       generatedAt = json.optString("generated_at").takeIf { it.isNotBlank() },
+      frozenDates = json.getJSONArray("frozen_dates").let { dates ->
+        (0 until dates.length()).map { dates.getString(it) }.toSet()
+      },
     )
   }.getOrNull()
 }
@@ -428,6 +440,15 @@ private fun widgetPresentation(snapshot: AqualinoWidgetSnapshot): WidgetPresenta
       "Você está desconectado da conta",
       com.aqualino.R.drawable.aqualino_sad,
       DISCONNECTED_SPACE,
+    )
+  }
+
+  if (widgetWeekDays(snapshot.timezone, snapshot.currentStreak, snapshot.totalMl, snapshot.generatedAt,
+      frozenDates = snapshot.frozenDates).any { it.frozen }) {
+    return WidgetPresentation(
+      if (snapshot.totalMl >= 50) "Sequência protegida!" else "Volta logo!",
+      com.aqualino.R.drawable.aqualino_strong,
+      FROZEN_STREAK,
     )
   }
 
@@ -489,4 +510,5 @@ private val STRONG_ORANGE = WidgetPalette(Color(0xFFE5683A), Color(0xFFFFF8EE), 
 private val STRONG_PURPLE = WidgetPalette(Color(0xFF7445B8), Color(0xFFFFF5FF), Color(0xFFF2DEFF), Color(0xFF523083), Color(0xFFC18AF1))
 private val STRONG_PINK = WidgetPalette(Color(0xFFD81B90), Color(0xFFFFE4F3), Color(0xFFFFD3EA), Color(0xFFA8146C), Color(0xFFEF77BE))
 private val STRONG_STREAK = WidgetPalette(Color(0xFF7C24B8), Color(0xFFFFF7FF), Color(0xFFF8DFFF), Color(0xFF4A126E), Color(0xFFFFD24A))
+private val FROZEN_STREAK = WidgetPalette(Color(0xFF650878), Color(0xFFFFB000), Color(0xFFE4C9EB), Color(0xFF461052), Color(0xFFFFA600))
 private val DISCONNECTED_SPACE = WidgetPalette(Color(0xFF090D2E), Color(0xFFF8F1FF), Color(0xFFEBDFFF), Color(0xFF26204F), Color(0xFF9D65D8))

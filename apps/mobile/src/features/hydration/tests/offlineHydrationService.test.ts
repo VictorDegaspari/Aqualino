@@ -5,6 +5,7 @@ import {InMemoryOutboxStore} from './inMemoryOutboxStore';
 import {AppError} from '../../../shared/errors/AppError';
 import {mergeHydrationLogs} from '../application/hydrationHistory';
 import {TrustedHydrationClock} from '../application/trustedHydrationClock';
+import {advanceHydrationDay} from '../application/advanceHydrationDay';
 import type {WidgetSnapshotWriter} from '../../widget/data/widgetBridge';
 
 const result: RecordWaterResult = {
@@ -20,7 +21,7 @@ const result: RecordWaterResult = {
   gamification: {xp_awarded: 10, xp_total: 10, level: 1, streak: 1, new_achievements: []},
   mascot: {condition: 'happy', decoration: null, animation: 'idle_happy', static_asset: 'aqualino_happy'},
   widget: {
-    schema_version: 2, generated_at: '2026-09-02T12:00:00Z', user_timezone: 'America/Sao_Paulo',
+    schema_version: 3, frozen_dates: [], generated_at: '2026-09-02T12:00:00Z', user_timezone: 'America/Sao_Paulo',
     last_log_at: '2026-09-02T12:00:00Z', days_since_last_log: 0, last_log_semantic_key: 'today',
     current_streak: 1, today_total_ml: 300, daily_goal_ml: 2000, condition: 'happy', decoration: null,
     animation: 'idle_happy', static_asset: 'aqualino_happy',
@@ -107,7 +108,7 @@ test('updates the current weekly step while a record waits offline', async () =>
   expect(data.week.days[2].percentage).toBe(15);
   expect(data.mascot.current_streak).toBe(1);
   expect(widget.write).toHaveBeenCalledWith(expect.objectContaining({
-    schema_version: 2,
+    schema_version: 3,
     current_streak: 1,
     today_total_ml: 300,
   }));
@@ -150,12 +151,62 @@ test('migrates a legacy cached widget snapshot while offline', async () => {
   const response = await service.cachedOrRemote();
 
   expect(response.offline).toBe(true);
-  expect(response.data.mascot.schema_version).toBe(2);
+  expect(response.data.mascot.schema_version).toBe(3);
   expect(response.data.mascot.current_streak).toBe(1);
   expect(widget.write).toHaveBeenCalledWith(expect.objectContaining({
-    schema_version: 2,
+    schema_version: 3,
     current_streak: 1,
   }));
+});
+
+test('continues a frozen streak offline and preserves its marker through reconciliation', async () => {
+  const store = new InMemoryOutboxStore();
+  const protectedHome: HydrationHomeData = {...homeData,
+    mascot: {...homeData.mascot, current_streak: 4, today_total_ml: 0, frozen_dates: ['2026-09-01'],
+      last_log_at: '2026-08-31T12:00:00Z', days_since_last_log: 2, last_log_semantic_key: 'days_ago'},
+    week: {...homeData.week, days: homeData.week.days.map(day => day.date === '2026-09-01' ? {...day, protection: 'streak_freeze'} : day)},
+  };
+  await store.saveHome(protectedHome);
+  const reconciled = {...result, widget: {...result.widget, current_streak: 5, frozen_dates: ['2026-09-01']}};
+  const widget = {write: jest.fn().mockResolvedValue(undefined)};
+  const service = createService(store, {getHome: jest.fn(), getLogs: jest.fn(), record: jest.fn().mockResolvedValue(reconciled), updateGoal: jest.fn()}, widget);
+
+  await service.record(300, 'mobile', false);
+  const {data} = await service.cachedOrRemote(false);
+  expect(data.mascot.current_streak).toBe(5);
+  expect(data.week.days[1]).toMatchObject({protection: 'streak_freeze', total_ml: 0, state: 'missed'});
+  expect(widget.write).toHaveBeenLastCalledWith(expect.objectContaining({current_streak: 5, frozen_dates: ['2026-09-01']}));
+
+  await service.flush();
+  expect(widget.write).toHaveBeenLastCalledWith(reconciled.widget);
+});
+
+test('migrates version 2 frozen dates from the cached week without inventing protection', async () => {
+  const store = new InMemoryOutboxStore();
+  const mascot = {...homeData.mascot} as unknown as Record<string, unknown>;
+  mascot.schema_version = 2;
+  delete mascot.frozen_dates;
+  await store.saveHome({...homeData, mascot: mascot as unknown as HydrationHomeData['mascot'],
+    week: {...homeData.week, days: homeData.week.days.map(day => day.date === '2026-09-01' ? {...day, protection: 'streak_freeze'} : day)},
+  });
+  const widget = {write: jest.fn().mockResolvedValue(undefined)};
+  const service = createService(store, {getHome: jest.fn(), getLogs: jest.fn(), record: jest.fn(), updateGoal: jest.fn()}, widget);
+
+  const {data} = await service.cachedOrRemote(false);
+  expect(data.mascot).toMatchObject({schema_version: 3, frozen_dates: ['2026-09-01']});
+  expect(store.home?.mascot.frozen_dates).toEqual(['2026-09-01']);
+  expect(widget.write).toHaveBeenLastCalledWith(data.mascot);
+});
+
+test('anchors yesterday water to the new day without moving the frozen marker', () => {
+  const home = {...homeData, today: result.today,
+    mascot: {...result.widget, current_streak: 5, frozen_dates: ['2026-09-01']}};
+  const nextDay = advanceHydrationDay(home, '2026-09-03T03:00:00Z');
+  expect(nextDay.mascot).toMatchObject({generated_at: '2026-09-03T03:00:00Z', today_total_ml: 0,
+    current_streak: 5, last_log_semantic_key: 'yesterday', frozen_dates: ['2026-09-01']});
+
+  const missedDay = advanceHydrationDay(home, '2026-09-04T03:00:00Z');
+  expect(missedDay.mascot).toMatchObject({current_streak: 0, last_log_semantic_key: 'days_ago', frozen_dates: ['2026-09-01']});
 });
 
 test.each([
@@ -174,6 +225,8 @@ test.each([
   );
 
   await expect(service.record(300, 'mobile', true)).resolves.toMatchObject({kind: 'queued'});
+  expect(record).not.toHaveBeenCalled();
+  await service.flush();
   const {data} = await service.cachedOrRemote();
   expect(data.today.total_ml).toBe(300);
   expect(data.week.days[2].percentage).toBe(15);
@@ -195,7 +248,8 @@ test('reports success after saving even if the widget refresh fails', async () =
     {write: jest.fn().mockRejectedValue(new Error('Widget indisponível'))},
   );
 
-  await expect(service.record(300, 'mobile', true)).resolves.toEqual({kind: 'synced', result});
+  await expect(service.record(300, 'mobile', true)).resolves.toMatchObject({kind: 'queued'});
+  await service.flush();
   expect(await service.pendingCount()).toBe(0);
   expect(store.home?.today.total_ml).toBe(300);
   expect(store.home?.week.days[2].percentage).toBe(15);
@@ -392,4 +446,92 @@ test('counts invalid server records and queued records toward the daily limit', 
   await service.record(300, 'mobile', false);
   await expect(service.record(300, 'mobile', false)).rejects.toMatchObject({code: 'HYDRATION_DAILY_LIMIT'});
   expect(await service.pendingCount()).toBe(1);
+});
+
+test.each([true, false])('acknowledges the durable record without waiting for network or widget, connected=%s', async connected => {
+  const store = new InMemoryOutboxStore();
+  await store.saveHome(homeData);
+  const remote = {getHome: jest.fn(), getLogs: jest.fn(), record: jest.fn(() => new Promise<RecordWaterResult>(() => {})), updateGoal: jest.fn()};
+  const service = createService(store, remote, {write: jest.fn(() => new Promise<void>(() => {}))});
+  const outcome = await service.record(300, 'mobile', connected, 'photo-data');
+  expect(outcome.kind).toBe('queued');
+  expect((await store.pending())[0]).toMatchObject({amountMl: 300, photoBase64: 'photo-data'});
+  expect(remote.record).not.toHaveBeenCalled();
+  expect(remote.getHome).not.toHaveBeenCalled();
+});
+
+test('reopens offline with saved clock and pending photo, without any network request', async () => {
+  let wall = Date.parse(homeData.mascot.generated_at);
+  const store = new InMemoryOutboxStore();
+  const remote = {getHome: jest.fn().mockResolvedValue(homeData), getLogs: jest.fn(), record: jest.fn(), updateGoal: jest.fn()};
+  const first = new OfflineHydrationService(store, remote, {write: jest.fn()}, new TrustedHydrationClock(() => wall, () => 0));
+  await first.cachedOrRemote();
+  await first.record(300, 'mobile', false, 'original-photo');
+  wall += 900000;
+  remote.getHome.mockClear();
+  const reopened = new OfflineHydrationService(store, remote, {write: jest.fn()}, new TrustedHydrationClock(() => wall, () => 0));
+  expect((await reopened.cachedOrRemote(false)).data.today.total_ml).toBe(300);
+  await reopened.record(200, 'mobile', false, 'second-photo');
+  expect((await reopened.cachedOrRemote(false)).data.today.total_ml).toBe(500);
+  expect((await store.pending()).map(event => event.photoBase64)).toEqual(['original-photo', 'second-photo']);
+  expect(remote.getHome).not.toHaveBeenCalled();
+  expect(remote.record).not.toHaveBeenCalled();
+});
+
+test('shares a single flush when connectivity and the queue trigger sync concurrently', async () => {
+  const store = new InMemoryOutboxStore();
+  let finish!: (value: RecordWaterResult) => void;
+  const remote = {getHome: jest.fn(), getLogs: jest.fn(), record: jest.fn(() => new Promise<RecordWaterResult>(resolve => {finish = resolve;})), updateGoal: jest.fn()};
+  const service = createService(store, remote, {write: jest.fn()});
+  await service.record(300, 'mobile', false);
+  const first = service.flush();
+  const second = service.flush();
+  await Promise.resolve();
+  expect(remote.record).toHaveBeenCalledTimes(1);
+  finish(result);
+  await expect(first).resolves.toEqual({synced: 1, rejected: 0});
+  await expect(second).resolves.toEqual({synced: 1, rejected: 0});
+  expect(await service.pendingCount()).toBe(0);
+});
+
+test('turns the local day offline and stops projecting yesterday into group points', async () => {
+  let wall = Date.parse('2026-09-03T02:40:00Z');
+  let elapsed = 0;
+  const store = new InMemoryOutboxStore();
+  const challenge = {id: 'group', mode: 'group' as const, status: 'active' as const, starts_at: '2026-09-02T03:00:00Z', ends_at: '2026-09-09T03:00:00Z', reward: null,
+    progress: {...homeData.week, mode: 'challenge' as const}, participating: true};
+  const cache = {...homeData, challenges: {solo: null, group: challenge, group_name: 'Amigos', can_start_group: false},
+    mascot: {...homeData.mascot, generated_at: new Date(wall).toISOString()}};
+  const clock = new TrustedHydrationClock(() => wall, () => elapsed);
+  const remote = {getHome: jest.fn().mockResolvedValue(cache), getLogs: jest.fn(), record: jest.fn(), updateGoal: jest.fn()};
+  const service = new OfflineHydrationService(store, remote, {write: jest.fn()}, clock);
+  await service.cachedOrRemote();
+  await service.record(300, 'mobile', false);
+  expect((await service.cachedOrRemote(false)).data.challenges?.group?.progress.total_ml).toBe(300);
+  elapsed += 20 * 60000;
+  wall += 20 * 60000;
+  const next = await service.record(200, 'mobile', false);
+  expect(next.kind === 'queued' && next.home?.today).toMatchObject({local_date: '2026-09-03', total_ml: 200, log_count: 1});
+  const home = (await service.cachedOrRemote(false)).data;
+  expect(home.challenges?.group?.progress.total_ml).toBe(200);
+  expect(home.challenges?.group?.progress.days[2].total_ml).toBe(0);
+  expect((await service.logs('2026-09-02', 'America/Sao_Paulo', undefined, false)).data[0].amount_ml).toBe(300);
+  expect(await service.pendingCount()).toBe(2);
+});
+
+test('keeps the confirmed volume if an older Home request finishes after synchronization', async () => {
+  const store = new InMemoryOutboxStore();
+  await store.saveHome(homeData);
+  let finishHome!: (data: HydrationHomeData) => void;
+  const remote = {getHome: jest.fn(() => new Promise<HydrationHomeData>(resolve => {finishHome = resolve;})), getLogs: jest.fn(), record: jest.fn().mockResolvedValue(result), updateGoal: jest.fn()};
+  const service = createService(store, remote, {write: jest.fn()});
+  await service.record(300, 'mobile', false);
+  const fetching = service.cachedOrRemote();
+  await service.flush();
+  finishHome(homeData);
+  const fetched = await fetching;
+  expect(fetched.data.today.total_ml).toBe(300);
+  expect(fetched.offline).toBe(false);
+  expect(store.home?.today.total_ml).toBe(300);
+  expect(await service.pendingCount()).toBe(0);
 });

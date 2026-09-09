@@ -41,11 +41,7 @@ export function HomeScreen(): React.JSX.Element {
     return () => {clearInterval(timer); subscription.remove();};
   }, [isFocused, refreshHome, refreshUser]);
 
-  useEffect(() => {
-    if (!isFocused || !recordedAmountMl) return;
-    const timer = setTimeout(() => navigation.setParams({recordedAmountMl: undefined}), 3000);
-    return () => clearTimeout(timer);
-  }, [isFocused, navigation, recordedAmountMl]);
+  const dismissRecordedAmount = useCallback(() => navigation.setParams({recordedAmountMl: undefined}), [navigation]);
 
   const openHydration = useCallback(async () => {
     if (openingCamera.current) return;
@@ -83,6 +79,7 @@ export function HomeScreen(): React.JSX.Element {
         syncing={syncing}
         pending={pending}
         recordedAmountMl={recordedAmountMl}
+        onDismissRecorded={dismissRecordedAmount}
         displayName={user?.profile.display_name ?? 'pessoa'}
         avatarId={user?.profile.avatar_url}
         streak={user?.streak ?? 0}
