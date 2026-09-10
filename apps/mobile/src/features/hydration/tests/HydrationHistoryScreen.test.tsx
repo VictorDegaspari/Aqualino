@@ -76,6 +76,7 @@ test('updates the list, amount and water level for each new marking without reop
   expect(view.getByText('10:30')).toBeTruthy();
   expect(view.queryByText('Pelo app')).toBeNull();
   expect(view.queryByTestId(`history-goal-check-${date}`)).toBeNull();
+  expect(view.queryByTestId('strong-mascot-animation')).toBeNull();
   expect(view.getByTestId('history-water-liquid')).toBeTruthy();
 
   await act(() => {client.setQueryData([...hydrationLogsKey, undefined, date], mergeHydrationLogs([log, {...log, id: 'second', client_event_id: 'second'}]));});
@@ -83,6 +84,9 @@ test('updates the list, amount and water level for each new marking without reop
   expect(view.getByText('100% da meta de 2.500 ml.')).toBeTruthy();
   expect(view.getByText('Meta atingida!')).toBeTruthy();
   expect(view.getByLabelText('Aqualino forte: meta atingida')).toBeTruthy();
+  expect(view.getByTestId('strong-mascot-animation').props.artboardName).toBe('Aqualino Strong - Forca');
+  expect(view.getByTestId('strong-mascot-animation').props.stateMachineName).toBe('Aqualino - Strong');
+  expect(view.queryByTestId('strong-mascot-fallback')).toBeNull();
   expect(view.getByTestId(`history-goal-check-${date}`)).toBeTruthy();
   expect(view.getByTestId('history-water-vessel')).toBeTruthy();
   expect(view.getByTestId('history-water-liquid')).toBeTruthy();
@@ -92,6 +96,7 @@ test('updates the list, amount and water level for each new marking without reop
   ]));});
   await waitFor(() => expect(view.getByText('50% da meta de 2.500 ml.')).toBeTruthy());
   expect(view.queryByLabelText('Aqualino forte: meta atingida')).toBeNull();
+  expect(view.queryByTestId('strong-mascot-animation')).toBeNull();
   expect(view.queryByTestId(`history-goal-check-${date}`)).toBeNull();
   expect(view.getByTestId('history-water-liquid')).toBeTruthy();
 });
@@ -102,6 +107,7 @@ test('uses the selected day’s logs, goal and timezone instead of today’s val
   expect(view.getByText('SEU NÍVEL NESSE DIA')).toBeTruthy();
   expect(view.getByText('1.000 ml registrados')).toBeTruthy();
   expect(view.getByText('50% da meta de 2.000 ml.')).toBeTruthy();
+  expect(view.queryByTestId('strong-mascot-animation')).toBeNull();
   expect(view.getByText('22:00')).toBeTruthy();
 
   await act(() => client.setQueryData([...hydrationLogsKey, undefined, '2026-09-04'], mergeHydrationLogs([
@@ -110,6 +116,7 @@ test('uses the selected day’s logs, goal and timezone instead of today’s val
   await waitFor(() => expect(view.getByText('100% da meta de 2.000 ml.')).toBeTruthy());
   expect(view.getByLabelText('Aqualino forte: meta atingida')).toBeTruthy();
   expect(view.getByTestId('history-goal-check-2026-09-04')).toBeTruthy();
+  expect(view.getByTestId('strong-mascot-animation')).toBeTruthy();
 
   await fireEvent.press(view.getByRole('tab', {name: /05/}));
   expect(view.queryByLabelText('Aqualino forte: meta atingida')).toBeNull();
@@ -132,8 +139,10 @@ test.each([0, 1250, 2475, 2500, 3000])('keeps the water within the glass and cel
   expect(view.getByTestId('history-water-vessel')).toBeTruthy();
   if (totalMl >= 2500) {
     expect(view.getByLabelText('Aqualino forte: meta atingida')).toBeTruthy();
+    expect(view.getByTestId('strong-mascot-animation')).toBeTruthy();
   } else {
     expect(view.queryByLabelText('Aqualino forte: meta atingida')).toBeNull();
+    expect(view.queryByTestId('strong-mascot-animation')).toBeNull();
   }
   if (totalMl === 0) {
     expect(view.queryByTestId('history-water-liquid')).toBeNull();

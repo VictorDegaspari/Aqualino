@@ -147,6 +147,8 @@ O snapshot é gravado nos seguintes momentos:
 
 O servidor consome a proteção previamente ativada ao identificar uma falta elegível em dia encerrado, tanto na leitura da Home/snapshot quanto pelo comando `hydration:apply-streak-freezes`, agendado a cada minuto no fuso do perfil. A proteção permanece suspensa durante batalha de grupo e não completa metas nem concede água ou recompensa do desafio. O widget recebe o resultado na próxima sincronização do aplicativo; o agendador não grava no aparelho. O cache v1/v2 migra as datas já conhecidas em `week.days[].protection`, sem consumir poções localmente.
 
+Revalidar a mesma conta já verificada (`refreshUser` ou conclusão do `bootstrap`) solicita reload sem substituir o snapshot de hidratação por uma sessão vazia. Respostas legadas da API na Home e na confirmação de água passam pela mesma migração para schema 3 usada no cache, preservando sequência, totais e datas congeladas conhecidas. Isso evita que uma API ainda na versão 2 seja ignorada pelo widget nativo.
+
 Falhas no widget são deliberadamente capturadas e nunca podem impedir login, logout, abertura da Home ou registro de água.
 
 Depois da gravação, o app solicita reload imediato. Atualizações periódicas continuam sob controle do sistema:

@@ -58,7 +58,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       if (revision !== sessionRevision) return;
       const user = preserveConfirmedProgress(response, get().user);
       useRememberedAccountsStore.getState().remember(user);
-      updateWidgetAuthenticationSafely(!requiresEmailVerification(user));
+      updateWidgetForUserRefresh(user, get().user);
       set({status: 'signedIn', user});
       await secureUserStore.set(user).catch(() => undefined);
     } catch (error) {
@@ -101,7 +101,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const response = await authRepository.me();
       if (revision !== sessionRevision || get().status !== 'signedIn' || get().user?.id !== accountId || secureTokenStore.getCached() !== token || response.id !== accountId) return;
       const user = preserveConfirmedProgress(response, get().user);
-      updateWidgetAuthenticationSafely(!requiresEmailVerification(user));
+      updateWidgetForUserRefresh(user, get().user);
       set({user});
       await secureUserStore.set(user).catch(() => undefined);
     }
@@ -199,6 +199,16 @@ function isOlderProgress(incoming: Pick<User, 'xp_total' | 'level' | 'hydration_
 
 function isInvalidSession(error: unknown): boolean {
   return error instanceof AppError && error.status === 401;
+}
+
+function updateWidgetForUserRefresh(user: User, previous: User | null): void {
+  // Revalidating the same verified account must not replace hydration progress
+  // with an empty authentication snapshot after the Home request completes.
+  if (previous?.id === user.id && !requiresEmailVerification(previous) && !requiresEmailVerification(user)) {
+    reloadWidgetSafely();
+    return;
+  }
+  updateWidgetAuthenticationSafely(!requiresEmailVerification(user));
 }
 
 function updateWidgetAuthenticationSafely(isAuthenticated: boolean): void {

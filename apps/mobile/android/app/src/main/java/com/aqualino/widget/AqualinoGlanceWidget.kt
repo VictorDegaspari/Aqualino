@@ -3,6 +3,9 @@ package com.aqualino.widget
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.glance.LocalSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -73,7 +76,7 @@ internal val WIDGET_SNAPSHOT_STORE_KEY = stringPreferencesKey("widget_snapshot_j
 internal val Context.widgetSnapshotStore by preferencesDataStore(name = "aqualino_widget_snapshot")
 
 class AqualinoGlanceWidget : GlanceAppWidget() {
-  override val sizeMode = SizeMode.Single
+  override val sizeMode = SizeMode.Exact
 
   override suspend fun provideGlance(context: Context, id: GlanceId) {
     val snapshotStore = context.widgetSnapshotStore
@@ -90,7 +93,7 @@ class AqualinoGlanceWidget : GlanceAppWidget() {
 }
 
 class AqualinoSmallGlanceWidget : GlanceAppWidget() {
-  override val sizeMode = SizeMode.Single
+  override val sizeMode = SizeMode.Exact
 
   override suspend fun provideGlance(context: Context, id: GlanceId) {
     val snapshotStore = context.widgetSnapshotStore
@@ -112,8 +115,37 @@ class AqualinoSmallWidgetReceiver : GlanceAppWidgetReceiver() {
   override val glanceAppWidget: GlanceAppWidget = AqualinoSmallGlanceWidget()
 }
 
+private val LocalWidgetScale = staticCompositionLocalOf { 1f }
+
+private val Int.widgetDp: androidx.compose.ui.unit.Dp
+  @Composable get() = (this * LocalWidgetScale.current).dp
+
+private val Int.widgetSp: androidx.compose.ui.unit.TextUnit
+  @Composable get() = (this * LocalWidgetScale.current).sp
+
 @Composable
 private fun AqualinoWidgetContent(
+  snapshot: AqualinoWidgetSnapshot,
+  presentation: WidgetPresentation,
+  compact: Boolean,
+) {
+  val available = LocalSize.current
+  val width = if (compact) 203f else 434f
+  val height = 236f
+  val scale = minOf(1f, available.width.value / width, available.height.value / height).coerceAtLeast(0.01f)
+  // The launcher owns its cells. Bound the visible card instead of stretching
+  // the portrait layout into the launcher's short landscape rectangle.
+  Box(modifier = GlanceModifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(modifier = GlanceModifier.width((width * scale).dp).height((height * scale).dp)) {
+      CompositionLocalProvider(LocalWidgetScale provides scale) {
+        AqualinoWidgetSurface(snapshot, presentation, compact)
+      }
+    }
+  }
+}
+
+@Composable
+private fun AqualinoWidgetSurface(
   snapshot: AqualinoWidgetSnapshot,
   presentation: WidgetPresentation,
   compact: Boolean,
@@ -165,21 +197,21 @@ private fun AqualinoWidgetContent(
 private fun DisconnectedWidget(compact: Boolean, presentation: WidgetPresentation) {
   if (compact) {
     Column(
-      modifier = GlanceModifier.fillMaxSize().padding(8.dp),
+      modifier = GlanceModifier.fillMaxSize().padding(8.widgetDp),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Image(
         provider = ImageProvider(presentation.mascotResId),
         contentDescription = "Aqualino chorando",
-        modifier = GlanceModifier.width(82.dp).height(68.dp),
+        modifier = GlanceModifier.width(82.widgetDp).height(68.widgetDp),
         contentScale = ContentScale.Fit,
       )
       Text(
         text = presentation.phrase,
         style = TextStyle(
           color = ColorProvider(presentation.palette.heading),
-          fontSize = 11.sp,
+          fontSize = 11.widgetSp,
           fontWeight = FontWeight.Bold,
         ),
         maxLines = 3,
@@ -187,7 +219,7 @@ private fun DisconnectedWidget(compact: Boolean, presentation: WidgetPresentatio
     }
   } else {
     Row(
-      modifier = GlanceModifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 9.dp),
+      modifier = GlanceModifier.fillMaxSize().padding(horizontal = 16.widgetDp, vertical = 9.widgetDp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Text(
@@ -195,16 +227,16 @@ private fun DisconnectedWidget(compact: Boolean, presentation: WidgetPresentatio
         modifier = GlanceModifier.defaultWeight(),
         style = TextStyle(
           color = ColorProvider(presentation.palette.heading),
-          fontSize = 18.sp,
+          fontSize = 18.widgetSp,
           fontWeight = FontWeight.Bold,
         ),
         maxLines = 3,
       )
-      Spacer(modifier = GlanceModifier.width(8.dp))
+      Spacer(modifier = GlanceModifier.width(8.widgetDp))
       Image(
         provider = ImageProvider(presentation.mascotResId),
         contentDescription = "Aqualino chorando",
-        modifier = GlanceModifier.width(128.dp).height(104.dp),
+        modifier = GlanceModifier.width(128.widgetDp).height(104.widgetDp),
         contentScale = ContentScale.Fit,
       )
     }
@@ -232,7 +264,7 @@ private fun LargeWidget(
   presentation: WidgetPresentation,
 ) {
   Row(
-    modifier = GlanceModifier.fillMaxSize().padding(start = 20.dp, top = 20.dp, end = 16.dp, bottom = 28.dp),
+    modifier = GlanceModifier.fillMaxSize().padding(start = 20.widgetDp, top = 20.widgetDp, end = 16.widgetDp, bottom = 28.widgetDp),
     verticalAlignment = Alignment.Bottom,
   ) {
     Column(
@@ -240,22 +272,22 @@ private fun LargeWidget(
       horizontalAlignment = Alignment.Start,
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Spacer(modifier = GlanceModifier.height(6.dp))
+      Spacer(modifier = GlanceModifier.height(6.widgetDp))
       StreakTitle(snapshot.currentStreak, 28, presentation.palette)
-      Spacer(modifier = GlanceModifier.height(12.dp))
+      Spacer(modifier = GlanceModifier.height(12.widgetDp))
       Text(
         text = presentation.phrase,
-        style = TextStyle(color = ColorProvider(presentation.palette.copy), fontSize = 16.sp),
+        style = TextStyle(color = ColorProvider(presentation.palette.copy), fontSize = 16.widgetSp),
         maxLines = 1,
       )
       Spacer(modifier = GlanceModifier.defaultWeight())
       WeekStrip(snapshot, presentation.palette, markerSize = 36, gap = 11, checkSize = 22, labelSize = 12)
     }
-    Spacer(modifier = GlanceModifier.width(4.dp))
+    Spacer(modifier = GlanceModifier.width(4.widgetDp))
     Image(
       provider = ImageProvider(presentation.mascotResId),
       contentDescription = "Aqualino",
-      modifier = GlanceModifier.width(180.dp).height(151.dp),
+      modifier = GlanceModifier.width(170.widgetDp).height(143.widgetDp),
       contentScale = ContentScale.Fit,
     )
   }
@@ -267,21 +299,21 @@ private fun CompactWidget(
   presentation: WidgetPresentation,
 ) {
   Column(
-    modifier = GlanceModifier.fillMaxSize().padding(4.dp),
+    modifier = GlanceModifier.fillMaxSize().padding(4.widgetDp),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalAlignment = Alignment.CenterVertically,
   ) {
     StreakTitle(snapshot.currentStreak, 22, presentation.palette)
-    Spacer(modifier = GlanceModifier.height(2.dp))
+    Spacer(modifier = GlanceModifier.height(2.widgetDp))
     Image(
       provider = ImageProvider(presentation.mascotResId),
       contentDescription = "Aqualino",
-      modifier = GlanceModifier.width(80.dp).height(62.dp),
+      modifier = GlanceModifier.width(80.widgetDp).height(62.widgetDp),
       contentScale = ContentScale.Fit,
     )
     Text(
       text = presentation.phrase,
-      style = TextStyle(color = ColorProvider(presentation.palette.copy), fontSize = 11.sp),
+      style = TextStyle(color = ColorProvider(presentation.palette.copy), fontSize = 11.widgetSp),
     )
   }
 }
@@ -292,14 +324,14 @@ private fun StreakTitle(streak: Int, fontSize: Int, palette: WidgetPalette) {
     Image(
       provider = ImageProvider(com.aqualino.R.drawable.aqualino_widget_drop),
       contentDescription = null,
-      modifier = GlanceModifier.size((fontSize - 1).dp),
+      modifier = GlanceModifier.size((fontSize - 1).widgetDp),
     )
-    Spacer(modifier = GlanceModifier.width(7.dp))
+    Spacer(modifier = GlanceModifier.width(7.widgetDp))
     Text(
       text = if (streak == 1) "1 dia" else "$streak dias",
       style = TextStyle(
         color = ColorProvider(palette.heading),
-        fontSize = fontSize.sp,
+        fontSize = fontSize.widgetSp,
         fontWeight = FontWeight.Bold,
       ),
     )
@@ -321,18 +353,18 @@ private fun WeekStrip(
       days.forEachIndexed { index, day ->
         Text(
           text = day.label,
-          modifier = GlanceModifier.width(markerSize.dp),
+          modifier = GlanceModifier.width(markerSize.widgetDp),
           style = TextStyle(
             color = ColorProvider(palette.heading),
-            fontSize = labelSize.sp,
+            fontSize = labelSize.widgetSp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
           ),
         )
-        if (index < days.lastIndex) Spacer(modifier = GlanceModifier.width(gap.dp))
+        if (index < days.lastIndex) Spacer(modifier = GlanceModifier.width(gap.widgetDp))
       }
     }
-    Spacer(modifier = GlanceModifier.height(2.dp))
+    Spacer(modifier = GlanceModifier.height(2.widgetDp))
     Row(verticalAlignment = Alignment.CenterVertically) {
       var index = 0
       while (index < days.size) {
@@ -340,7 +372,7 @@ private fun WeekStrip(
           Image(
             provider = ImageProvider(com.aqualino.R.drawable.aqualino_frozen_drop),
             contentDescription = "${days[index].date}: sequência protegida por congelamento",
-            modifier = GlanceModifier.size(markerSize.dp),
+            modifier = GlanceModifier.size(markerSize.widgetDp),
             contentScale = ContentScale.Fit,
           )
           index++
@@ -358,12 +390,12 @@ private fun WeekStrip(
           TintedWidgetShape(
             resId = com.aqualino.R.drawable.aqualino_widget_marker,
             color = palette.pending,
-            modifier = GlanceModifier.size(markerSize.dp),
+            modifier = GlanceModifier.size(markerSize.widgetDp),
           )
           index++
         }
 
-        if (index < days.size) Spacer(modifier = GlanceModifier.width(gap.dp))
+        if (index < days.size) Spacer(modifier = GlanceModifier.width(gap.widgetDp))
       }
     }
   }
@@ -379,7 +411,7 @@ private fun CompletedDayRun(
 ) {
   val runWidth = markerSize * days.size + gap * (days.size - 1)
   Box(
-    modifier = GlanceModifier.width(runWidth.dp).height(markerSize.dp),
+    modifier = GlanceModifier.width(runWidth.widgetDp).height(markerSize.widgetDp),
     contentAlignment = Alignment.Center,
   ) {
     TintedWidgetShape(
@@ -390,19 +422,19 @@ private fun CompletedDayRun(
     Row(verticalAlignment = Alignment.CenterVertically) {
       days.forEachIndexed { index, _ ->
         Box(
-          modifier = GlanceModifier.size(markerSize.dp),
+          modifier = GlanceModifier.size(markerSize.widgetDp),
           contentAlignment = Alignment.Center,
         ) {
           Text(
             text = "✓",
             style = TextStyle(
               color = ColorProvider(Color.White),
-              fontSize = checkSize.sp,
+              fontSize = checkSize.widgetSp,
               fontWeight = FontWeight.Bold,
             ),
           )
         }
-        if (index < days.lastIndex) Spacer(modifier = GlanceModifier.width(gap.dp))
+        if (index < days.lastIndex) Spacer(modifier = GlanceModifier.width(gap.widgetDp))
       }
     }
   }

@@ -127,6 +127,17 @@ test('refreshes the widget snapshot when Home data is loaded', async () => {
   expect(widget.write).toHaveBeenCalledWith(homeData.mascot);
 });
 
+test('migrates the API version 2 snapshot before sending three checks to the native widget', async () => {
+  const store = new InMemoryOutboxStore();
+  const widget = {write: jest.fn().mockResolvedValue(undefined)};
+  const mascot = {...result.widget, schema_version: 2, current_streak: 3} as unknown as HydrationHomeData['mascot'];
+  const service = createService(store,
+    {getHome: jest.fn().mockResolvedValue({...homeData, mascot}), getLogs: jest.fn(), record: jest.fn(), updateGoal: jest.fn()}, widget);
+  const response = await service.cachedOrRemote();
+  expect(response.offline).toBe(false);
+  expect(widget.write).toHaveBeenCalledWith(expect.objectContaining({schema_version: 3, current_streak: 3, today_total_ml: 300}));
+});
+
 test('migrates a legacy cached widget snapshot while offline', async () => {
   const store = new InMemoryOutboxStore();
   const legacyMascot = {...homeData.mascot} as unknown as Record<string, unknown>;

@@ -1,6 +1,6 @@
 diff --git a/android/build.gradle b/android/build.gradle
 index 41ba48c7b52d5ee4ce5a4f5b9097b504cac62a20..3706562c84678495895a770b898163a9af3eb2b6 100644
---- a/android/build.gradle	
+--- a/android/build.gradle
 +++ b/android/build.gradle
 @@ -16,7 +16,6 @@ buildscript {
  }
@@ -23,3 +23,18 @@ index 41ba48c7b52d5ee4ce5a4f5b9097b504cac62a20..3706562c84678495895a770b898163a9
    // Conditional for compatibility with AGP <4.2.
    if (project.android.hasProperty("namespace")) {
      namespace = "com.rivereactnative"
+diff --git a/android/src/main/java/com/rivereactnative/RiveReactNativeView.kt b/android/src/main/java/com/rivereactnative/RiveReactNativeView.kt
+index 4078d65d728653ad3e671e2b1a35b228473670a6..27413a77281ee37cfb83703f4718928767c02ec1 100644
+--- a/android/src/main/java/com/rivereactnative/RiveReactNativeView.kt
++++ b/android/src/main/java/com/rivereactnative/RiveReactNativeView.kt
+@@ -498,7 +498,9 @@ class RiveReactNativeView(private val context: ThemedReactContext) : FrameLayout
+     try {
+       val file = riveAnimationView?.controller?.file ?: return
+       val artboard = riveAnimationView?.controller?.activeArtboard ?: return
+-      val viewModel = file.defaultViewModelForArtboard(artboard)
++      // Timeline/state-machine files may have no ViewModel. Only resolve one
++      // when the caller explicitly requests manual data binding below.
++      val viewModel by lazy { file.defaultViewModelForArtboard(artboard) }
+ 
+       fun bindInstance(instance: ViewModelInstance) {
+         riveAnimationView?.controller?.stateMachines?.first()?.viewModelInstance = instance

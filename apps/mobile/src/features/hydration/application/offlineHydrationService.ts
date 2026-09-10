@@ -32,7 +32,8 @@ export class OfflineHydrationService {
       if (!isConnected) throw new AppError('Sem conexão', 'NETWORK_UNAVAILABLE');
       if (this.flushing) await this.flushing;
       const revision = this.syncRevision;
-      const data = await this.remote.getHome();
+      const remoteData = await this.remote.getHome();
+      const data = {...remoteData, mascot: migrateWidgetSnapshot(remoteData.mascot, remoteData.week)};
       await this.synchronizeClock(data.mascot.generated_at);
       // A timed-out POST may already be included in these server totals.
       // Reconcile its id before projecting the remaining local events.
@@ -177,6 +178,7 @@ export class OfflineHydrationService {
       this.syncRevision++;
       await this.store.remove(event.clientEventId);
       const cached = await this.store.loadHome();
+      result.widget = migrateWidgetSnapshot(result.widget, {days: cached?.week.days ?? []});
       if (cached) {
         await this.store.saveHome({
           ...cached,
@@ -301,7 +303,7 @@ function isPermanentRejection(error: unknown): boolean {
     error.status >= 400 && error.status < 500 && ![401, 403, 408, 429].includes(error.status);
 }
 
-function migrateWidgetSnapshot(snapshot: WidgetSnapshot, week: HydrationHomeData['week']): WidgetSnapshot {
+function migrateWidgetSnapshot(snapshot: WidgetSnapshot, week: Pick<HydrationHomeData['week'], 'days'>): WidgetSnapshot {
   const legacyStreak = (snapshot as WidgetSnapshot & {current_streak?: unknown}).current_streak;
   const currentStreak = typeof legacyStreak === 'number' && Number.isFinite(legacyStreak)
     ? Math.max(0, Math.floor(legacyStreak))
