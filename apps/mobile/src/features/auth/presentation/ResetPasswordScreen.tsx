@@ -7,7 +7,7 @@ import {useSessionStore} from '../application/sessionStore';
 import {authRepository} from '../data/authRepository';
 import {AuthButton, AuthField, AuthScaffold} from './AuthScaffold';
 import {accountSecurityCopy} from './accountSecurityCopy';
-import {SecurityEmail, SecurityLink, SecurityNotice, securityError, validSecurityEmail} from './AccountSecurityParts';
+import {SecurityEmail, SecurityNotice, securityError, validSecurityEmail} from './AccountSecurityParts';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ResetPassword'>;
 
@@ -56,7 +56,8 @@ function ResetPasswordForm({navigation, route}: Props): React.JSX.Element {
   };
 
   return <AuthScaffold eyebrow={copy.eyebrow} title={complete ? copy.successTitle : invalid ? copy.invalidTitle : copy.resetTitle}
-    subtitle={complete ? copy.successSubtitle : invalid ? copy.invalidLink : copy.resetSubtitle}>
+    subtitle={complete ? copy.successSubtitle : invalid ? copy.invalidLink : copy.resetSubtitle}
+    back={complete ? undefined : {label: copy.backToLogin, disabled: busy, onPress: () => navigation.replace('SignIn', {email})}}>
     {complete ? <>
       <SecurityNotice message={copy.successHint} />
       <AuthButton label={copy.signIn} onPress={() => navigation.replace('SignIn', {email})} />
@@ -73,7 +74,6 @@ function ResetPasswordForm({navigation, route}: Props): React.JSX.Element {
       <SecurityNotice message={error} error />
       <AuthButton label={copy.resetButton} onPress={submit} loading={busy} disabled={!password || !confirmation} />
     </>}
-    {!complete ? <SecurityLink label={copy.backToLogin} disabled={busy} onPress={() => navigation.replace('SignIn', {email})} /> : null}
   </AuthScaffold>;
 }
 import {normalizeAppLocale} from '../../../shared/i18n/appLocale';

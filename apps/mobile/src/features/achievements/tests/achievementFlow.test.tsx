@@ -25,7 +25,7 @@ jest.mock('react-native-mmkv', () => {
   return {createMMKV: () => ({getString: (key: string) => values.get(key), set: (key: string, value: string) => values.set(key, value), clearAll: () => values.clear()})};
 });
 jest.mock('@react-native-community/netinfo', () => ({addEventListener: jest.fn(() => jest.fn())}));
-jest.mock('../data/achievementRepository', () => ({achievementRepository: {collection: jest.fn(), reminderCreated: jest.fn(), acknowledge: jest.fn()}}));
+jest.mock('../data/achievementRepository', () => ({achievementRepository: {collection: jest.fn(), saveHighlights: jest.fn(), reminderCreated: jest.fn(), acknowledge: jest.fn()}}));
 jest.mock('../../reminders/application/reminderNotificationService', () => ({scheduleReminder: jest.fn(), cancelReminder: jest.fn()}));
 
 const repository = jest.mocked(achievementRepository);
@@ -42,7 +42,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockUserId = 'ana';
   storage.clearAll();
-  useAchievementLocalStore.setState({pendingReminders: {}, pendingAcknowledgements: {}, seen: {}, detailOpen: false});
+  useAchievementLocalStore.setState({pendingReminders: {}, pendingAcknowledgements: {}, seen: {}, profileHighlights: {}, detailOpen: false});
   useReminderStore.setState({reminders: []});
   repository.collection.mockResolvedValue(emptyAchievementCollection);
   repository.reminderCreated.mockResolvedValue(earned);
@@ -204,4 +204,45 @@ test('waits for the user to close achievement details before opening a celebrati
   await act(async () => {useAchievementLocalStore.getState().setDetailOpen(false);});
   await act(async () => {jest.advanceTimersByTime(500);});
   expect(view.getByText('NOVA CONQUISTA')).toBeTruthy();
+});
+
+
+test('saves profile highlights remotely after pending reminder sync and retains the server result offline', async () => {
+  const {wrapper} = setup();
+  const saved = {...earned, profile_highlights: ['first_reminder'] as const};
+  repository.saveHighlights.mockResolvedValue({...saved, profile_highlights: ['first_reminder']});
+  useAchievementLocalStore.getState().markReminder('ana');
+  const hook = await renderHook(() => useAchievements(), {wrapper});
+  await act(async () => {expect(await hook.result.current.saveHighlights(['first_reminder'])).toBe(true);});
+  expect(repository.reminderCreated).toHaveBeenCalled();
+  expect(repository.saveHighlights).toHaveBeenCalledWith(['first_reminder']);
+  expect(hook.result.current.profileCodes).toEqual(['first_reminder']);
+  expect(readAchievementSnapshot('ana')?.profile_highlights).toEqual(['first_reminder']);
+  mockUserId = 'bruno';
+  await hook.rerender(undefined);
+  expect(hook.result.current.profileCodes).toBeUndefined();
+});
+
+test('a failed highlight save preserves the previous remote and local selection', async () => {
+  const {wrapper, client} = setup();
+  client.setQueryData(achievementKey('ana'), {...earned, profile_highlights: ['first_reminder']});
+  useAchievementLocalStore.getState().saveProfileHighlights('ana', ['first_reminder']);
+  repository.saveHighlights.mockRejectedValueOnce(new Error('Offline'));
+  const hook = await renderHook(() => useAchievements(), {wrapper});
+  await act(async () => {expect(await hook.result.current.saveHighlights([])).toBe(false);});
+  expect(hook.result.current.profileCodes).toEqual(['first_reminder']);
+  expect(useAchievementLocalStore.getState().profileHighlights.ana).toEqual(['first_reminder']);
+});
+
+test('migrates a legacy local choice once and honors an explicitly empty server selection', async () => {
+  const {wrapper} = setup();
+  useAchievementLocalStore.getState().saveProfileHighlights('ana', ['first_reminder']);
+  repository.collection.mockResolvedValue({...earned, profile_highlights: null});
+  repository.saveHighlights.mockResolvedValue({...earned, profile_highlights: ['first_reminder']});
+  const hook = await renderHook(() => useAchievements(), {wrapper});
+  await waitFor(() => expect(hook.result.current.query.data?.profile_highlights).toEqual(['first_reminder']));
+  expect(repository.saveHighlights).toHaveBeenCalledTimes(1);
+  repository.collection.mockResolvedValue({...earned, profile_highlights: []});
+  await act(async () => {await hook.result.current.query.refetch();});
+  await waitFor(() => expect(hook.result.current.profileCodes).toEqual([]));
 });

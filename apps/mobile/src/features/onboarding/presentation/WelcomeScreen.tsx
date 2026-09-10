@@ -1,7 +1,9 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {SecurityLink} from '../../auth/presentation/AccountSecurityParts';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
-import {Image, Pressable, StyleSheet, Text, TextInput, type GestureResponderEvent, View} from 'react-native';
+import {BackHandler, Image, Pressable, StyleSheet, Text, TextInput, type GestureResponderEvent, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Animated, {cancelAnimation, Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming} from 'react-native-reanimated';
 import Svg, {Path} from 'react-native-svg';
@@ -17,12 +19,12 @@ import {useSessionStore} from '../../auth/application/sessionStore';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {HydrationWaterGauge} from '../../hydration/presentation/HydrationWaterGauge';
 import {useOnboardingPreferencesStore} from '../application/onboardingPreferencesStore';
+import {WidgetOnboardingStep} from './WidgetOnboardingStep';
 import {AccountAccessStep, type AccountMode} from './AccountAccessStep';
-import {ChallengeAsset} from '../../home/presentation/challenge/ChallengeAsset';
 
-type OnboardingStep = 1 | 2 | 3;
+type OnboardingStep = 1 | 2 | 3 | 4;
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 const SWIPE_BACK_EDGE_WIDTH = 36;
 const SWIPE_BACK_DISTANCE = 72;
 const SWIPE_BACK_MAX_VERTICAL_DISTANCE = 48;
@@ -39,21 +41,7 @@ function OnboardingContinueButton({label, disabled, onPress}: ContinueButtonProp
     onPress();
   };
 
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{disabled}}
-      disabled={disabled}
-      onPress={handlePress}
-      style={({pressed}) => [styles.continueButton, disabled && styles.continueButtonDisabled, pressed && !disabled && styles.buttonPressed]}>
-      <ChallengeAsset name="drinkButton" resizeMode="stretch" style={styles.continueButtonBackground} />
-      <View pointerEvents="none" style={styles.continueButtonContent}>
-        <Text style={styles.continueButtonIcon}>→</Text>
-        <Text style={styles.continueButtonLabel}>{label}</Text>
-      </View>
-    </Pressable>
-  );
+  return <RaisedButton label={label} onPress={handlePress} disabled={disabled} tone="aqua" size="large" style={buttonLayout.continue} />;
 }
 
 function OnboardingProgressBar({step}: {step: OnboardingStep}): React.JSX.Element {
@@ -85,13 +73,15 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
   const selectLocale = useOnboardingPreferencesStore(state => state.selectLocale);
   const dailyGoalMl = useOnboardingPreferencesStore(state => state.dailyGoalMl);
   const selectDailyGoal = useOnboardingPreferencesStore(state => state.selectDailyGoal);
+  const clearSelectedDailyGoal = useOnboardingPreferencesStore(state => state.clearSelectedDailyGoal);
+  const [choosingAccount, setChoosingAccount] = useState(!hasCompletedWelcome);
   const completeWelcome = useOnboardingPreferencesStore(state => state.completeWelcome);
   const restartWelcome = useOnboardingPreferencesStore(state => state.restartWelcome);
   const rememberedAccounts = useRememberedAccountsStore(state => state.accounts);
   const resumeRememberedAccount = useSessionStore(state => state.resumeRememberedAccount);
   const removeRememberedAccount = useSessionStore(state => state.removeRememberedAccount);
   const [isReturningAccountFlow, setIsReturningAccountFlow] = useState(hasCompletedWelcome);
-  const [step, setStep] = useState<OnboardingStep>(hasCompletedWelcome ? 3 : 1);
+  const [step, setStep] = useState<OnboardingStep>(hasCompletedWelcome ? 4 : 1);
   const [accountMode, setAccountMode] = useState<AccountMode>(hasCompletedWelcome ? 'returning' : 'choice');
   const [authBackMode, setAuthBackMode] = useState<AccountMode>('choice');
   const [selectedAccount, setSelectedAccount] = useState<RememberedAccount>();
@@ -115,23 +105,25 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
   };
 
   const goBack = useCallback(() => {
-    if (step === 3 && (accountMode === 'login' || accountMode === 'register')) {
+    if (step === 4 && (accountMode === 'login' || accountMode === 'register')) {
       setAccountMode(authBackMode);
       setSelectedAccount(undefined);
       return;
     }
 
-    if (step === 3 && accountMode === 'manage') {
+    if (step === 4 && accountMode === 'manage') {
       setAccountMode('returning');
       return;
     }
 
-    if (step === 3) {
-      setStep(2);
+    if (step === 4) {
+      setStep(3);
       return;
     }
 
+    if (step === 3) setStep(2);
     if (step === 2) setStep(1);
+    if (step === 1) setChoosingAccount(true);
   }, [accountMode, authBackMode, step]);
 
   const showAuth = useCallback((mode: 'login' | 'register', backMode: AccountMode, account?: RememberedAccount) => {
@@ -141,6 +133,7 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
   }, []);
 
   const restartForNewAccount = useCallback(() => {
+    setChoosingAccount(false);
     restartWelcome();
     setIsReturningAccountFlow(false);
     setGoal('2000');
@@ -153,13 +146,25 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
   const resumeAccount = useCallback((account: RememberedAccount) => resumeRememberedAccount(account.id), [resumeRememberedAccount]);
   const removeAccount = useCallback((account: RememberedAccount) => removeRememberedAccount(account.id), [removeRememberedAccount]);
   const manageAccounts = useCallback(() => setAccountMode('manage'), []);
-  const returnToAccounts = useCallback(() => setAccountMode('returning'), []);
 
   const finishWelcome = useCallback(() => {
     completeWelcome();
   }, [completeWelcome]);
 
-  const canGoBack = step > 1 && !(step === 3 && accountMode === 'returning');
+  const canGoBack = !isReturningAccountFlow || (step > 1 && accountMode !== 'returning');
+  useEffect(() => {
+    if (choosingAccount) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isReturningAccountFlow && !hasCompletedWelcome) {
+        setChoosingAccount(true);
+        return true;
+      }
+      if (!canGoBack) return false;
+      goBack();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [canGoBack, choosingAccount, goBack, hasCompletedWelcome, isReturningAccountFlow]);
   const swipeStart = useRef<{x: number; y: number} | undefined>(undefined);
   const beginSwipe = useCallback((event: GestureResponderEvent) => {
     swipeStart.current = {x: event.nativeEvent.pageX, y: event.nativeEvent.pageY};
@@ -194,6 +199,34 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
           ? copy.manageAccountsSubtitle
           : copy.accountSubtitle;
 
+  const entryText = (pt: string, en: string, es: string) => locale === 'en-US' ? en : locale === 'es-ES' ? es : pt;
+
+  if (choosingAccount) {
+    return (
+      <View style={styles.page}>
+        <Image pointerEvents="none" source={require('../../../assets/challenge/static/ocean-background.webp')} resizeMode="cover" style={styles.background} />
+        <View pointerEvents="none" style={styles.backgroundOverlay} />
+        <SafeAreaView style={styles.safeArea}>
+          <KeyboardAwareScrollView contentContainerStyle={styles.returningContent}>
+            <View style={styles.hero}>
+              <OnboardingMascot style={styles.mascot} />
+              <Text accessibilityRole="header" style={styles.title}>{entryText('Você já tem uma conta?', 'Do you already have an account?', '¿Ya tienes una cuenta?')}</Text>
+              <Text style={styles.subtitle}>{entryText('Comece sua jornada ou entre para continuar de onde parou.', 'Start your journey or sign in to pick up where you left off.', 'Empieza tu camino o inicia sesión para continuar donde lo dejaste.')}</Text>
+            </View>
+            <RaisedButton testID="welcome-new-account" label={entryText('Sou novo por aqui', "I'm new here", 'Soy nuevo aquí')} onPress={restartForNewAccount} tone="aqua" size="large" />
+            <RaisedButton testID="welcome-existing-account" label={copy.alreadyHaveAccount} variant="outlined" tone="aqua" size="large" onPress={() => {
+              clearSelectedDailyGoal();
+              setChoosingAccount(false);
+              setIsReturningAccountFlow(true);
+              setAccountMode('login');
+              setStep(4);
+            }} />
+          </KeyboardAwareScrollView>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
   if (isReturningAccountFlow) {
     return (
       <View style={styles.page}>
@@ -205,6 +238,11 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
         />
         <View pointerEvents="none" style={styles.backgroundOverlay} />
         <SafeAreaView style={styles.safeArea}>
+          {canGoBack || !hasCompletedWelcome ? (
+            <View style={styles.returningNavigation}>
+              <SecurityLink variant="text" label={copy.back} onPress={() => !hasCompletedWelcome ? setChoosingAccount(true) : goBack()} />
+            </View>
+          ) : null}
           <KeyboardAwareScrollView contentContainerStyle={styles.returningContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <View style={styles.hero}>
               <View style={styles.mascotOrb}>
@@ -217,7 +255,6 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
 
             <AccountAccessStep
               accounts={rememberedAccounts}
-              authBackMode={authBackMode}
               goalMl={selectedGoal}
               locale={locale}
               mode={accountMode}
@@ -227,7 +264,6 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
               onForgotPassword={email => navigation?.navigate('ForgotPassword', {email})}
               onRemoveAccount={removeAccount}
               onResumeAccount={resumeAccount}
-              onReturnToAccounts={returnToAccounts}
               onRestart={restartForNewAccount}
               onShowAuth={showAuth}
             />
@@ -326,7 +362,9 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
             </>
           ) : null}
 
-          {step === 3 ? (
+          {step === 3 ? <WidgetOnboardingStep locale={locale} onContinue={() => setStep(4)} /> : null}
+
+          {step === 4 ? (
             <>
               <View style={[styles.hero, (accountMode === 'login' || accountMode === 'register') && styles.authHero]}>
                 <View style={styles.mascotOrb}>
@@ -339,7 +377,6 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
 
               <AccountAccessStep
                 accounts={rememberedAccounts}
-                authBackMode={authBackMode}
                 goalMl={selectedGoal}
                 locale={locale}
                 mode={accountMode}
@@ -349,7 +386,6 @@ export function WelcomeScreen({navigation}: Partial<NativeStackScreenProps<RootS
                 onForgotPassword={email => navigation?.navigate('ForgotPassword', {email})}
                 onRemoveAccount={removeAccount}
                 onResumeAccount={resumeAccount}
-                onReturnToAccounts={returnToAccounts}
                 onRestart={restartForNewAccount}
                 onShowAuth={showAuth}
               />
@@ -376,9 +412,10 @@ const styles = StyleSheet.create({
   safeArea: {flex: 1},
   content: {flexGrow: 1, paddingHorizontal: 21, paddingTop: 14, paddingBottom: 28, gap: 21},
   returningContent: {flexGrow: 1, justifyContent: 'center', paddingHorizontal: 21, paddingVertical: 28, gap: 28},
+  returningNavigation: {paddingHorizontal: 21, paddingTop: 6, alignItems: 'flex-start'},
   progressSection: {gap: 8},
   progressHeader: {height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
-  backButton: {width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: 'rgba(2, 38, 71, 0.75)', borderWidth: 1, borderColor: challengeTheme.colors.border},
+  backButton: {width: 44, height: 44, alignItems: 'center', justifyContent: 'center'},
   backButtonPressed: {opacity: 0.8, transform: [{scale: 0.94}]},
   stepLabel: {fontFamily: typography.family, fontSize: 12, lineHeight: 17, fontWeight: '900', color: '#D1E4E4', letterSpacing: 0.35},
   progressSpacer: {width: 44, height: 44},
@@ -406,11 +443,6 @@ const styles = StyleSheet.create({
   goalInputInvalid: {borderColor: challengeTheme.colors.danger},
   goalValue: {fontFamily: typography.family, flex: 1, padding: 0, color: challengeTheme.colors.text, fontSize: 23, fontWeight: '900'},
   goalUnit: {fontFamily: typography.family, fontSize: 15, fontWeight: '800', color: challengeTheme.colors.muted},
-  continueButton: {alignSelf: 'center', width: '100%', maxWidth: 340, height: 70, justifyContent: 'center', shadowColor: '#4A99A8', shadowOpacity: 0.48, shadowRadius: 14, shadowOffset: {width: 0, height: 0}, elevation: 10},
-  continueButtonDisabled: {opacity: 0.45, shadowOpacity: 0},
-  continueButtonBackground: {position: 'absolute', width: '100%', height: '100%'},
-  continueButtonContent: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingBottom: 4},
-  continueButtonIcon: {fontFamily: typography.family, marginTop: -2, fontSize: 30, lineHeight: 32, fontWeight: '900', color: '#FFFFFF', textShadowColor: '#2C6B79', textShadowRadius: 4},
-  continueButtonLabel: {fontFamily: typography.family, fontSize: 22, lineHeight: 29, fontWeight: '900', color: '#FFFFFF', textShadowColor: '#2C6B79', textShadowRadius: 4},
-  buttonPressed: {opacity: 0.88, transform: [{scale: 0.985}, {translateY: 2}]},
 });
+
+const buttonLayout = StyleSheet.create({continue: {width: '100%', maxWidth: 360, alignSelf: 'center'}});

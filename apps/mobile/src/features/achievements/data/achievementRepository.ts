@@ -8,6 +8,9 @@ export const achievementRepository = {
   reminderCreated(): Promise<AchievementCollection> {
     return apiRequest('/achievements/events', {method: 'POST', body: {event: 'reminder_created'}, timeoutMs: 12_000});
   },
+  saveHighlights(codes: AchievementCode[], signal?: AbortSignal): Promise<AchievementCollection> {
+    return apiRequest('/achievements/highlights', {method: 'PUT', body: {codes}, signal, timeoutMs: 12_000});
+  },
   acknowledge(code: AchievementCode): Promise<{code: AchievementCode; celebrated_at: string}> {
     return apiRequest(`/achievements/${code}/celebration`, {method: 'POST', timeoutMs: 12_000});
   },

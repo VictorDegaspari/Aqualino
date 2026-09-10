@@ -55,11 +55,20 @@ export const ChallengeDay = memo(function ChallengeDayView({day, index, scale, m
         accessibilityHint={t("Abre os detalhes de hidratação deste dia", "Opens hydration details for this day", "Abre los detalles de hidratación de este día")}
         onPress={() => onPress(day, index)}
         style={({pressed}) => [layout.nodeTouch, pressed && styles.pressed]}>
-        {day.is_today ? (
-          <CurrentWaterDrop scale={scale} totalMl={day.total_ml} goalMl={day.goal_ml} motionEnabled={motionEnabled} />
-        ) : (
-          <ChallengeAsset name={day.protection === 'streak_freeze' ? 'dayFrozen' : stateAssets[day.state]} style={layout.markerImage} />
-        )}
+        <View style={!day.is_today && day.state !== 'future' ? styles.pastDrop : undefined}>
+          {day.is_today ? (
+            <CurrentWaterDrop scale={scale} totalMl={day.total_ml} goalMl={day.goal_ml} motionEnabled={motionEnabled} />
+          ) : day.total_ml > 0 && day.state !== 'future' ? (
+            <>
+              <CurrentWaterDrop testID={`day-water-drop-${day.date}`} compact scale={scale} totalMl={day.total_ml} goalMl={day.goal_ml} motionEnabled={false} />
+              {day.protection === 'streak_freeze' ? <View pointerEvents="none" style={styles.protectionBadge}>
+                <ChallengeAsset name="dayFrozen" style={styles.protectionImage} />
+              </View> : null}
+            </>
+          ) : (
+            <ChallengeAsset name={day.protection === 'streak_freeze' ? 'dayFrozen' : stateAssets[day.state]} style={layout.markerImage} />
+          )}
+        </View>
       </Pressable>
 
       {day.is_today ? (
@@ -118,6 +127,9 @@ function formatDate(date: string): string {
 
 
 const styles = StyleSheet.create({
+  pastDrop: {opacity: 0.8},
+  protectionBadge: {position: 'absolute', right: 0, bottom: 0},
+  protectionImage: {width: 26, height: 30},
   layer: {position: 'absolute', top: 0, right: 0, bottom: 0, left: 0},
   pressed: {opacity: 0.82, transform: [{scale: 0.975}]},
   dayLabel: {

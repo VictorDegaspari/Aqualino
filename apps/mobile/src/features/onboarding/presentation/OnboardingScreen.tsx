@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
 import {Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {OnboardingMascot} from './OnboardingMascot';
 import {LanguageSelector} from '../../../shared/components/LanguageSelector';
@@ -79,9 +80,7 @@ export function OnboardingScreen(): React.JSX.Element {
               {loading ? <LoadingWaterDrop size={56} accessibilityLabel="Salvando preferências" /> : null}
               {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
               {error ? (
-                <Pressable accessibilityRole="button" onPress={complete} style={({pressed}) => [styles.finishButton, pressed && styles.finishButtonPressed]}>
-                  <Text style={styles.finishLabel}>{copy.retry}</Text>
-                </Pressable>
+                <RaisedButton onPress={complete} label={copy.retry} tone="success" size="large" />
               ) : null}
             </View>
             <View style={styles.gaugeDock}>
@@ -167,15 +166,14 @@ export function OnboardingScreen(): React.JSX.Element {
             <Text style={styles.notice}>{copy.notice}</Text>
             {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={copy.finish}
-              accessibilityState={{disabled: !goalIsValid || volumes.length === 0, busy: loading}}
-              disabled={!goalIsValid || volumes.length === 0 || loading}
+            <RaisedButton
+              label={copy.finish}
+              tone="success"
+              size="large"
               onPress={complete}
-              style={({pressed}) => [styles.finishButton, (!goalIsValid || volumes.length === 0 || loading) && styles.finishButtonDisabled, pressed && !loading && styles.finishButtonPressed]}>
-              {loading ? <LoadingWaterDrop size={25} /> : <Text style={styles.finishLabel}>{copy.finish}</Text>}
-            </Pressable>
+              loading={loading}
+              disabled={!goalIsValid || volumes.length === 0}
+            />
           </View>
 
           <View style={styles.gaugeDock}>
@@ -221,9 +219,5 @@ const styles = StyleSheet.create({
   timezoneText: {fontFamily: typography.family, fontSize: 12, lineHeight: 17, color: challengeTheme.colors.muted},
   notice: {fontFamily: typography.family, marginTop: 4, fontSize: 12, lineHeight: 17, color: '#C3D8D9'},
   error: {fontFamily: typography.family, marginTop: 4, color: challengeTheme.colors.danger, textAlign: 'center'},
-  finishButton: {height: 56, marginTop: 14, alignItems: 'center', justifyContent: 'center', borderRadius: challengeTheme.radius.pill, backgroundColor: challengeTheme.colors.cyanStrong, shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.55, shadowRadius: 12, shadowOffset: {width: 0, height: 5}, elevation: 8},
-  finishButtonDisabled: {opacity: 0.42, shadowOpacity: 0},
-  finishButtonPressed: {transform: [{scale: 0.985}, {translateY: 2}]},
-  finishLabel: {fontFamily: typography.family, fontSize: 17, lineHeight: 22, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
   gaugeDock: {marginTop: 2, paddingBottom: 6},
 });

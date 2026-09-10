@@ -11,8 +11,8 @@ use Illuminate\Support\Collection;
 class GroupChallengeScoring
 {
     public const RULES = [
-        'version' => 'group-v2', 'ranking' => 'competition', 'daily_points_cap' => 100, 'total_points_cap' => 700,
-        'points_decimals' => 2, 'goal_policy' => 'frozen_at_start', 'minimum_reward_points' => 0.01,
+        'version' => 'group-v3', 'ranking' => 'competition', 'daily_points_cap' => 100, 'total_points_cap' => 700,
+        'points_decimals' => 2, 'goal_policy' => 'shared_daily_goal', 'daily_goal_ml' => 2000, 'minimum_reward_points' => 0.01,
         'sync_grace_minutes' => 15,
         'daily_sync_deadline' => 'local_midnight',
         'rewards' => [

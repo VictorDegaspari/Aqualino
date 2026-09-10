@@ -1,5 +1,6 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {AppState} from 'react-native';
+import {useIsFocused} from '@react-navigation/native';
 import {
   currentReminderPermissionIssue,
   openReminderPermissionSettings,
@@ -12,6 +13,7 @@ import {RemindersView} from './RemindersView';
 import {AppDialog} from '../../../shared/components/AppDialog';
 
 export function RemindersScreen(): React.JSX.Element {
+  const isFocused = useIsFocused();
   const reminders = useReminderStore(state => state.reminders);
   const addReminder = useReminderStore(state => state.addReminder);
   const toggleReminder = useReminderStore(state => state.toggleReminder);
@@ -26,12 +28,13 @@ export function RemindersScreen(): React.JSX.Element {
   }, []);
 
   useEffect(() => {
+    if (!isFocused) return;
     refreshPermission();
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') refreshPermission();
     });
     return () => subscription.remove();
-  }, [refreshPermission]);
+  }, [isFocused, refreshPermission]);
 
   const reportError = useCallback((error: unknown) => {
     if (error instanceof ReminderPermissionError) {

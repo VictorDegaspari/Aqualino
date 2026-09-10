@@ -13,6 +13,7 @@ export interface UserProfile {
   timezone: string;
   locale: string;
   favorite_volumes_ml: number[];
+  achievement_highlights?: AchievementCode[] | null;
   onboarding_completed_at: string | null;
 }
 
@@ -143,7 +144,8 @@ export interface GroupChallengeRules {
   daily_points_cap: number;
   total_points_cap: number;
   points_decimals: number;
-  goal_policy: 'frozen_at_start';
+  goal_policy: 'frozen_at_start' | 'shared_daily_goal';
+  daily_goal_ml?: number;
   minimum_reward_points: number;
   sync_grace_minutes: number;
   daily_sync_deadline?: 'local_midnight';
@@ -302,6 +304,8 @@ export interface GroupInvite {
 }
 
 export interface PrivateGroup {
+  auto_restart?: boolean;
+  joining_closed?: boolean;
   photo_review_enabled?: boolean;
   id: string;
   name: string;
@@ -341,6 +345,7 @@ export interface Achievement {
 }
 
 export interface AchievementCollection {
+  profile_highlights?: AchievementCode[] | null;
   items: Achievement[];
   unlocked_count: number;
   total: number;
@@ -357,4 +362,38 @@ export interface ApiErrorBody {
 
 export interface ApiEnvelope<T> {
   data: T;
+}
+
+export type FriendshipStatus = 'self' | 'none' | 'outgoing' | 'incoming' | 'friends';
+
+export interface PersonSummary {
+  id: string;
+  display_name: string;
+  username: string;
+  avatar_url: string | null;
+  level: number;
+  relationship: FriendshipStatus;
+}
+
+export interface FriendshipCollection {
+  friends: PersonSummary[];
+  incoming: PersonSummary[];
+  outgoing: PersonSummary[];
+}
+
+export interface ProfileHydrationWeek {
+  starts_on: string;
+  ends_on: string;
+  current_date: string;
+  total_ml: number;
+  /** Daily average from Monday through today, including days with no records. */
+  average_daily_ml: number;
+  days: Array<{date: string; total_ml: number}>;
+}
+
+export interface PersonProfile extends PersonSummary {
+  hydration_week: ProfileHydrationWeek;
+  group_medals: {gold: number; silver: number; bronze: number};
+  achievements: Achievement[];
+  profile_highlights: AchievementCode[];
 }

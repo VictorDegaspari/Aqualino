@@ -8,7 +8,6 @@ use App\Modules\Group\Infrastructure\Models\Group;
 use App\Modules\Group\Infrastructure\Models\GroupChallengeParticipant;
 use App\Modules\Group\Infrastructure\Models\GroupMembership;
 use App\Modules\Hydration\Infrastructure\Models\HydrationChallenge;
-use App\Modules\Hydration\Infrastructure\Models\HydrationGoal;
 use App\Modules\Hydration\Infrastructure\Models\HydrationLog;
 use App\Modules\Inventory\Application\CreditInventoryItem;
 use App\Modules\Inventory\Domain\InventoryItemCode;
@@ -85,6 +84,18 @@ class GroupChallengeService
             if (! $group) {
                 return;
             }
+            $unfinished = HydrationChallenge::withTrashed()->where('group_id', $group->id)->where('mode', 'group')
+                ->whereNull('finalized_at')->whereNull('cancelled_at')->get();
+            foreach ($unfinished as $challenge) {
+                if (($challenge->rules['goal_policy'] ?? null) !== 'shared_daily_goal') {
+                    $challenge->update(['rules' => array_replace($challenge->rules ?? GroupChallengeScoring::RULES, [
+                        'version' => GroupChallengeScoring::RULES['version'],
+                        'goal_policy' => 'shared_daily_goal',
+                        'daily_goal_ml' => GroupChallengeScoring::RULES['daily_goal_ml'],
+                    ])]);
+                    $challenge->participants()->withTrashed()->update(['goal_ml' => $challenge->rules['daily_goal_ml'] ?? GroupChallengeScoring::RULES['daily_goal_ml']]);
+                }
+            }
             if ($group->trashed()) {
                 $pending = HydrationChallenge::withTrashed()->where('group_id', $group->id)->where('mode', 'group')
                     ->whereNull('finalized_at')->whereNull('cancelled_at')->whereNotNull('roster_locked_at')
@@ -104,9 +115,6 @@ class GroupChallengeService
                 if (! $challenge) {
                     return;
                 }
-                if (! $challenge->rules) {
-                    $challenge->update(['rules' => GroupChallengeScoring::RULES]);
-                }
                 if (now()->lessThan($challenge->starts_at)) {
                     return;
                 }
@@ -123,8 +131,8 @@ class GroupChallengeService
                     $this->finalize($challenge);
                 }
                 $nextExists = HydrationChallenge::withTrashed()->where('group_id', $group->id)
-                    ->where('starts_at', $challenge->ends_at)->exists();
-                if (! $nextExists && $this->membersAt($group, $challenge->ends_at)->count() >= 2) {
+                    ->where('starts_at', '>=', $challenge->ends_at)->exists();
+                if ($group->auto_restart && ! $nextExists && $this->membersAt($group, $challenge->ends_at)->count() >= 2) {
                     $next = $this->schedule($group, $challenge->ends_at);
                     $this->lockRoster($group, $next);
                 }
@@ -142,7 +150,7 @@ class GroupChallengeService
             : $this->previewParticipants($challenge);
         $rows = $this->scoring->standings($challenge, $participants);
         $own = $rows->first(fn (array $row): bool => $row['participant']->user_id === $viewer->id);
-        $progress = $own['progress'] ?? $this->scoring->progress($challenge, 2000, collect());
+        $progress = $own['progress'] ?? $this->scoring->progress($challenge, $challenge->rules['daily_goal_ml'] ?? 2000, collect());
         $progress['current_date'] = CarbonImmutable::now($challenge->timezone)->toDateString();
         $progress['days'] = array_map(function (array $day) use ($progress): array {
             $day['is_today'] = $day['date'] === $progress['current_date'];
@@ -199,14 +207,6 @@ class GroupChallengeService
             ->with('user.profile')->orderBy('user_id')->get()->unique('user_id')->filter(fn ($member) => $member->user !== null)->values();
     }
 
-    private function goalAt(User $user, HydrationChallenge $challenge): int
-    {
-        $date = $challenge->starts_at->setTimezone($user->profile?->timezone ?? $challenge->timezone)->toDateString();
-
-        return max(1, HydrationGoal::query()->where('user_id', $user->id)->whereDate('starts_on', '<=', $date)
-            ->latest('starts_on')->first()?->daily_goal_ml ?? 2000);
-    }
-
     private function lockRoster(Group $group, HydrationChallenge $challenge): void
     {
         $members = $this->membersAt($group, $challenge->starts_at);
@@ -217,7 +217,7 @@ class GroupChallengeService
             return;
         }
         foreach ($members as $member) {
-            $challenge->participants()->firstOrCreate(['user_id' => $member->user_id], ['goal_ml' => $this->goalAt($member->user, $challenge)]);
+            $challenge->participants()->firstOrCreate(['user_id' => $member->user_id], ['goal_ml' => $challenge->rules['daily_goal_ml'] ?? GroupChallengeScoring::RULES['daily_goal_ml']]);
             $this->blockPotions($challenge, $member->user_id);
         }
         PotionUsageBlock::query()->where('context_id', $challenge->id)->whereNotIn('user_id', $members->pluck('user_id'))->delete();
@@ -228,7 +228,7 @@ class GroupChallengeService
     {
         return GroupMembership::query()->where('group_id', $challenge->group_id)->with('user.profile')->get()
             ->filter(fn ($member) => $member->user !== null)->map(function (GroupMembership $member) use ($challenge): GroupChallengeParticipant {
-                $participant = new GroupChallengeParticipant(['user_id' => $member->user_id, 'goal_ml' => $this->goalAt($member->user, $challenge)]);
+                $participant = new GroupChallengeParticipant(['user_id' => $member->user_id, 'goal_ml' => $challenge->rules['daily_goal_ml'] ?? GroupChallengeScoring::RULES['daily_goal_ml']]);
                 $participant->setRelation('user', $member->user);
 
                 return $participant;

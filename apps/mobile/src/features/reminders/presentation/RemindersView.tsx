@@ -1,6 +1,8 @@
 import {useTranslation} from '../../../shared/i18n/useTranslation';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
 import React, {memo, useCallback, useState} from 'react';
 import {Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import Svg, {Path} from 'react-native-svg';
 import {AppSwitch} from '../../../shared/components/AppSwitch';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {BellIcon} from '../../../shared/components/BellIcon';
@@ -131,9 +133,13 @@ export function RemindersView(props: Props): React.JSX.Element {
                     ? t("Libere as notificações do Aqualino para receber seus lembretes.", "Allow Aqualino notifications to receive your reminders.", "Permite las notificaciones de Aqualino para recibir tus recordatorios.")
                     : t("Libere alarmes e lembretes para os avisos chegarem no horário escolhido.", "Allow alarms and reminders to receive alerts at your chosen time.", "Permite las alarmas y los recordatorios para recibir los avisos a la hora elegida.")}
                 </Text>
-                <Pressable accessibilityRole="button" onPress={props.onOpenSettings} style={styles.settingsButton}>
-                  <Text style={styles.settingsButtonLabel}>{t("Abrir ajustes", "Open settings", "Abrir ajustes")}</Text>
-                </Pressable>
+                <RaisedButton
+                  onPress={props.onOpenSettings}
+                  label={t("Abrir ajustes", "Open settings", "Abrir ajustes")}
+                  variant="outlined"
+                  tone="gold"
+                  size="compact"
+                />
               </View>
             </View>
           ) : null}
@@ -150,10 +156,14 @@ export function RemindersView(props: Props): React.JSX.Element {
               <Text style={styles.sectionSubtitle}>{t("Configure os dias de cada lembrete.", "Set the days for each reminder.", "Configura los días de cada recordatorio.")}</Text>
             </View>
             {!editing ? (
-              <Pressable testID="reminders-new" accessibilityRole="button" onPress={() => setEditing(true)} style={styles.addSmallButton}>
-                <AqualinoIcon name="plus" size={15} color={challengeTheme.colors.backgroundDeep} />
-                <Text style={styles.addSmallButtonLabel}>{t("Novo", "New", "Nuevo")}</Text>
-              </Pressable>
+              <RaisedButton
+                testID="reminders-new"
+                onPress={() => setEditing(true)}
+                label={t("Novo", "New", "Nuevo")}
+                tone="aqua"
+                size="compact"
+                icon={<AqualinoIcon name="plus" size={15} color={challengeTheme.colors.backgroundDeep} />}
+              />
             ) : null}
           </View>
 
@@ -192,13 +202,7 @@ export function RemindersView(props: Props): React.JSX.Element {
 
               <View style={styles.suggestions}>
                 {suggestedTimes.map(time => (
-                  <Pressable
-                    accessibilityRole="button"
-                    key={time}
-                    onPress={() => selectSuggestion(time)}
-                    style={({pressed}) => [styles.suggestion, pressed && styles.buttonPressed]}>
-                    <Text style={styles.suggestionLabel}>{time}</Text>
-                  </Pressable>
+                  <RaisedButton key={time} onPress={() => selectSuggestion(time)} label={time} variant="outlined" tone="aqua" size="compact" />
                 ))}
               </View>
 
@@ -238,21 +242,23 @@ export function RemindersView(props: Props): React.JSX.Element {
               {validationError ? <Text accessibilityRole="alert" style={styles.validationError}>{validationError}</Text> : null}
 
               <View style={styles.editorActions}>
-                <Pressable
-                  accessibilityRole="button"
+                <RaisedButton
                   disabled={props.busyId === 'new'}
                   onPress={closeEditor}
-                  style={styles.cancelButton}>
-                  <Text style={styles.cancelButtonLabel}>{t("Cancelar", "Cancel", "Cancelar")}</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
+                  label={t("Cancelar", "Cancel", "Cancelar")}
+                  variant="outlined"
+                  tone="neutral"
+                  style={buttonLayout.flex}
+                />
+                <RaisedButton
                   accessibilityState={{busy: props.busyId === 'new'}}
                   disabled={props.busyId === 'new'}
                   onPress={save}
-                  style={({pressed}) => [styles.saveButton, pressed && styles.buttonPressed]}>
-                  <Text style={styles.saveButtonLabel}>{props.busyId === 'new' ? t("Salvando…", "Saving…", "Guardando…") : t("Salvar lembrete", "Save reminder", "Guardar recordatorio")}</Text>
-                </Pressable>
+                  label={props.busyId === 'new' ? t("Salvando…", "Saving…", "Guardando…") : t("Salvar lembrete", "Save reminder", "Guardar recordatorio")}
+                  tone="success"
+                  style={buttonLayout.save}
+                  loading={props.busyId === 'new'}
+                />
               </View>
             </View>
           ) : null}
@@ -262,13 +268,13 @@ export function RemindersView(props: Props): React.JSX.Element {
               <View style={styles.emptyIcon}><BellIcon size={28} color={challengeTheme.colors.muted} /></View>
               <Text style={styles.emptyTitle}>{t("Nenhum horário marcado", "No reminders scheduled", "Ningún recordatorio programado")}</Text>
               <Text style={styles.emptyText}>{t("Crie seu primeiro lembrete. A permissão só será solicitada ao ativá-lo.", "Create your first reminder. Permission will be requested when you activate it.", "Crea tu primer recordatorio. El permiso se solicitará al activarlo.")}</Text>
-              <Pressable
-                accessibilityRole="button"
+              <RaisedButton
+                style={buttonLayout.create}
                 onPress={() => setEditing(true)}
-                style={({pressed}) => [styles.primaryButton, pressed && styles.buttonPressed]}>
-                <AqualinoIcon name="plus" size={19} color={challengeTheme.colors.backgroundDeep} />
-                <Text style={styles.primaryButtonLabel}>{t("Criar lembrete", "Create reminder", "Crear recordatorio")}</Text>
-              </Pressable>
+                label={t("Criar lembrete", "Create reminder", "Crear recordatorio")}
+                tone="aqua"
+                icon={<AqualinoIcon name="plus" size={19} color={challengeTheme.colors.backgroundDeep} />}
+              />
             </View>
           ) : (
             <View style={styles.reminders}>
@@ -319,10 +325,20 @@ const ReminderCard = memo(function ReminderCardView({reminder, busy, onToggle, o
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t(`Remover lembrete das ${formatTime(reminder)}`, `Remove reminder at ${formatTime(reminder)}`, `Eliminar recordatorio de las ${formatTime(reminder)}`)}
+        accessibilityState={{disabled: busy}}
         disabled={busy}
         onPress={handleRemove}
-        style={({pressed}) => [styles.removeButton, pressed && styles.buttonPressed]}>
-        <Text style={styles.removeButtonLabel}>{t("Remover", "Remove", "Eliminar")}</Text>
+        style={[styles.removeButton, busy && styles.removeButtonDisabled]}>
+        {({pressed}) => (
+          <>
+            <View pointerEvents="none" style={[styles.removeButtonDepth, pressed && styles.removeButtonDepthPressed]} />
+            <View style={[styles.removeButtonFace, pressed && styles.removeButtonPressed]}>
+              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" accessible={false}>
+                <Path d="M3 6h18M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14M10 10v7M14 10v7" stroke="#411820" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </View>
+          </>
+        )}
       </Pressable>
     </View>
   );
@@ -358,15 +374,11 @@ const styles = StyleSheet.create({
   permissionContent: {flex: 1},
   permissionTitle: {fontSize: 14, lineHeight: 19, fontWeight: '900', color: challengeTheme.colors.text},
   permissionText: {marginTop: 3, fontSize: 12, lineHeight: 17, color: '#D9C99A'},
-  settingsButton: {alignSelf: 'flex-start', marginTop: 9, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 99, borderWidth: 1, borderColor: challengeTheme.colors.gold},
-  settingsButtonLabel: {fontSize: 11, lineHeight: 15, fontWeight: '900', color: challengeTheme.colors.gold},
   feedbackError: {padding: 11, borderRadius: 12, color: challengeTheme.colors.danger, backgroundColor: 'rgba(90, 18, 37, 0.52)'},
   feedbackSuccess: {padding: 11, borderRadius: 12, color: challengeTheme.colors.cyanStrong, backgroundColor: 'rgba(3, 68, 73, 0.5)'},
   sectionHeading: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
   sectionTitle: {fontSize: 19, lineHeight: 25, fontWeight: '900', color: challengeTheme.colors.text},
   sectionSubtitle: {fontSize: 11, lineHeight: 16, color: challengeTheme.colors.muted},
-  addSmallButton: {minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 13, borderRadius: 99, backgroundColor: challengeTheme.colors.cyanStrong},
-  addSmallButtonLabel: {fontSize: 12, lineHeight: 16, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
   editorCard: {padding: 18, borderRadius: challengeTheme.radius.panel, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panel},
   editorTitle: {fontSize: 18, lineHeight: 24, fontWeight: '900', color: challengeTheme.colors.text},
   editorSubtitle: {marginTop: 3, fontSize: 12, lineHeight: 17, color: challengeTheme.colors.muted},
@@ -379,8 +391,6 @@ const styles = StyleSheet.create({
   },
   timeSeparator: {height: 53, fontSize: 30, lineHeight: 40, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
   suggestions: {flexDirection: 'row', justifyContent: 'center', gap: 7, marginTop: 14},
-  suggestion: {paddingHorizontal: 10, paddingVertical: 7, borderRadius: 99, borderWidth: 1, borderColor: challengeTheme.colors.border, backgroundColor: challengeTheme.colors.panelSoft},
-  suggestionLabel: {fontSize: 11, lineHeight: 15, fontWeight: '800', color: challengeTheme.colors.cyanStrong},
   weekdaysHeading: {marginTop: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
   weekdaysTitle: {fontSize: 12, lineHeight: 17, fontWeight: '800', color: challengeTheme.colors.text},
   weekdaysToggleLabel: {fontSize: 11, lineHeight: 15, fontWeight: '800', color: challengeTheme.colors.cyanStrong},
@@ -395,26 +405,26 @@ const styles = StyleSheet.create({
   weekdayButtonLabelSelected: {color: challengeTheme.colors.cyanStrong},
   validationError: {marginTop: 10, textAlign: 'center', fontSize: 12, lineHeight: 17, color: challengeTheme.colors.danger},
   editorActions: {flexDirection: 'row', gap: 9, marginTop: 17},
-  cancelButton: {flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 99, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong},
-  cancelButtonLabel: {fontSize: 13, lineHeight: 18, fontWeight: '900', color: challengeTheme.colors.muted},
-  saveButton: {flex: 1.7, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 99, backgroundColor: challengeTheme.colors.cyanStrong},
-  saveButtonLabel: {fontSize: 13, lineHeight: 18, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
   emptyCard: {alignItems: 'center', padding: 21, borderRadius: challengeTheme.radius.panel, borderWidth: 1, borderColor: challengeTheme.colors.border, backgroundColor: 'rgba(0, 22, 49, 0.9)'},
   emptyIcon: {width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center', backgroundColor: challengeTheme.colors.panelSoft},
   emptyTitle: {marginTop: 11, fontSize: 17, lineHeight: 22, fontWeight: '900', color: challengeTheme.colors.text},
   emptyText: {maxWidth: 280, marginTop: 4, fontSize: 12, lineHeight: 17, color: challengeTheme.colors.muted, textAlign: 'center'},
-  primaryButton: {width: '100%', minHeight: 50, marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: 99, backgroundColor: challengeTheme.colors.cyanStrong},
-  primaryButtonLabel: {fontSize: 15, lineHeight: 20, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
   reminders: {gap: 10},
-  reminderCard: {flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12, padding: 16, borderRadius: 18, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panel},
+  reminderCard: {flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 18, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panel},
+  removeButton: {width: 40, height: 44, borderRadius: 12, paddingBottom: 4, flexShrink: 0},
+  removeButtonDepth: {position: 'absolute', left: 0, right: 0, bottom: 0, height: 20, borderRadius: 12, backgroundColor: '#9E485A'},
+  removeButtonDepthPressed: {opacity: 0},
+  removeButtonFace: {height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FF94A4'},
+  removeButtonPressed: {transform: [{translateY: 4}]},
+  removeButtonDisabled: {opacity: 0.45},
   reminderCardDisabled: {opacity: 0.66, borderColor: challengeTheme.colors.border},
   reminderTimeContent: {flex: 1},
   reminderTime: {fontSize: 28, lineHeight: 33, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
   reminderTimeDisabled: {color: challengeTheme.colors.muted},
   reminderFrequency: {fontSize: 11, lineHeight: 15, color: challengeTheme.colors.muted},
-  removeButton: {width: '100%', minHeight: 36, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: challengeTheme.colors.border},
-  removeButtonLabel: {fontSize: 11, lineHeight: 15, fontWeight: '800', color: challengeTheme.colors.danger},
   infoCard: {flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 16, backgroundColor: 'rgba(3, 54, 78, 0.72)'},
   infoText: {flex: 1, fontSize: 11, lineHeight: 16, color: challengeTheme.colors.muted},
   buttonPressed: {opacity: 0.8, transform: [{scale: 0.985}]},
 });
+
+const buttonLayout = StyleSheet.create({flex: {flex: 1}, save: {flex: 1.7}, create: {width: '100%', marginTop: 16}});

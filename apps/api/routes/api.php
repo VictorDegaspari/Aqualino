@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Achievement\Http\Controllers\AchievementController;
+use App\Modules\Friendship\Http\Controllers\FriendshipController;
 use App\Modules\Gamification\Http\Controllers\GamificationController;
 use App\Modules\Group\Http\Controllers\GroupController;
 use App\Modules\Hydration\Http\Controllers\HydrationChallengeController;
@@ -60,6 +61,13 @@ Route::prefix('v1')->group(function (): void {
             Route::put('/hydration/goals/current', [HydrationGoalController::class, 'update']);
 
             Route::get('/gamification/snapshot', [GamificationController::class, 'show']);
+            Route::get('/friends', [FriendshipController::class, 'index']);
+            Route::get('/people', [FriendshipController::class, 'search'])->middleware('throttle:30,1');
+            Route::get('/people/{userId}', [FriendshipController::class, 'show'])->whereUlid('userId');
+            Route::put('/friends/{userId}', [FriendshipController::class, 'store'])->whereUlid('userId')->middleware('throttle:20,1');
+            Route::post('/friends/{userId}/accept', [FriendshipController::class, 'accept'])->whereUlid('userId')->middleware('throttle:30,1');
+            Route::delete('/friends/{userId}', [FriendshipController::class, 'destroy'])->whereUlid('userId')->middleware('throttle:30,1');
+            Route::put('/achievements/highlights', [AchievementController::class, 'highlights'])->middleware('throttle:30,1');
             Route::get('/achievements', [AchievementController::class, 'index']);
             Route::post('/achievements/events', [AchievementController::class, 'store'])->middleware('throttle:30,1');
             Route::post('/achievements/{code}/celebration', [AchievementController::class, 'acknowledge'])->middleware('throttle:60,1');

@@ -1,10 +1,12 @@
 import {useTranslation} from '../../../shared/i18n/useTranslation';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
 import React, {useCallback, useEffect, useState} from 'react';
-import {Image, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useIsFocused} from '@react-navigation/native';
 import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
+import {ProfileFriends} from '../../friends/presentation/ProfileFriends';
 import {ProfileAchievements} from '../../achievements/presentation/ProfileAchievements';
 import {isAvatarId, type AvatarId} from '../../../shared/avatars/avatarOptions';
 import {UserAvatar} from '../../../shared/avatars/UserAvatar';
@@ -18,11 +20,14 @@ import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {AvatarPicker} from './AvatarPicker';
 import {HydrationFlame} from '../../hydration/presentation/HydrationFlame';
 import {useHydrationHomeData} from '../../hydration/presentation/useHydrationHome';
+import {AppModal} from '../../../shared/components/AppModal';
+import {SettingsIcon} from '../../../shared/components/SettingsIcon';
 import {AppDialog} from '../../../shared/components/AppDialog';
 import {LevelProgressCard} from './LevelProgressCard';
 import {LanguageSelector} from '../../../shared/components/LanguageSelector';
 import {appCopy, type AppLocale} from '../../../shared/i18n/appLocale';
 import {useOnboardingPreferencesStore} from '../../onboarding/application/onboardingPreferencesStore';
+import {PersonalGoalSettings} from './PersonalGoalSettings';
 
 export function ProfileScreen({navigation}: NativeStackScreenProps<RootStackParamList, 'Profile'>): React.JSX.Element {
   const {t} = useTranslation();
@@ -40,8 +45,12 @@ export function ProfileScreen({navigation}: NativeStackScreenProps<RootStackPara
   const [avatarError, setAvatarError] = useState<string>();
   const locale = useOnboardingPreferencesStore(state => state.locale);
   const selectLocale = useOnboardingPreferencesStore(state => state.selectLocale);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const closeSettings = () => {setSettingsOpen(false); setEditingLanguage(false); setLanguageError(undefined);};
   const [editingLanguage, setEditingLanguage] = useState(false);
   const [savingLanguage, setSavingLanguage] = useState(false);
+  const [savingGoal, setSavingGoal] = useState(false);
+  const settingsBusy = savingLanguage || savingGoal;
   const [languageError, setLanguageError] = useState<string>();
   const languageCopy = appCopy[locale].setup;
 
@@ -145,6 +154,8 @@ export function ProfileScreen({navigation}: NativeStackScreenProps<RootStackPara
             </View>
           </View>
 
+          <ProfileFriends onOpen={() => navigation.navigate('Friends')} onAdd={() => navigation.navigate('AddFriends')} />
+
           {user?.level_progress ? <LevelProgressCard level={user.level ?? 1} progress={user.level_progress} multiplier={user.xp_multiplier} /> : null}
 
           {editingAvatar ? (
@@ -174,25 +185,51 @@ export function ProfileScreen({navigation}: NativeStackScreenProps<RootStackPara
 
           <ProfileAchievements onOpen={() => navigation.navigate('Achievements')} />
 
-          <View style={styles.collectionPanel}>
-            <Pressable accessibilityRole="button" accessibilityState={{expanded: editingLanguage}} onPress={() => setEditingLanguage(value => !value)}>
-              <Text style={styles.collectionTitle}>{languageCopy.language}</Text>
-              <Text style={styles.collectionSubtitle}>{languageCopy.languageSubtitle}</Text>
-            </Pressable>
-            {editingLanguage ? <LanguageSelector value={locale} onChange={chooseLanguage} disabled={savingLanguage} /> : null}
-            {languageError ? <Text accessibilityRole="alert" style={styles.languageError}>{languageError}</Text> : null}
-          </View>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("Sair da conta", "Sign out", "Cerrar sesión")}
-            onPress={signOut}
-            style={({pressed}) => [styles.signOutButton, pressed && styles.signOutButtonPressed]}>
-            <AqualinoIcon name="logout" size={18} color={challengeTheme.colors.danger} />
-            <Text style={styles.signOutLabel}>{t("Sair da conta", "Sign out", "Cerrar sesión")}</Text>
-          </Pressable>
+          <RaisedButton
+            testID="profile-settings"
+            onPress={() => setSettingsOpen(true)}
+            label={t('Configurações', 'Settings', 'Configuración')}
+            variant="outlined"
+            tone="neutral"
+            icon={<SettingsIcon size={20} color={challengeTheme.colors.text} />}
+          />
         </ScrollView>
       </SafeAreaView>
+      {settingsOpen ? (
+        <AppModal onRequestClose={closeSettings} dismissible={!settingsBusy}>
+          <SafeAreaView style={styles.settingsOverlay}>
+            <Pressable accessible={false} disabled={settingsBusy} onPress={closeSettings} style={StyleSheet.absoluteFill} />
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.settingsKeyboard}>
+              <View testID="profile-settings-panel" accessibilityViewIsModal style={styles.settingsCard}>
+                <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.settingsContent}>
+                  <Text accessibilityRole="header" style={styles.collectionTitle}>{t('Configurações', 'Settings', 'Configuración')}</Text>
+                  <PersonalGoalSettings currentGoal={hydration.data?.data.today.goal_ml} loadError={hydration.isError} disabled={savingLanguage}
+                    onSavingChange={setSavingGoal} onSaved={() => {hydration.refetch().catch(() => undefined);}} />
+                  <View style={styles.collectionPanel}>
+                    <Pressable accessibilityRole="button" disabled={settingsBusy} accessibilityState={{expanded: editingLanguage, disabled: settingsBusy}} onPress={() => setEditingLanguage(value => !value)}>
+                      <Text style={styles.collectionTitle}>{languageCopy.language}</Text>
+                      <Text style={styles.collectionSubtitle}>{languageCopy.languageSubtitle}</Text>
+                    </Pressable>
+                    {editingLanguage ? <LanguageSelector value={locale} onChange={chooseLanguage} disabled={settingsBusy} /> : null}
+                    {languageError ? <Text accessibilityRole="alert" style={styles.languageError}>{languageError}</Text> : null}
+                  </View>
+
+                  <RaisedButton
+                    testID="profile-logout"
+                    disabled={settingsBusy}
+                    onPress={signOut}
+                    label={t("Sair da conta", "Sign out", "Cerrar sesión")}
+                    variant="outlined"
+                    tone="danger"
+                    icon={<AqualinoIcon name="logout" size={18} color={challengeTheme.colors.danger} />}
+                  />
+                  <RaisedButton testID="profile-settings-close" disabled={settingsBusy} onPress={closeSettings} label={t('Fechar', 'Close', 'Cerrar')} variant="outlined" tone="neutral" />
+                </ScrollView>
+              </View>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
+        </AppModal>
+      ) : null}
       {avatarError ? <AppDialog title={t("Não foi possível salvar seu avatar", "Could not save your avatar", "No se pudo guardar tu avatar")} message={avatarError} icon="profile" onClose={() => setAvatarError(undefined)} /> : null}
     </View>
   );
@@ -208,6 +245,10 @@ function Medal({name, label, count}: {name: 'medalGold' | 'medalSilver' | 'medal
 }
 
 const styles = StyleSheet.create({
+  settingsKeyboard: {flex: 1, justifyContent: 'center'},
+  settingsOverlay: {flex: 1, justifyContent: 'center', paddingHorizontal: 22, backgroundColor: 'rgba(0, 10, 24, 0.8)'},
+  settingsCard: {maxHeight: '90%', width: '100%', maxWidth: 440, alignSelf: 'center', borderRadius: 28, backgroundColor: challengeTheme.colors.background, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, overflow: 'hidden'},
+  settingsContent: {padding: 22, gap: 18},
   languageError: {color: challengeTheme.colors.danger, marginTop: 8},
   page: {flex: 1, backgroundColor: challengeTheme.colors.background},
   background: {position: 'absolute', width: '100%', height: '100%', opacity: 0.72},
@@ -241,7 +282,4 @@ const styles = StyleSheet.create({
   medalIcon: {width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center', backgroundColor: challengeTheme.colors.panelSoft, borderWidth: 1, borderColor: challengeTheme.colors.border},
   medalLabel: {fontSize: 12, lineHeight: 16, fontWeight: '800', color: challengeTheme.colors.muted},
   collectionNotice: {marginTop: 13, textAlign: 'center', fontSize: 12, lineHeight: 17, color: '#B4D5E7'},
-  signOutButton: {minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, borderRadius: challengeTheme.radius.pill, borderWidth: 1, borderColor: 'rgba(255, 119, 137, 0.54)', backgroundColor: 'rgba(166, 42, 63, 0.16)'},
-  signOutButtonPressed: {opacity: 0.76, transform: [{scale: 0.985}]},
-  signOutLabel: {fontSize: 15, lineHeight: 20, fontWeight: '900', color: challengeTheme.colors.danger},
 });

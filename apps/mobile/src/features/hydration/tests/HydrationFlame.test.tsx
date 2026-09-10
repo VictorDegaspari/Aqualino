@@ -5,7 +5,10 @@ import {HydrationFlame} from '../presentation/HydrationFlame';
 
 const mockReducedMotion = jest.fn(() => false);
 jest.mock('@react-navigation/native', () => ({useIsFocused: () => true}));
-jest.mock('react-native-reanimated', () => ({useReducedMotion: () => mockReducedMotion()}));
+jest.mock('react-native-reanimated', () => ({
+  ...jest.requireActual('../../../../test/mocks/reactNativeReanimated'),
+  useReducedMotion: () => mockReducedMotion(),
+}));
 
 beforeEach(() => {
   AppState.currentState = 'active';

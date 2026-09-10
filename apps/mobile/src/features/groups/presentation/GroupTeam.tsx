@@ -1,101 +1,115 @@
-import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
-import {AppSwitch} from '../../../shared/components/AppSwitch';
+import React, {useState} from 'react';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import type {PrivateGroup} from '@aqualino/contracts';
+import {GroupSettings} from './GroupSettings';
+import {GroupInvitation} from './GroupInvitation';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
+import {SettingsIcon} from '../../../shared/components/SettingsIcon';
 import {UserAvatar} from '../../../shared/avatars/UserAvatar';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
 import type {AppLocale} from '../../../shared/i18n/appLocale';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
-import {GroupButton} from './GroupButton';
 import type {GroupsCopy} from './groupsCopy';
 import {LevelBadge} from '../../../shared/components/LevelBadge';
 import {GroupChallengePanel} from '../../home/presentation/challenge/GroupChallengePanel';
 
-export function GroupTeam({reviews, group, userId, copy, locale, busy, onShare, onRenew, onLeave, onPhotoReviewChange}: {
+export function GroupTeam({reviews, group, userId, copy, locale, busy, onShare, onRenew, onLeave, onPhotoReviewChange, onAutoRestartChange, onOpenMember}: {
   reviews?: React.ReactNode;
+  onOpenMember?: (userId: string) => void;
+  onAutoRestartChange?: (enabled: boolean) => Promise<boolean>;
   onPhotoReviewChange?: (enabled: boolean) => Promise<boolean>;
   group: PrivateGroup; userId?: string; copy: GroupsCopy; locale: AppLocale; busy: boolean;
   onShare: () => void; onRenew: () => void; onLeave: () => void;
 }): React.JSX.Element {
-  const expired = group.invite ? Date.parse(group.invite.expires_at) <= Date.now() : false;
-  const full = group.members.length >= group.max_members;
+  const [panel, setPanel] = useState<'settings' | 'invite' | null>(null);
+  const availableSlots = Math.max(0, group.max_members - group.members.length);
+  const t = (pt: string, en: string, es: string) => locale === 'en-US' ? en : locale === 'es-ES' ? es : pt;
   return (
     <>
-      <View style={styles.card}>
+      <View accessibilityElementsHidden={Boolean(panel)} importantForAccessibility={panel ? 'no-hide-descendants' : 'auto'} style={styles.content}>
         <View style={styles.summary}>
-          <View style={styles.groupIcon}><AqualinoIcon name="group" size={36} color={challengeTheme.colors.cyanStrong} /></View>
           <View style={styles.heading}>
-            <Text style={styles.eyebrow}>{copy.active}</Text>
+            <Text style={styles.eyebrow}>{t('Grupo', 'Group', 'Grupo')}</Text>
             <Text accessibilityRole="header" style={styles.title}>{group.name}</Text>
-            <Text style={styles.description}>{copy.memberCount(group.members.length, group.max_members)}</Text>
           </View>
+          <RaisedButton testID="group-settings" label={t('Configurações do grupo', 'Group settings', 'Configuración del grupo')}
+            iconOnly icon={<SettingsIcon size={24} color={challengeTheme.colors.text} />} tone="neutral" size="compact"
+            onPress={() => setPanel('settings')} style={styles.settingsButton} />
         </View>
-        <Text style={styles.description}>{group.members.length < 2 ? copy.waiting : copy.together}</Text>
-        <Text style={styles.caption}>{copy.timezone}: {group.timezone}</Text>
-      </View>
-      <GroupChallengePanel locale={locale} challenge={group.challenge} result={group.previous_challenge} rules={group.challenge_rules} />
-      <View style={styles.card}>
-        <View style={styles.summary}>
-          <Text style={[styles.sectionTitle, styles.heading]}>{locale === 'es-ES' ? "Votación de registros" : locale === 'en-US' ? 'Photo voting' : 'Votação das marcações'}</Text>
-          {group.owner_id === userId && onPhotoReviewChange ? <AppSwitch
-            testID="group-photo-review-toggle" accessibilityLabel={locale === 'es-ES' ? "Votación de registros" : locale === 'en-US' ? 'Photo voting' : 'Votação das marcações'}
-            value={group.photo_review_enabled ?? true} disabled={busy}
-            onValueChange={onPhotoReviewChange} />
-            : <Text style={styles.caption}>{group.photo_review_enabled === false ? (locale === 'es-ES' ? "Desactivada" : locale === 'en-US' ? 'Disabled' : 'Desabilitada') : (locale === 'es-ES' ? "Activada" : locale === 'en-US' ? 'Enabled' : 'Habilitada')}</Text>}
-        </View>
-        <Text style={styles.description}>{locale === 'es-ES' ? "El líder puede activar la votación en grupos de 3 o más personas. Los cambios se aplican a los nuevos envíos; las votaciones abiertas mantienen su plazo de 12 horas." : locale === 'en-US' ? 'The leader can enable voting for groups of 3 or more people. Changes apply to new submissions; open votes keep their 12-hour deadline.' : 'O líder pode habilitar a votação em grupos com 3 ou mais pessoas. Alterações valem para novos envios; votações abertas mantêm seu prazo de 12 horas.'}</Text>
-        <Text style={styles.caption}>{locale === 'es-ES' ? "Se mantienen el límite de 15 registros al día y la pausa de 15 minutos." : locale === 'en-US' ? 'The limit of 15 logs per day and a 15-minute pause always applies.' : 'O limite de 15 marcações por dia e a pausa de 15 minutos continuam valendo.'}</Text>
-      </View>
-      {reviews}
-      <View style={styles.card}>
-        <Text accessibilityRole="header" style={styles.sectionTitle}>{copy.members}</Text>
-        {group.members.map(member => (
-          <View key={member.user_id} style={styles.member}>
-            <UserAvatar avatarId={member.avatar_url} style={styles.avatar} />
-            <View style={styles.heading}>
-              <Text style={styles.name}>{member.display_name}{member.user_id === userId ? ` · ${copy.you}` : ''}</Text>
-              <Text style={styles.caption}>{member.role === 'owner' ? copy.owner : copy.member}</Text>
+
+        <View style={styles.membersSection}>
+          <View style={styles.membersHeader}>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>{copy.members}</Text>
+            <Text accessibilityLabel={copy.memberCount(group.members.length, group.max_members)} style={styles.count}>{group.members.length}/{group.max_members}</Text>
+          </View>
+          <View style={styles.members}>
+            {group.members.map((member, index) => (
+              <Pressable key={member.user_id} testID={`group-member-${member.user_id}`} accessibilityRole="button"
+                accessibilityLabel={`${t('Ver perfil de', 'View profile of', 'Ver perfil de')} ${member.display_name}`}
+                disabled={!onOpenMember} onPress={() => onOpenMember?.(member.user_id)}
+                style={({pressed}) => [styles.member, index > 0 && styles.memberDivider, pressed && styles.pressed]}>
+                <UserAvatar avatarId={member.avatar_url} style={styles.avatar} />
+                <View style={styles.heading}>
+                  <Text style={styles.name}>{member.display_name}{member.user_id === userId ? ` · ${copy.you}` : ''}</Text>
+                  <View style={styles.memberDetails}>
+                    <LevelBadge level={member.level ?? 1} locale={locale} />
+                    {member.role === 'owner' ? <Text style={styles.caption}>{copy.owner}</Text> : null}
+                  </View>
+                </View>
+                <Text accessible={false} style={styles.chevron}>›</Text>
+              </Pressable>
+            ))}
+          </View>
+          {!group.joining_closed && availableSlots > 0 ? (
+            <View style={styles.invitation}>
+              <Text style={styles.caption}>{t(`${availableSlots} ${availableSlots === 1 ? 'vaga disponível' : 'vagas disponíveis'}`, `${availableSlots} ${availableSlots === 1 ? 'spot available' : 'spots available'}`, `${availableSlots} ${availableSlots === 1 ? 'plaza disponible' : 'plazas disponibles'}`)}</Text>
+              <Pressable testID="group-invite" accessibilityRole="button"
+                onPress={() => setPanel('invite')} style={({pressed}) => [styles.inviteButton, pressed && styles.pressed]}>
+                <AqualinoIcon name="plus" size={16} color={challengeTheme.colors.cyanStrong} />
+                <Text style={styles.inviteLabel}>{t('Convidar', 'Invite', 'Invitar')}</Text>
+              </Pressable>
             </View>
-            <LevelBadge level={member.level ?? 1} locale={locale} />
-          </View>
-        ))}
-        {Array.from({length: Math.max(0, group.max_members - group.members.length)}, (_, index) => (
-          <View key={`slot-${index}`} style={styles.member}>
-            <View style={[styles.avatar, styles.emptyAvatar]}><AqualinoIcon name="plus" size={19} color={challengeTheme.colors.muted} /></View>
-            <Text style={styles.description}>{copy.slot}</Text>
-          </View>
-        ))}
+          ) : null}
+        </View>
+
+        <GroupChallengePanel locale={locale} challenge={group.challenge} result={group.previous_challenge} rules={group.challenge_rules} />
+        {reviews}
+        <Pressable testID="group-leave" accessibilityRole="button" disabled={busy} accessibilityState={{disabled: busy}}
+          onPress={onLeave} style={({pressed}) => [styles.leaveButton, (pressed || busy) && styles.pressed]}>
+          <Text style={styles.leaveLabel}>{copy.leave}</Text>
+        </Pressable>
       </View>
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>{copy.invite}</Text>
-        {group.invite ? (
-          <>
-            <Text style={styles.description}>{copy.inviteHint}</Text>
-            <Text selectable accessibilityLabel={`${copy.code}: ${group.invite.code}`} style={styles.code}>{group.invite.code}</Text>
-            <Text style={styles.caption}>{expired ? copy.expired : copy.expires(new Date(group.invite.expires_at).toLocaleDateString(locale))}</Text>
-            {full ? <Text style={styles.description}>{copy.full}</Text> : null}
-            <GroupButton label={copy.share} onPress={onShare} disabled={busy || expired || full} />
-            <GroupButton label={copy.renew} onPress={onRenew} secondary disabled={busy || full} />
-          </>
-        ) : <Text style={styles.description}>{full ? copy.full : copy.askOwner}</Text>}
-      </View>
-      <GroupButton label={copy.leave} onPress={onLeave} secondary disabled={busy} />
+      {panel === 'settings' ? <GroupSettings group={group} locale={locale} canEdit={group.owner_id === userId} busy={busy}
+        onPhotoReviewChange={onPhotoReviewChange} onAutoRestartChange={onAutoRestartChange} onClose={() => setPanel(null)} /> : null}
+      {panel === 'invite' ? <GroupInvitation group={group} locale={locale} canInvite={group.owner_id === userId} busy={busy}
+        onShare={() => {setPanel(null); onShare();}} onRenew={() => {setPanel(null); onRenew();}} onClose={() => setPanel(null)} /> : null}
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {padding: 20, gap: 15, borderRadius: 22, borderWidth: 1, borderColor: challengeTheme.colors.border, backgroundColor: challengeTheme.colors.panel},
-  summary: {flexDirection: 'row', gap: 14, alignItems: 'center'}, heading: {flex: 1, gap: 4},
-  groupIcon: {width: 66, height: 66, borderRadius: 22, backgroundColor: challengeTheme.colors.panelSoft, alignItems: 'center', justifyContent: 'center'},
-  eyebrow: {fontSize: 10, letterSpacing: 1, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
-  title: {fontSize: 23, fontWeight: '900', color: challengeTheme.colors.text},
-  sectionTitle: {fontSize: 18, fontWeight: '900', color: challengeTheme.colors.text},
-  description: {fontSize: 14, lineHeight: 20, color: challengeTheme.colors.muted},
+  content: {gap: 24},
+  summary: {flexDirection: 'row', gap: 16, alignItems: 'center'},
+  heading: {flex: 1, minWidth: 0, gap: 6},
+  eyebrow: {fontSize: 12, lineHeight: 16, fontWeight: '700', color: challengeTheme.colors.muted},
+  title: {fontSize: 28, lineHeight: 35, fontWeight: '900', color: challengeTheme.colors.text},
+  settingsButton: {width: 48, flexShrink: 0},
+  membersSection: {gap: 12},
+  membersHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+  sectionTitle: {fontSize: 18, lineHeight: 24, fontWeight: '800', color: challengeTheme.colors.text},
+  count: {fontSize: 13, lineHeight: 18, color: challengeTheme.colors.muted},
+  members: {borderRadius: 22, borderWidth: 1, borderColor: challengeTheme.colors.border, backgroundColor: challengeTheme.colors.panel, overflow: 'hidden'},
+  member: {flexDirection: 'row', gap: 14, alignItems: 'center', minHeight: 88, padding: 16},
+  memberDivider: {borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: challengeTheme.colors.border},
+  memberDetails: {flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8},
+  avatar: {width: 56, height: 56, borderRadius: 28, backgroundColor: challengeTheme.colors.panelSoft},
+  name: {fontSize: 17, lineHeight: 23, fontWeight: '800', color: challengeTheme.colors.text},
   caption: {fontSize: 12, lineHeight: 18, color: challengeTheme.colors.muted},
-  member: {flexDirection: 'row', gap: 13, alignItems: 'center', minHeight: 52},
-  avatar: {width: 46, height: 46, borderRadius: 23, backgroundColor: challengeTheme.colors.panelSoft},
-  emptyAvatar: {alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, borderStyle: 'dashed'},
-  name: {fontSize: 15, fontWeight: '800', color: challengeTheme.colors.text},
-  code: {fontSize: 23, letterSpacing: 2, fontWeight: '900', color: challengeTheme.colors.cyanStrong, textAlign: 'center', paddingVertical: 14},
+  chevron: {fontSize: 25, color: challengeTheme.colors.muted},
+  invitation: {flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8},
+  inviteButton: {minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8},
+  inviteLabel: {fontSize: 14, fontWeight: '800', color: challengeTheme.colors.cyanStrong},
+  pressed: {opacity: 0.65},
+  leaveButton: {alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12},
+  leaveLabel: {fontSize: 14, color: challengeTheme.colors.danger, fontWeight: '700'},
 });

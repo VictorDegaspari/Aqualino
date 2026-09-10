@@ -70,7 +70,7 @@ final class AchievementService
             ];
         }
 
-        return ['items' => $items, 'unlocked_count' => $owned->count(), 'total' => count($items)];
+        return ['items' => $items, 'unlocked_count' => $owned->count(), 'total' => count($items), 'profile_highlights' => $user->profile?->achievement_highlights];
     }
 
     public function recordReminder(User $user): array

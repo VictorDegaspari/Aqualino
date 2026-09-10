@@ -23,3 +23,12 @@ export function featuredAchievements(items: Achievement[]): Achievement[] {
     return a.unlocked_at ? b.rank - a.rank : a.rank - b.rank;
   }).slice(0, 4);
 }
+
+export function profileAchievements(items: Achievement[], selectedCodes?: AchievementCode[]): Achievement[] {
+  if (selectedCodes === undefined) return featuredAchievements(items);
+  const byCode = new Map(items.filter(item => item.unlocked_at).map(item => [item.code, item]));
+  return [...new Set(selectedCodes)].slice(0, 4).flatMap(code => {
+    const item = byCode.get(code);
+    return item ? [item] : [];
+  });
+}

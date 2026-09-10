@@ -1,28 +1,22 @@
 import React from 'react';
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  type TextInputProps,
-  View,
-} from 'react-native';
+import {Image, StyleSheet, Text, TextInput, type TextInputProps, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {mascotImages} from '../../../assets/mascot/mascotImages';
-import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
 import {typography} from '../../../shared/theme/typography';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {KeyboardAwareScrollView} from '../../../shared/components/KeyboardAwareScrollView';
+import {SecurityLink} from './AccountSecurityParts';
 
 interface AuthScaffoldProps {
   eyebrow: string;
   title: string;
   subtitle: string;
   children: React.ReactNode;
+  back?: {label: string; onPress: () => void; disabled?: boolean};
 }
 
-export function AuthScaffold({eyebrow, title, subtitle, children}: AuthScaffoldProps): React.JSX.Element {
+export function AuthScaffold({eyebrow, title, subtitle, children, back}: AuthScaffoldProps): React.JSX.Element {
   return (
     <View style={styles.page}>
       <Image
@@ -33,6 +27,7 @@ export function AuthScaffold({eyebrow, title, subtitle, children}: AuthScaffoldP
       />
       <View pointerEvents="none" style={styles.backgroundOverlay} />
       <SafeAreaView style={styles.safeArea}>
+        {back ? <View style={styles.navigation}><SecurityLink {...back} variant="text" /></View> : null}
         <KeyboardAwareScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -79,18 +74,7 @@ interface AuthButtonProps {
 }
 
 export function AuthButton({testID, label, onPress, loading, disabled}: AuthButtonProps): React.JSX.Element {
-  return (
-    <Pressable
-      testID={testID}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{disabled: Boolean(disabled || loading), busy: Boolean(loading)}}
-      disabled={disabled || loading}
-      onPress={onPress}
-      style={({pressed}) => [styles.button, (disabled || loading) && styles.buttonDisabled, pressed && !loading && styles.buttonPressed]}>
-      {loading ? <LoadingWaterDrop size={25} /> : <Text style={styles.buttonLabel}>{label}</Text>}
-    </Pressable>
-  );
+  return <RaisedButton testID={testID} label={label} onPress={onPress} loading={loading} disabled={disabled} tone="aqua" />;
 }
 
 const styles = StyleSheet.create({
@@ -98,6 +82,7 @@ const styles = StyleSheet.create({
   background: {position: 'absolute', width: '100%', height: '100%', opacity: 0.68},
   backgroundOverlay: {position: 'absolute', width: '100%', height: '100%', backgroundColor: 'rgba(0, 13, 32, 0.57)'},
   safeArea: {flex: 1},
+  navigation: {paddingHorizontal: 20, paddingTop: 6, alignItems: 'flex-start'},
   content: {flexGrow: 1, paddingHorizontal: 20, paddingVertical: 26, gap: 23, justifyContent: 'center'},
   hero: {alignItems: 'center', gap: 7, paddingHorizontal: 14},
   mascotOrb: {
@@ -121,12 +106,4 @@ const styles = StyleSheet.create({
     borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panelSoft,
     color: challengeTheme.colors.text, fontFamily: typography.family, fontSize: 16, fontWeight: '700',
   },
-  button: {
-    height: 56, marginTop: 4, alignItems: 'center', justifyContent: 'center', borderRadius: challengeTheme.radius.pill,
-    backgroundColor: challengeTheme.colors.cyanStrong, shadowColor: challengeTheme.colors.cyan,
-    shadowOpacity: 0.5, shadowRadius: 12, shadowOffset: {width: 0, height: 5}, elevation: 8,
-  },
-  buttonLabel: {fontFamily: typography.family, fontSize: 17, lineHeight: 22, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
-  buttonDisabled: {opacity: 0.44, shadowOpacity: 0},
-  buttonPressed: {transform: [{scale: 0.985}, {translateY: 2}]},
 });

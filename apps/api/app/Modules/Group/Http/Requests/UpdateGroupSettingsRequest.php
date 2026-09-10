@@ -13,6 +13,9 @@ class UpdateGroupSettingsRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['photo_review_enabled' => ['required', 'boolean']];
+        return [
+            'photo_review_enabled' => ['required_without:auto_restart', 'boolean'],
+            'auto_restart' => ['required_without:photo_review_enabled', 'boolean'],
+        ];
     }
 }

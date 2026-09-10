@@ -13,13 +13,13 @@ class Group extends Model
 {
     use HasUlids, SoftDeletes;
 
-    protected $fillable = ['owner_id', 'name', 'timezone', 'invite_code', 'invite_code_hash', 'invite_expires_at', 'photo_review_enabled'];
+    protected $fillable = ['owner_id', 'name', 'timezone', 'invite_code', 'invite_code_hash', 'invite_expires_at', 'photo_review_enabled', 'auto_restart'];
 
     protected $hidden = ['invite_code', 'invite_code_hash'];
 
     protected function casts(): array
     {
-        return ['photo_review_enabled' => 'boolean', 'invite_code' => 'encrypted', 'invite_expires_at' => 'immutable_datetime'];
+        return ['auto_restart' => 'boolean', 'photo_review_enabled' => 'boolean', 'invite_code' => 'encrypted', 'invite_expires_at' => 'immutable_datetime'];
     }
 
     public function memberships(): HasMany

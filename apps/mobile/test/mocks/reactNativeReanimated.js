@@ -50,6 +50,7 @@ module.exports = {
   interpolateColor: interpolate,
   isSharedValue: value => Boolean(value && typeof value === 'object' && 'value' in value),
   ReduceMotion: {System: 'system'},
+  runOnJS: fn => (...args) => fn(...args),
   SensorType: {ROTATION: 5},
   useAnimatedSensor,
   useAnimatedProps: useAnimatedStyle,

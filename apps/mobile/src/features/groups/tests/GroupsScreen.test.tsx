@@ -5,10 +5,13 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {AppModalProvider} from '../../../shared/components/AppModal';
 import {GroupsScreen} from '../presentation/GroupsScreen';
 
+const mockNavigate = jest.fn();
+jest.mock('@react-navigation/native', () => ({useIsFocused: () => true, useNavigation: () => ({navigate: mockNavigate})}));
+
 const mockGroups = {
   group: {
     id: 'group', name: 'Maré de amigos', timezone: 'America/Sao_Paulo', owner_id: 'ana', max_members: 5,
-    members: [{user_id: 'ana', display_name: 'Ana', avatar_url: null, role: 'owner'}],
+    members: [{user_id: 'ana', display_name: 'Ana', avatar_url: null, role: 'owner'}, {user_id: 'bruno', display_name: 'Bruno', avatar_url: null, role: 'member'}],
     invite: {code: 'ABC123DEF456', expires_at: '2099-09-12T00:00:00Z'},
   },
   loading: false, refreshing: false, busy: false,
@@ -30,13 +33,24 @@ test.each([
   const view = await render(<SafeAreaProvider initialMetrics={{frame: {x: 0, y: 0, width: 375, height: 812}, insets: {top: 0, right: 0, bottom: 0, left: 0}}}>
     <AppModalProvider><GroupsScreen /></AppModalProvider>
   </SafeAreaProvider>);
+  if (action === 'renewInvite') await fireEvent.press(view.getByTestId('group-invite'));
   await fireEvent.press(view.getByRole('button', {name: label}));
+  expect(view.queryByTestId('group-invite-panel')).toBeNull();
   expect(view.getByRole('header', {name: title})).toBeTruthy();
   expect(mockGroups[action]).not.toHaveBeenCalled();
   await fireEvent.press(view.getByRole('button', {name: 'Cancelar'}));
   expect(mockGroups[action]).not.toHaveBeenCalled();
+  if (action === 'renewInvite') await fireEvent.press(view.getByTestId('group-invite'));
   await fireEvent.press(view.getByRole('button', {name: label}));
   await fireEvent.press(view.getByRole('button', {name: label}));
   await waitFor(() => expect(view.queryByRole('header', {name: title})).toBeNull());
   expect(mockGroups[action]).toHaveBeenCalledTimes(1);
+});
+
+test('opens participant profiles from current group members and sends self to own profile', async () => {
+  const view = await render(<SafeAreaProvider initialMetrics={{frame: {x: 0, y: 0, width: 375, height: 812}, insets: {top: 0, right: 0, bottom: 0, left: 0}}}><AppModalProvider><GroupsScreen /></AppModalProvider></SafeAreaProvider>);
+  await fireEvent.press(view.getByRole('button', {name: 'Ver perfil de Bruno'}));
+  expect(mockNavigate).toHaveBeenLastCalledWith('PersonProfile', {userId: 'bruno'});
+  await fireEvent.press(view.getByRole('button', {name: 'Ver perfil de Ana'}));
+  expect(mockNavigate).toHaveBeenLastCalledWith('Profile');
 });

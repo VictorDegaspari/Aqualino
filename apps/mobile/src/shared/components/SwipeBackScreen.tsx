@@ -5,7 +5,7 @@ import Animated, {cancelAnimation, useAnimatedStyle, useReducedMotion, useShared
 import {scheduleOnRN} from 'react-native-worklets';
 import {shouldCompleteSwipe} from '../navigation/swipeBack';
 
-export function SwipeBackScreen({children, onBack, testID}: {children: (close: () => void) => React.ReactNode; onBack: () => void; testID: string}): React.JSX.Element {
+export function SwipeBackScreen({children, onBack, testID, active = true}: {active?: boolean; children: (close: () => void) => React.ReactNode; onBack: () => void; testID: string}): React.JSX.Element {
   const {width} = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const translation = useSharedValue(reducedMotion ? 0 : width);
@@ -24,12 +24,14 @@ export function SwipeBackScreen({children, onBack, testID}: {children: (close: (
     return () => cancelAnimation(translation);
   }, [reducedMotion, translation, width]);
   useEffect(() => {
+    if (!active) return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {close(); return true;});
     return () => subscription.remove();
-  }, [close]);
+  }, [active, close]);
 
   const gesture = usePanGesture({
     testID: `${testID}-back-gesture`,
+    enabled: active,
     activeOffsetX: 12, failOffsetY: [-16, 16], maxPointers: 1,
     onActivate: () => {
       if (closing.value) return;

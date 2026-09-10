@@ -23,11 +23,13 @@ interface Props {
   totalMl: number;
   goalMl: number;
   motionEnabled?: boolean;
+  compact?: boolean;
+  testID?: string;
 }
 
-export function CurrentWaterDrop({scale, totalMl, goalMl, motionEnabled = true}: Props): React.JSX.Element {
+export function CurrentWaterDrop({scale, totalMl, goalMl, motionEnabled = true, compact = false, testID = 'current-water-drop'}: Props): React.JSX.Element {
   const pulse = useSharedValue(0);
-  const size = useMemo(() => ({width: 120 * scale, height: 147 * scale}), [scale]);
+  const size = useMemo(() => ({width: (compact ? 72 : 120) * scale, height: (compact ? 84 : 147) * scale}), [compact, scale]);
   const id = useId();
   const fillRatio = Number.isFinite(totalMl) && Number.isFinite(goalMl) && goalMl > 0
     ? Math.min(1, Math.max(0, totalMl / goalMl))
@@ -60,7 +62,7 @@ export function CurrentWaterDrop({scale, totalMl, goalMl, motionEnabled = true}:
   } : {opacity: 1, transform: [{scale: 1}]} );
 
   return (
-    <Animated.View testID="current-water-drop" style={[styles.glow, animatedStyle]}>
+    <Animated.View testID={testID} style={[styles.glow, animatedStyle]}>
       <Svg {...size} viewBox="0 0 150 184" pointerEvents="none" accessible={false}>
         <Defs>
           <LinearGradient id={`${id}-glass`} x1="0" y1="0" x2="1" y2="1">
@@ -95,7 +97,7 @@ export function CurrentWaterDrop({scale, totalMl, goalMl, motionEnabled = true}:
         {fillRatio > 0 ? (
           <G clipPath={`url(#${id}-drop)`}>
             <Rect
-              testID="current-water-drop-liquid"
+              testID={`${testID}-liquid`}
               x={20}
               y={waterY}
               width={110}

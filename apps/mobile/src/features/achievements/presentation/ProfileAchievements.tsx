@@ -1,21 +1,21 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import type {Achievement} from '@aqualino/contracts';
+import type {Achievement, AchievementCode} from '@aqualino/contracts';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {useOnboardingPreferencesStore} from '../../onboarding/application/onboardingPreferencesStore';
-import {featuredAchievements} from '../application/achievementCatalog';
+import {profileAchievements} from '../application/achievementCatalog';
 import {AchievementMedal} from './AchievementMedal';
 import {achievementCopy, type AchievementCopy} from './achievementCopy';
 import {useAchievements} from './useAchievements';
 
 export function ProfileAchievements({onOpen}: {onOpen: () => void}): React.JSX.Element {
-  const {items, unlockedCount} = useAchievements();
+  const {items, unlockedCount, profileCodes} = useAchievements();
   const locale = useOnboardingPreferencesStore(state => state.locale);
-  return <ProfileAchievementHighlights items={items} unlockedCount={unlockedCount} copy={achievementCopy[locale]} onOpen={onOpen} />;
+  return <ProfileAchievementHighlights items={items} unlockedCount={unlockedCount} selectedCodes={profileCodes} copy={achievementCopy[locale]} onOpen={onOpen} />;
 }
 
-export function ProfileAchievementHighlights({items, unlockedCount, copy, onOpen}: {
-  items: Achievement[]; unlockedCount: number; copy: AchievementCopy; onOpen: () => void;
+export function ProfileAchievementHighlights({items, unlockedCount, selectedCodes, copy, onOpen}: {
+  items: Achievement[]; unlockedCount: number; selectedCodes?: AchievementCode[]; copy: AchievementCopy; onOpen: () => void;
 }): React.JSX.Element {
   return (
     <Pressable testID="profile-achievements" accessibilityRole="button" accessibilityLabel={copy.all} accessibilityHint={copy.profileHint}
@@ -25,7 +25,7 @@ export function ProfileAchievementHighlights({items, unlockedCount, copy, onOpen
         <Text style={styles.arrow}>›</Text>
       </View>
       <View style={styles.medals}>
-        {featuredAchievements(items).map(item => <View key={item.code} style={styles.medal}>
+        {profileAchievements(items, selectedCodes).map(item => <View key={item.code} style={styles.medal}>
           <AchievementMedal achievement={item} size={61} />
           <Text numberOfLines={2} style={[styles.label, !item.unlocked_at && styles.locked]}>{copy.items[item.code].title}</Text>
         </View>)}

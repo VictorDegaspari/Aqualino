@@ -1,4 +1,5 @@
 import {useTranslation} from '../../../shared/i18n/useTranslation';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
 import React, {useEffect, useRef, useState} from 'react';
 import {Image, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
@@ -7,7 +8,6 @@ import {launchCamera} from 'react-native-image-picker';
 import Animated, {Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming} from 'react-native-reanimated';
 import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
-import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
 import {haptics} from '../../../shared/device/haptics';
 import {useSessionStore} from '../../auth/application/sessionStore';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
@@ -133,33 +133,31 @@ export function QuickHydrationScreen({navigation, route}: Props): React.JSX.Elem
                 <Image accessibilityLabel={t("Foto do seu copo ou garrafa", "Photo of your glass or bottle", "Foto de tu vaso o botella")} source={{uri: photoUri}} resizeMode="cover" style={styles.photo} />
               </View>
             ) : null}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={photoUri ? t("Trocar foto", "Change photo", "Cambiar foto") : t("Tirar foto do copo", "Take glass photo", "Fotografiar el vaso")}
+            <RaisedButton
+              accessibilityState={{busy: takingPhoto}}
               disabled={busy}
               onPress={takePhoto}
-              style={({pressed}) => [styles.photoButton, busy && styles.dimmed, pressed && styles.photoButtonPressed]}>
-              {takingPhoto ? <LoadingWaterDrop size={20} /> : <AqualinoIcon name="plus" size={16} color={challengeTheme.colors.cyanStrong} />}
-              <Text style={styles.photoButtonLabel}>{photoUri ? t("Trocar foto", "Change photo", "Cambiar foto") : t("Tirar foto do copo", "Take glass photo", "Fotografiar el vaso")}</Text>
-            </Pressable>
+              label={photoUri ? t("Trocar foto", "Change photo", "Cambiar foto") : t("Tirar foto do copo", "Take glass photo", "Fotografiar el vaso")}
+              variant="outlined"
+              tone="aqua"
+              icon={<AqualinoIcon name="plus" size={16} color={challengeTheme.colors.cyanStrong} />}
+            />
 
             <View style={styles.buttons}>
               {volumes.map(volume => {
                 const isPending = pendingAmount === volume;
                 return (
-                  <Pressable
+                  <RaisedButton
                     key={volume}
-                    accessibilityRole="button"
                     accessibilityLabel={t(`Registrar ${volume} ml de água`, `Record ${volume} ml of water`, `Registrar ${volume} ml de agua`)}
-                    accessibilityState={{disabled: busy || !hasPhoto || paused, busy: false}}
+                    accessibilityState={{disabled: busy || !hasPhoto || paused, busy: isPending}}
                     disabled={busy || !hasPhoto || paused}
                     onPress={() => {submit(volume);}}
-                    style={({pressed}) => [styles.volumeButton, isPending && styles.volumeButtonSelected, ((!hasPhoto || busy || paused) && !isPending) && styles.dimmed, pressed && styles.volumeButtonPressed]}>
-                    <AqualinoIcon name="water" size={28} color={challengeTheme.colors.cyanStrong} />
-                    <Text style={[styles.volumeLabel, isPending && styles.selectedText]}>{volume}</Text>
-                    <Text style={[styles.volumeUnit, isPending && styles.selectedText]}>ml</Text>
-                    {lastAmount === volume && !isPending ? <View style={styles.favoriteDot} /> : null}
-                  </Pressable>
+                    label={`${volume} ml`}
+                    tone="aqua"
+                    icon={lastAmount === volume ? <AqualinoIcon name="water" size={20} color={challengeTheme.colors.backgroundDeep} /> : undefined}
+                    style={buttonLayout.volume}
+                  />
                 );
               })}
             </View>
@@ -191,22 +189,9 @@ const styles = StyleSheet.create({
   title: {fontSize: 23, lineHeight: 29, fontWeight: '900', color: challengeTheme.colors.text},
   subtitle: {color: challengeTheme.colors.muted, fontSize: 14, lineHeight: 20},
   buttons: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
-  volumeButton: {
-    flexBasis: '28%', flexGrow: 1, minHeight: 124, alignItems: 'center', justifyContent: 'center', gap: 4,
-    borderRadius: 20, borderWidth: 1.5, borderColor: challengeTheme.colors.borderStrong,
-    backgroundColor: challengeTheme.colors.panel,
-  },
-  volumeButtonSelected: {backgroundColor: challengeTheme.colors.cyanStrong, borderColor: challengeTheme.colors.text, transform: [{scale: 1.035}]},
-  volumeButtonPressed: {transform: [{scale: 0.96}], backgroundColor: challengeTheme.colors.panelSoft},
-  volumeLabel: {fontSize: 26, lineHeight: 32, fontWeight: '900', color: challengeTheme.colors.text},
-  volumeUnit: {fontSize: 13, lineHeight: 17, fontWeight: '700', color: challengeTheme.colors.muted},
-  selectedText: {color: challengeTheme.colors.backgroundDeep},
-  favoriteDot: {position: 'absolute', top: 10, right: 10, width: 5, height: 5, borderRadius: 3, backgroundColor: challengeTheme.colors.cyanStrong},
-  dimmed: {opacity: 0.4},
   error: {color: challengeTheme.colors.danger, fontSize: 13, lineHeight: 19},
   photoPreview: {height: 104, borderRadius: 16, overflow: 'hidden'},
   photo: {width: '100%', height: '100%'},
-  photoButton: {minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, borderWidth: 1, borderColor: challengeTheme.colors.border},
-  photoButtonPressed: {opacity: 0.75},
-  photoButtonLabel: {fontSize: 13, lineHeight: 18, fontWeight: '700', color: challengeTheme.colors.muted},
 });
+
+const buttonLayout = StyleSheet.create({volume: {flexBasis: '45%' as const, flexGrow: 1, minWidth: 150}});

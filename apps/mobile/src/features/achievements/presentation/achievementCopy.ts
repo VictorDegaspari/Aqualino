@@ -2,6 +2,7 @@ import type {AchievementCode} from '@aqualino/contracts';
 import type {AppLocale} from '../../../shared/i18n/appLocale';
 
 const pt = {
+  editHighlights: 'Editar destaques', selectHighlights: 'Escolha até 4 conquistas desbloqueadas para exibir no perfil.', saveHighlights: 'Salvar destaques', cancelSelection: 'Cancelar', selectionLimit: 'Você já escolheu 4. Remova uma para trocar.', selectionError: 'Não foi possível salvar os destaques. Tente novamente.', selectionCount: (count: number) => `${count}/4 selecionadas`,
   title: 'Conquistas', subtitle: 'Pequenos passos. Grandes marés.', highlights: 'Seus destaques',
   all: 'Ver todas as conquistas', profileHint: 'Abre sua coleção completa de conquistas',
   earned: 'Conquistadas', earnedBadge: 'Conquistada', allFilter: 'Todas', lockedFilter: 'A conquistar', locked: 'Ainda por conquistar',
@@ -35,6 +36,7 @@ const pt = {
 export type AchievementCopy = typeof pt;
 export const achievementCopy: Record<AppLocale, AchievementCopy> = {
   'es-ES': {
+    editHighlights: 'Editar destacados', selectHighlights: 'Elige hasta 4 logros desbloqueados para mostrar en tu perfil.', saveHighlights: 'Guardar destacados', cancelSelection: 'Cancelar', selectionLimit: 'Ya elegiste 4. Quita uno para cambiar.', selectionError: 'No se pudieron guardar los destacados. Inténtalo de nuevo.', selectionCount: count => `${count}/4 seleccionados`,
     title: 'Logros', subtitle: 'Pequeños pasos. Grandes mareas.', highlights: 'Tus destacados',
     all: 'Ver todos los logros', profileHint: 'Abre tu colección completa de logros',
     earned: 'Conseguidos', earnedBadge: 'Conseguido', allFilter: 'Todos', lockedFilter: 'Por conseguir', locked: 'Aún por conseguir',
@@ -66,6 +68,7 @@ export const achievementCopy: Record<AppLocale, AchievementCopy> = {
   },
   'pt-BR': pt,
   'en-US': {
+    editHighlights: 'Edit highlights', selectHighlights: 'Choose up to 4 unlocked achievements to show on your profile.', saveHighlights: 'Save highlights', cancelSelection: 'Cancel', selectionLimit: 'You have chosen 4. Remove one to swap.', selectionError: 'Could not save your highlights. Please try again.', selectionCount: count => `${count}/4 selected`,
     title: 'Achievements', subtitle: 'Small steps. Great waves.', highlights: 'Your highlights',
     all: 'View all achievements', profileHint: 'Opens your complete achievement collection',
     earned: 'Earned', earnedBadge: 'Earned', allFilter: 'All', lockedFilter: 'To earn', locked: 'Still to earn',

@@ -4,13 +4,14 @@ Este arquivo é a fonte curta de verdade para o fluxo de entrada do app. Leia-o 
 
 ## Fluxo sem sessão
 
-Existe uma única rota visual de entrada: `Welcome`. Login e cadastro são estados internos do terceiro step, não telas abertas pela navegação principal.
+Existe uma única rota visual de entrada: `Welcome`. No primeiro acesso, a pessoa escolhe “Sou novo por aqui” ou “Já tenho conta”. Quem já tem conta abre o formulário de login diretamente, fora dos steps; uma meta local pendente é descartada nesse caminho.
 
 1. idioma do aplicativo;
 2. meta diária de água;
-3. escolha da conta, login ou cadastro.
+3. prévia do formato atual do widget, com solicitação nativa de adição no Android ao continuar; o cancelamento fica no diálogo do sistema, sem botão de pular no onboarding;
+4. escolha da conta, login ou cadastro.
 
-A barra continua em `3/3` enquanto o usuário escolhe e preenche login ou cadastro. `LoginForm` e `RegisterForm` são renderizados diretamente por `WelcomeScreen`; o navigator desconectado registra somente `Welcome` e não possui rotas `Login` ou `Register`.
+A barra continua em `4/4` enquanto o usuário escolhe e preenche login ou cadastro. `LoginForm` e `RegisterForm` são renderizados diretamente por `WelcomeScreen`; o navigator desconectado registra somente `Welcome` e não possui rotas `Login` ou `Register`.
 
 Depois de um cadastro, a sessão autenticada segue para `OnboardingScreen`, que conclui as preferências da nova conta. Uma conta existente com `onboarding_completed_at` preenchido segue diretamente para a Home; se o campo estiver vazio, também conclui `OnboardingScreen`.
 
@@ -18,9 +19,9 @@ Depois de um cadastro, a sessão autenticada segue para `OnboardingScreen`, que 
 
 Ao autenticar ou restaurar uma sessão, o app guarda no máximo três identificações recentes em `aqualino.remembered-accounts`: id, nome, username, e-mail e URL do avatar. Ao sair, elas continuam disponíveis na tela de entrada.
 
-Selecionar uma conta lembrada abre o formulário de login dentro do terceiro step e apenas preenche o e-mail. A senha continua obrigatória.
+Selecionar uma conta lembrada abre o formulário de login dentro do quarto step e apenas preenche o e-mail. A senha continua obrigatória.
 
-“Adicionar nova conta” executa `restartWelcome`: volta ao step 1, remove a meta local anterior e mantém o idioma apenas como valor inicialmente selecionado. Depois dos três steps, o usuário pode cadastrar a nova conta ou entrar em outra conta existente.
+“Adicionar nova conta” executa `restartWelcome`: volta ao step 1, remove a meta local anterior e mantém o idioma apenas como valor inicialmente selecionado. Depois dos quatro steps, o usuário pode cadastrar a nova conta ou entrar em outra conta existente.
 
 ## Segurança e tokens de autenticação
 
@@ -32,8 +33,8 @@ Selecionar uma conta lembrada abre o formulário de login dentro do terceiro ste
 
 ## Estado e arquivos principais
 
-- `presentation/WelcomeScreen.tsx`: estado e orquestração dos três steps;
-- `presentation/AccountAccessStep.tsx`: escolha de conta e formulários do terceiro step;
+- `presentation/WelcomeScreen.tsx`: estado e orquestração dos quatro steps;
+- `presentation/AccountAccessStep.tsx`: escolha de conta e formulários do quarto step;
 - `application/onboardingPreferencesStore.ts`: idioma, meta e conclusão/reinício dos steps;
 - `../auth/application/rememberedAccountsStore.ts`: identificações recentes;
 - `../auth/application/sessionStore.ts`: restauração, autenticação e logout;

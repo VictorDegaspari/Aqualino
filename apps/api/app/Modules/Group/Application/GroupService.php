@@ -50,6 +50,8 @@ final class GroupService
     public function preview(string $code): array
     {
         $group = $this->invitedGroup($code);
+        $this->challenges->advance($group);
+        $this->assertJoiningOpen($group);
 
         return [
             'name' => $group->name,
@@ -73,6 +75,8 @@ final class GroupService
                 }
                 throw new GroupException('GROUP_ALREADY_JOINED', 'Você já participa de um grupo.');
             }
+
+            $this->assertJoiningOpen($group);
 
             $usedSlots = $group->memberships()->pluck('slot')->all();
             $slot = collect(['1', '2', '3', '4', '5'])->first(fn (string $value): bool => ! in_array($value, $usedSlots));
@@ -101,21 +105,22 @@ final class GroupService
             if (! $group || $group->owner_id !== $user->id) {
                 throw new GroupException('GROUP_OWNER_REQUIRED', 'Somente o responsável pode gerar convites.', 403);
             }
+            $this->assertJoiningOpen($group);
             $group->update($this->newInvite());
 
             return $this->payload($group, $user);
         }, 3);
     }
 
-    public function updatePhotoReview(User $user, bool $enabled): array
+    public function updateSettings(User $user, array $settings): array
     {
-        return DB::transaction(function () use ($user, $enabled): array {
+        return DB::transaction(function () use ($user, $settings): array {
             $this->lockUser($user);
             $group = $this->currentGroup($user);
             if (! $group || $group->owner_id !== $user->id) {
-                throw new GroupException('GROUP_OWNER_REQUIRED', 'Somente o líder pode alterar a votação de marcações.', 403);
+                throw new GroupException('GROUP_OWNER_REQUIRED', 'Somente o líder pode alterar as configurações do grupo.', 403);
             }
-            $group->update(['photo_review_enabled' => $enabled]);
+            $group->update(array_intersect_key($settings, array_flip(['photo_review_enabled', 'auto_restart'])));
 
             return $this->payload($group, $user);
         }, 3);
@@ -140,6 +145,19 @@ final class GroupService
                 $group->update(['owner_id' => $nextOwner->user_id, ...$this->newInvite()]);
             }
         }, 3);
+    }
+
+    private function joiningClosed(Group $group): bool
+    {
+        return HydrationChallenge::withTrashed()->where('group_id', $group->id)->where('mode', 'group')
+            ->whereNull('cancelled_at')->where('starts_at', '<=', now())->exists();
+    }
+
+    private function assertJoiningOpen(Group $group): void
+    {
+        if ($this->joiningClosed($group)) {
+            throw new GroupException('GROUP_JOIN_CLOSED', 'As rodadas deste grupo já começaram. Não é possível entrar após o início.');
+        }
     }
 
     private function lockUser(User $user): void
@@ -190,6 +208,8 @@ final class GroupService
             'timezone' => $group->timezone,
             'owner_id' => $group->owner_id,
             'max_members' => 5,
+            'auto_restart' => $group->auto_restart ?? false,
+            'joining_closed' => $this->joiningClosed($group),
             'photo_review_enabled' => $group->photo_review_enabled ?? true,
             'challenge' => $challenges['group'],
             'previous_challenge' => $challenges['group_result'],
