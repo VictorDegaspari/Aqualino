@@ -31,3 +31,21 @@ Backup editável: `design/rive/backups/aqualino_chorando_2026-09-09.rev`.
 Artboard: `Aqualino Feliz - Rosto`. State machine: `Aqualino - Feliz`.
 Usado por `HappyMascot` nos estados `empty` e `happy` da Home, com pausa em segundo plano, fora da tela e com redução de movimento. Em caso de erro, exibe a imagem feliz estática.
 Backup editável: `design/rive/backups/aqualino_feliz_2026-09-09.rev`.
+# Aqualino Strong
+
+`aqualino_strong.riv`: versão vetorial de `strong_aqualino.png`, com faixa turquesa, braços flexionados, sorriso e confetes. Fundo transparente e ciclo de 4 segundos.
+Artboard: `Aqualino Strong - Forca`. State machine: `Aqualino - Strong`.
+`StrongMascot` substitui a imagem forte no estado `boiling` da Home, com pausa fora da tela, em segundo plano e com redução de movimento. Falhas exibem a imagem forte estática.
+Backup: `design/rive/backups/aqualino_strong_2026-09-10.rev`.
+# Aqualino Loading
+
+`aqualino_loading.riv`: personagem completo baseado em `loading_aqualino.png`, com braços simples, pés com brilho, piscadas, flutuação e três bolinhas de espera. Fundo transparente, ciclo de 4 segundos.
+Artboard: `Aqualino Loading`. State machine: `Aqualino - Loading`.
+Usado em `HomeLoading` por `LoadingMascot`, com pausa fora de foco, em segundo plano e com redução de movimento. Falhas usam a imagem original estática.
+Backup: `design/rive/backups/aqualino_loading_2026-09-10.rev`.
+# Fogo do streak
+
+`streak_fire.riv`: chama em três camadas, com tremulação e faíscas em ciclo de 2 segundos.
+Artboard: `Streak - Fogo`. State machine: `Streak - Queimando`.
+Usado em `HydrationFlame` na Home e no perfil quando `totalMl > 0`. Pausa fora da tela, em segundo plano e com redução de movimento. Sem registro de água, mantém o ícone apagado; falhas do Rive usam o ícone estático.
+Backup editável: `design/rive/backups/streak_fire_2026-09-10.rev`.

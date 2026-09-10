@@ -1,10 +1,10 @@
 import React, {memo} from 'react';
-import {Image, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import type {MascotCondition} from '@aqualino/contracts';
 import {tokens} from '@aqualino/design-tokens';
-import {mascotImages} from '../../../assets/mascot/mascotImages';
 import {CryingMascot} from './CryingMascot';
 import {HappyMascot} from './HappyMascot';
+import {StrongMascot} from './StrongMascot';
 
 const labels: Record<MascotCondition, string> = {
   empty: 'Aqualino está pronto para começar',
@@ -28,7 +28,7 @@ export const AqualinoMascot = memo(function AqualinoMascotView({condition, compa
         ) : condition === 'happy' || condition === 'empty' ? (
           <HappyMascot style={[styles.mascot, compact && styles.mascotCompact]} />
         ) : (
-          <Image source={mascotImages[condition]} resizeMode="contain" style={[styles.mascot, compact && styles.mascotCompact]} />
+          <StrongMascot style={[styles.mascot, compact && styles.mascotCompact]} />
         )}
       </View>
       {!compact ? <Text style={styles.label}>{labels[condition]}</Text> : null}

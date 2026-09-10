@@ -1,14 +1,15 @@
 import React from 'react';
-import {Image, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTranslation} from '../../../shared/i18n/useTranslation';
 import {challengeTheme} from './challenge/challengeTheme';
+import {LoadingMascot} from './LoadingMascot';
 
 export function HomeLoading(): React.JSX.Element {
   const {t} = useTranslation();
   return <SafeAreaView style={styles.page}>
     <View accessible accessibilityRole="progressbar" accessibilityLabel={t('Carregando hidratação', 'Loading hydration', 'Cargando hidratación')} accessibilityState={{busy: true}} style={styles.content}>
-      <Image source={require('../../../assets/mascot/static/loading_aqualino.webp')} resizeMode="contain" accessible={false} style={styles.mascot} />
+      <LoadingMascot style={styles.mascot} />
       <Text style={styles.label}>{t('Carregando sua hidratação…', 'Loading your hydration…', 'Cargando tu hidratación…')}</Text>
     </View>
   </SafeAreaView>;
