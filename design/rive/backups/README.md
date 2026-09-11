@@ -14,3 +14,8 @@ Backup exportado após a liberação do plano: `aqualino_professor_2026-09-09.re
 `aqualino_strong_maos_redesenhadas_2026-09-10.rev` redesenha as silhuetas dos punhos com dedos recolhidos e polegares cruzados, preservando os braços ajustados e os pés do professor.
 `aqualino_loading_2026-09-10.rev` inclui o personagem completo de loading, com piscadas e bolinhas de espera, em artboard próprio.
 `aqualino_strong_reflexos_bracos_2026-09-10.rev` adiciona reflexos aos punhos e braços do Strong, acompanhando os grupos animados e preservando as mãos de um dedo.
+`aqualino_professor_strong_olhar_lateral_2026-09-10.rev` acrescenta o olhar lateral suave ao professor e ao Strong, preservando o aceno, a flexão e as piscadas.
+`streak_fire_refinado_2026-09-10.rev` aproxima a chama da referência com contorno arredondado, degradê vermelho/laranja, centro amarelo luminoso e quatro faíscas maiores em ciclos alternados.
+`aqualino_feliz_olhar_lateral_2026-09-10.rev` acrescenta olhadas suaves para os lados ao Aqualino feliz, mantendo piscadas e balanço.
+`aqualino_happy_celebracao_2026-09-10.rev` adiciona a composição de `happy_aqualino.png`: salto, braços erguidos, estrelas nos olhos, nuvens e gotinhas. Artboard `Aqualino Happy - Celebracao`, state machine `Aqualino - Celebracao`.
+`aqualino_happy_perna_atras_2026-09-10.rev` coloca a perna traseira da celebração parcialmente escondida pelo corpo, mais alta e menor para reforçar a profundidade do salto.

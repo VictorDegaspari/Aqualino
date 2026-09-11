@@ -49,3 +49,9 @@ Backup: `design/rive/backups/aqualino_loading_2026-09-10.rev`.
 Artboard: `Streak - Fogo`. State machine: `Streak - Queimando`.
 Usado em `HydrationFlame` na Home e no perfil quando `totalMl > 0`. Pausa fora da tela, em segundo plano e com redução de movimento. Sem registro de água, mantém o ícone apagado; falhas do Rive usam o ícone estático.
 Backup editável: `design/rive/backups/streak_fire_2026-09-10.rev`.
+# Happy — celebração
+
+`aqualino_happy_celebracao.riv`: composição baseada em `happy_aqualino.png`, com personagem pulando, estrelas nos olhos, braços erguidos, nuvens e gotinhas.
+Artboard: `Aqualino Happy - Celebracao`. State machine: `Aqualino - Celebracao`. Ciclo de 4 segundos com salto suave, piscadas e estrelas pulsando.
+Asset preparado para uso; ainda não associado a uma tela. O rosto feliz da Home continua usando seu artboard próprio.
+Backup: `design/rive/backups/aqualino_happy_celebracao_2026-09-10.rev`.
