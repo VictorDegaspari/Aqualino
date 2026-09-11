@@ -1,9 +1,13 @@
 import React from 'react';
 import {act, fireEvent, render, waitFor} from '@testing-library/react-native';
+import {Alert} from 'react-native';
 import {AppError} from '../../../shared/errors/AppError';
 import {WelcomeScreen} from '../presentation/WelcomeScreen';
 
 jest.mock('@react-navigation/native', () => ({useIsFocused: () => true}));
+
+const mockRequestWidgetPin = jest.fn();
+jest.mock('../../widget/application/requestWidgetPin', () => ({requestWidgetPin: () => mockRequestWidgetPin()}));
 
 const mockRestartWelcome = jest.fn();
 const mockCompleteWelcome = jest.fn();
@@ -79,6 +83,7 @@ jest.mock('../../hydration/presentation/HydrationWaterGauge', () => ({
 describe('WelcomeScreen account flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRequestWidgetPin.mockResolvedValue(true);
     mockOnboardingState.hasCompletedWelcome = true;
     mockResumeRememberedAccount.mockResolvedValue(false);
   });
@@ -88,12 +93,12 @@ describe('WelcomeScreen account flow', () => {
 
     expect(view.getByText('Ana')).toBeTruthy();
     expect(view.getByText('ana@example.com')).toBeTruthy();
-    expect(view.queryByText('Etapa 3 de 3')).toBeNull();
+    expect(view.queryByText('Etapa 4 de 4')).toBeNull();
 
     await fireEvent.press(view.getByRole('button', {name: 'Continuar como Ana'}));
 
     expect(view.getByText('FORMULÁRIO DE LOGIN')).toBeTruthy();
-    expect(view.queryByText('Etapa 3 de 3')).toBeNull();
+    expect(view.queryByText('Etapa 4 de 4')).toBeNull();
   });
 
   it('resumes a saved account without asking for a password', async () => {
@@ -147,7 +152,7 @@ describe('WelcomeScreen account flow', () => {
     await fireEvent.press(view.getByText('Adicionar nova conta'));
 
     expect(mockRestartWelcome).toHaveBeenCalledTimes(1);
-    expect(view.getByText('Etapa 1 de 3')).toBeTruthy();
+    expect(view.getByText('Etapa 1 de 4')).toBeTruthy();
     expect(view.getByText('Escolha o idioma do app')).toBeTruthy();
   });
 
@@ -158,30 +163,37 @@ describe('WelcomeScreen account flow', () => {
     await fireEvent.press(view.getByRole('button', {name: 'Criar uma nova conta'}));
 
     expect(mockRestartWelcome).toHaveBeenCalledTimes(1);
-    expect(view.getByText('Etapa 1 de 3')).toBeTruthy();
+    expect(view.getByText('Etapa 1 de 4')).toBeTruthy();
     expect(view.getByText('Escolha o idioma do app')).toBeTruthy();
   });
 
   it('keeps progress and back navigation in sync through registration on first access', async () => {
     mockOnboardingState.hasCompletedWelcome = false;
     const view = await render(<WelcomeScreen />);
+    await fireEvent.press(view.getByTestId('welcome-new-account'));
     expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(1);
-    expect(view.queryByRole('button', {name: 'Voltar'})).toBeNull();
+    expect(view.getByRole('button', {name: 'Voltar'})).toBeTruthy();
 
     await fireEvent.press(view.getByRole('button', {name: 'Continuar'}));
     expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(2);
     await fireEvent.press(view.getByRole('button', {name: 'Continuar'}));
+    expect(view.getByTestId('onboarding-widget')).toBeTruthy();
+    await fireEvent.press(view.getByTestId('onboarding-widget-add'));
+    expect(mockRequestWidgetPin).toHaveBeenCalledTimes(1);
     await fireEvent.press(view.getByText('Criar minha conta'));
 
     expect(view.getByText('FORMULÁRIO DE CADASTRO')).toBeTruthy();
-    expect(view.getByText('Etapa 3 de 3')).toBeTruthy();
-    expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(3);
+    expect(view.getByText('Etapa 4 de 4')).toBeTruthy();
+    expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(4);
 
     await fireEvent.press(view.getByRole('button', {name: 'Voltar'}));
     expect(view.queryByText('FORMULÁRIO DE CADASTRO')).toBeNull();
     expect(view.getByText('Criar minha conta')).toBeTruthy();
-    expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(3);
+    expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(4);
 
+    await fireEvent.press(view.getByRole('button', {name: 'Voltar'}));
+    expect(view.getByTestId('onboarding-widget')).toBeTruthy();
+    expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(3);
     await fireEvent.press(view.getByRole('button', {name: 'Voltar'}));
     expect(view.getByText('Qual é a sua meta diária?')).toBeTruthy();
     expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(2);
@@ -189,12 +201,13 @@ describe('WelcomeScreen account flow', () => {
     await fireEvent.press(view.getByRole('button', {name: 'Voltar'}));
     expect(view.getByText('Escolha o idioma do app')).toBeTruthy();
     expect(view.getByRole('progressbar').props.accessibilityValue.now).toBe(1);
-    expect(view.queryByRole('button', {name: 'Voltar'})).toBeNull();
+    expect(view.getByRole('button', {name: 'Voltar'})).toBeTruthy();
   });
 
   it('returns to the previous step on a right swipe from the left edge', async () => {
     mockOnboardingState.hasCompletedWelcome = false;
     const view = await render(<WelcomeScreen />);
+    await fireEvent.press(view.getByTestId('welcome-new-account'));
 
     await fireEvent.press(view.getByRole('button', {name: 'Continuar'}));
     expect(view.getByText('Qual é a sua meta diária?')).toBeTruthy();
@@ -204,4 +217,49 @@ describe('WelcomeScreen account flow', () => {
 
     expect(view.getByText('Escolha o idioma do app')).toBeTruthy();
   });
+  it('asks first and opens login directly for an existing account', async () => {
+    mockOnboardingState.hasCompletedWelcome = false;
+    const view = await render(<WelcomeScreen />);
+    expect(view.getByText('Você já tem uma conta?')).toBeTruthy();
+    expect(view.queryByRole('progressbar')).toBeNull();
+    await fireEvent.press(view.getByTestId('welcome-existing-account'));
+    expect(view.getByText('FORMULÁRIO DE LOGIN')).toBeTruthy();
+    expect(view.queryByRole('progressbar')).toBeNull();
+    expect(mockSelectDailyGoal).not.toHaveBeenCalled();
+    expect(mockOnboardingState.clearSelectedDailyGoal).toHaveBeenCalledTimes(1);
+    expect(mockRequestWidgetPin).not.toHaveBeenCalled();
+  });
+
+  it('continues after the native instructions on unsupported devices without a separate skip button', async () => {
+    mockOnboardingState.hasCompletedWelcome = false;
+    mockRequestWidgetPin.mockResolvedValue(false);
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    const view = await render(<WelcomeScreen />);
+    await fireEvent.press(view.getByTestId('welcome-new-account'));
+    await fireEvent.press(view.getByRole('button', {name: 'Continuar'}));
+    await fireEvent.press(view.getByRole('button', {name: 'Continuar'}));
+    await fireEvent.press(view.getByTestId('onboarding-widget-add'));
+    expect(alert).toHaveBeenCalled();
+    expect(view.getByTestId('onboarding-widget')).toBeTruthy();
+    expect(view.queryByTestId('onboarding-widget-skip')).toBeNull();
+    await act(() => alert.mock.calls[0][2]![0].onPress?.());
+    expect(view.getByText('Etapa 4 de 4')).toBeTruthy();
+    alert.mockRestore();
+  });
+
+  it('keeps the widget step available when the native request fails', async () => {
+    mockOnboardingState.hasCompletedWelcome = false;
+    mockRequestWidgetPin.mockRejectedValue(new Error('Launcher unavailable'));
+    const view = await render(<WelcomeScreen />);
+    await fireEvent.press(view.getByTestId('welcome-new-account'));
+    await fireEvent.press(view.getByRole('button', {name: 'Continuar'}));
+    await fireEvent.press(view.getByRole('button', {name: 'Continuar'}));
+    await fireEvent.press(view.getByTestId('onboarding-widget-add'));
+    expect(view.getByRole('alert')).toHaveTextContent('Não foi possível abrir o widget. Tente novamente.');
+    expect(view.getByTestId('onboarding-widget-add')).toBeEnabled();
+    mockRequestWidgetPin.mockResolvedValue(true);
+    await fireEvent.press(view.getByTestId('onboarding-widget-add'));
+    expect(view.getByText('Etapa 4 de 4')).toBeTruthy();
+  });
+
 });

@@ -15,6 +15,7 @@ export function groupErrorMessage(error: unknown, copy: GroupsCopy): string {
     case 'NETWORK_UNAVAILABLE':
     case 'REQUEST_TIMEOUT': return copy.networkError;
     case 'GROUP_INVITE_INVALID': return copy.invalidInvite;
+    case 'GROUP_JOIN_CLOSED': return copy.joinClosed;
     case 'GROUP_FULL': return copy.full;
     case 'GROUP_ALREADY_JOINED': return copy.alreadyJoined;
     case 'GROUP_OWNER_REQUIRED': return copy.ownerRequired;
@@ -23,13 +24,13 @@ export function groupErrorMessage(error: unknown, copy: GroupsCopy): string {
   }
 }
 
-export function useGroups(userId: string | undefined, copy: GroupsCopy) {
+export function useGroups(userId: string | undefined, copy: GroupsCopy, active = true) {
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const query = useQuery({
     queryKey: groupKey(userId),
     queryFn: ({signal}) => groupsRepository.current(signal),
-    enabled: Boolean(userId) && !busy,
+    enabled: Boolean(userId) && active && !busy,
     networkMode: 'always',
     refetchInterval: 30_000,
   });
@@ -79,6 +80,7 @@ export function useGroups(userId: string | undefined, copy: GroupsCopy) {
     preview: async (code: string): Promise<GroupInvitePreview | null> => (await run(() => groupsRepository.preview(code), false))?.value ?? null,
     accept: async (code: string) => Boolean(await run(() => groupsRepository.accept(code), true)),
     renewInvite: async () => Boolean(await run(() => groupsRepository.renewInvite(), true)),
+    updateAutoRestart: async (enabled: boolean) => Boolean(await run(() => groupsRepository.updateAutoRestart(enabled), true)),
     updatePhotoReview: async (enabled: boolean) => Boolean(await run(() => groupsRepository.updatePhotoReview(enabled), true)),
     leave: async () => Boolean(await run(() => groupsRepository.leave(), true)),
   };

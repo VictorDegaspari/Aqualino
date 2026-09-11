@@ -41,7 +41,7 @@ class GroupController extends Controller
     {
         $data = $request->validated();
 
-        return response()->json(['data' => $groups->updatePhotoReview($request->user(), (bool) $data['photo_review_enabled'])]);
+        return response()->json(['data' => $groups->updateSettings($request->user(), $data)]);
     }
 
     public function leave(Request $request, GroupService $groups): JsonResponse

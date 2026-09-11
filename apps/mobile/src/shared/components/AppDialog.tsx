@@ -1,4 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
+import {RaisedButton} from './RaisedButton';
 import {AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Animated, {useAnimatedStyle, useReducedMotion, useSharedValue, withTiming} from 'react-native-reanimated';
@@ -6,7 +7,6 @@ import {challengeTheme} from '../../features/home/presentation/challenge/challen
 import {AqualinoIcon, type AqualinoIconName} from './AqualinoIcon';
 import {AppModal} from './AppModal';
 import {BellIcon} from './BellIcon';
-import {LoadingWaterDrop} from './LoadingWaterDrop';
 import {useTranslation} from '../i18n/useTranslation';
 
 interface Props {
@@ -39,11 +39,15 @@ export function AppDialog({title, message, icon = 'alert', illustration, confirm
   const close = () => {if (!submitting.current) onClose();};
   const confirm = async () => {
     if (submitting.current) return;
+    if (!onConfirm) {
+      onClose();
+      return;
+    }
     submitting.current = true;
     setBusy(true);
     setActionError(undefined);
     try {
-      if (await onConfirm?.() !== false) onClose();
+      if (await onConfirm() !== false) onClose();
     } catch (reason) {
       setActionError(reason instanceof Error ? reason.message : t('Não foi possível concluir. Tente novamente.', 'Could not complete this action. Try again.', 'No se pudo completar la acción. Inténtalo de nuevo.'));
     } finally {
@@ -66,16 +70,16 @@ export function AppDialog({title, message, icon = 'alert', illustration, confirm
             <Text accessibilityRole="header" style={styles.title}>{title}</Text>
             <Text style={styles.message}>{message}</Text>
             {actionError || error ? <Text accessibilityRole="alert" style={styles.error}>{actionError ?? error}</Text> : null}
-            <Pressable
-              accessibilityRole="button" accessibilityLabel={confirmLabel} accessibilityState={{disabled: busy, busy}}
-              disabled={busy} onPress={() => {confirm();}}
-              style={({pressed}) => [styles.button, destructive && styles.dangerButton, pressed && styles.pressed, busy && styles.busy]}>
-              {busy ? <LoadingWaterDrop size={23} /> : null}
-              <Text style={styles.buttonLabel}>{confirmLabel}</Text>
-            </Pressable>
-            {cancelLabel ? <Pressable accessibilityRole="button" disabled={busy} onPress={close} style={({pressed}) => [styles.button, styles.cancelButton, pressed && styles.pressed, busy && styles.busy]}>
-              <Text style={styles.cancelLabel}>{cancelLabel}</Text>
-            </Pressable> : null}
+            <RaisedButton
+              accessibilityState={{disabled: busy, busy}}
+              disabled={busy}
+              onPress={() => {confirm();}}
+              label={confirmLabel}
+              tone={destructive ? 'danger' : 'aqua'}
+              style={buttonLayout.full}
+              loading={busy}
+            />
+            {cancelLabel ? <RaisedButton disabled={busy} onPress={close} label={cancelLabel} variant="outlined" tone="neutral" style={buttonLayout.full} /> : null}
           </ScrollView>
         </Animated.View>
       </SafeAreaView>
@@ -92,10 +96,6 @@ const styles = StyleSheet.create({
   title: {fontSize: 23, lineHeight: 30, fontWeight: '900', color: challengeTheme.colors.text, textAlign: 'center'},
   message: {fontSize: 15, lineHeight: 22, color: challengeTheme.colors.muted, textAlign: 'center'},
   error: {fontSize: 14, lineHeight: 20, color: challengeTheme.colors.danger, textAlign: 'center'},
-  button: {width: '100%', minHeight: 52, paddingHorizontal: 18, paddingVertical: 14, borderRadius: 26, backgroundColor: challengeTheme.colors.cyanStrong, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10},
-  dangerButton: {backgroundColor: challengeTheme.colors.danger},
-  buttonLabel: {fontSize: 15, lineHeight: 21, fontWeight: '900', textAlign: 'center', color: challengeTheme.colors.backgroundDeep},
-  cancelButton: {backgroundColor: challengeTheme.colors.panelSoft, borderWidth: 1, borderColor: challengeTheme.colors.border},
-  cancelLabel: {fontSize: 15, lineHeight: 21, fontWeight: '800', color: challengeTheme.colors.text},
-  pressed: {opacity: 0.8}, busy: {opacity: 0.6},
 });
+
+const buttonLayout = StyleSheet.create({full: {width: '100%' as const}});

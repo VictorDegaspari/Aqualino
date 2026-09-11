@@ -11,10 +11,12 @@ interface PersistedState {
   pendingReminders: Record<string, string>;
   seen: Record<string, AchievementCode[]>;
   pendingAcknowledgements: Record<string, AchievementCode[]>;
+  profileHighlights: Record<string, AchievementCode[]>;
 }
 interface LocalState extends PersistedState {
   detailOpen: boolean;
   setDetailOpen: (open: boolean) => void;
+  saveProfileHighlights: (userId: string, codes: AchievementCode[]) => boolean;
   markReminder: (userId: string) => void;
   reminderSynced: (userId: string) => void;
   dismiss: (userId: string, code: AchievementCode) => void;
@@ -31,26 +33,33 @@ function readState(): PersistedState {
     return {
       pendingReminders: Object.fromEntries(Object.entries(value.pendingReminders ?? {}).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && Number.isFinite(Date.parse(entry[1])))),
       seen: lists(value.seen), pendingAcknowledgements: lists(value.pendingAcknowledgements),
+      profileHighlights: Object.fromEntries(Object.entries(lists(value.profileHighlights)).map(([userId, codes]) => [userId, [...new Set(codes)].slice(0, 4)])),
     };
   } catch {
-    return {pendingReminders: {}, seen: {}, pendingAcknowledgements: {}};
+    return {pendingReminders: {}, seen: {}, pendingAcknowledgements: {}, profileHighlights: {}};
   }
 }
 
 export const useAchievementLocalStore = create<LocalState>((set, get) => {
-  const update = (patch: Partial<PersistedState>) => {
+  const update = (patch: Partial<PersistedState>, requirePersistence = false): boolean => {
     const next = {...get(), ...patch};
-    set(patch);
     try {
-      storage.set(stateKey, JSON.stringify({pendingReminders: next.pendingReminders, seen: next.seen, pendingAcknowledgements: next.pendingAcknowledgements}));
+      storage.set(stateKey, JSON.stringify({pendingReminders: next.pendingReminders, seen: next.seen, pendingAcknowledgements: next.pendingAcknowledgements, profileHighlights: next.profileHighlights}));
     } catch {
       // A local storage issue must not turn a successfully scheduled reminder into a failed action.
+      if (requirePersistence) return false;
     }
+    set(patch);
+    return true;
   };
   return {
     ...readState(),
     detailOpen: false,
     setDetailOpen: detailOpen => set({detailOpen}),
+    saveProfileHighlights(userId, codes) {
+      if (!userId || codes.length > 4 || codes.some(code => !knownCodes.has(code))) return false;
+      return update({profileHighlights: {...get().profileHighlights, [userId]: [...new Set(codes)]}}, true);
+    },
     markReminder(userId) {
       if (get().pendingReminders[userId] || readAchievementSnapshot(userId)?.items.some(item => item.code === 'first_reminder' && item.unlocked_at)) return;
       update({pendingReminders: {...get().pendingReminders, [userId]: new Date().toISOString()}});
@@ -81,7 +90,7 @@ export function readAchievementSnapshot(userId: string): AchievementCollection |
     if (new Set(value.items.map((item: AchievementCollection['items'][number]) => item.code)).size !== value.items.length) return undefined;
     const saved = new Map<AchievementCode, AchievementCollection['items'][number]>(value.items.map((item: AchievementCollection['items'][number]) => [item.code, item]));
     const items = emptyAchievementCollection.items.map(item => saved.get(item.code) ?? item);
-    return {items, total: items.length, unlocked_count: items.filter(item => item.unlocked_at).length};
+    return {items, total: items.length, unlocked_count: items.filter(item => item.unlocked_at).length, ...(value.profile_highlights === null ? {profile_highlights: null} : Array.isArray(value.profile_highlights) ? {profile_highlights: [...new Set<AchievementCode>(value.profile_highlights.filter((code: AchievementCode) => knownCodes.has(code)))].slice(0, 4)} : {})};
   } catch {
     return undefined;
   }

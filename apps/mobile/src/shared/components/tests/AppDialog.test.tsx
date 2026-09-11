@@ -17,6 +17,15 @@ function Confirmation({onConfirm}: {onConfirm: () => Promise<void | boolean>}) {
 
 afterEach(() => jest.restoreAllMocks());
 
+test('closes an informational dialog immediately without starting a confirmation', async () => {
+  const onClose = jest.fn();
+  const view = await render(<AppDialog title="Regras e prêmios" message="Regras do grupo." confirmLabel="Entendi" onClose={onClose} />, {wrapper});
+  await fireEvent.press(view.getByRole('button', {name: 'Entendi'}));
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(view.queryByTestId('button-loading-spinner', {includeHiddenElements: true})).toBeNull();
+  expect(view.getByRole('button', {name: 'Entendi'}).props.accessibilityState.busy).toBe(false);
+});
+
 test('hides the underlying screen from accessibility and cancels without running the action', async () => {
   const onConfirm = jest.fn();
   const view = await render(<Confirmation onConfirm={onConfirm} />, {wrapper});
@@ -36,6 +45,7 @@ test('blocks repeated confirmation, backdrop and hardware Back until the action 
   await fireEvent.press(view.getByRole('button', {name: 'Abrir confirmação'}));
   await fireEvent.press(view.getByRole('button', {name: 'Remover'}));
   expect(view.getByRole('button', {name: 'Remover'})).toBeDisabled();
+  expect(view.getByTestId('button-loading-spinner', {includeHiddenElements: true})).toBeTruthy();
   expect(view.getByRole('button', {name: 'Manter'})).toBeDisabled();
   await fireEvent.press(view.getByRole('button', {name: 'Remover'}));
   await fireEvent.press(view.getByTestId('dismiss-app-dialog', {includeHiddenElements: true}));

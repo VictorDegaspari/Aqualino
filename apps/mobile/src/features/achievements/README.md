@@ -1,6 +1,6 @@
 # Conquistas do perfil
 
-O perfil apresenta quatro destaques. As conquistas desbloqueadas vêm primeiro, da maior prioridade para a menor; vagas restantes mostram os primeiros marcos ainda disponíveis. Tocar no painel abre a coleção completa, com filtros, requisitos, progresso e data do desbloqueio.
+O perfil permite escolher de zero a quatro conquistas desbloqueadas em **Editar destaques**. Salvar confirma a escolha na API e mantém uma cópia por conta para uso offline; cancelar descarta a edição. Sem escolha personalizada, as conquistas desbloqueadas vêm primeiro, da maior prioridade para a menor; vagas restantes mostram os primeiros marcos ainda disponíveis. Tocar no painel abre a coleção completa, com filtros, requisitos, progresso e data do desbloqueio.
 
 | Código | Conquista | Critério | Prioridade |
 | --- | --- | --- | --- |
@@ -17,6 +17,7 @@ O perfil apresenta quatro destaques. As conquistas desbloqueadas vêm primeiro, 
 
 ## Persistência e eventos
 
+- `PUT /achievements/highlights` valida desbloqueio, unicidade e limite de quatro códigos. A lista é salva em `user_profiles.achievement_highlights`: `null` mantém a escolha automática e `[]` oculta os destaques. Preferências locais anteriores migram ao reconectar. Perfis visitados usam a seleção do servidor.
 - A API mantém `user_achievements` com unicidade por perfil e código. As conquistas são permanentes, mesmo após sair de uma equipe ou perder uma sequência. A exclusão da conta remove suas conquistas.
 - Hidratação e grupos liberam conquistas junto ao fluxo correspondente. `GET /achievements` também reconhece marcos já presentes no histórico, sem gerar XP adicional.
 - As sequências usam o cálculo existente da aplicação, incluindo proteções de sequência válidas. As metas usam os dias civis registrados pelo servidor.
@@ -34,7 +35,7 @@ A coleção usa uma rota transparente sobre o perfil. O gesto horizontal movimen
 
 ## Arte
 
-Dez PNGs com transparência real em `../../assets/achievements/`, gerados com a ferramenta integrada de imagens. O [conjunto de prompts](../../assets/achievements/prompts.json) registra as instruções usadas; `achievementImages.ts` associa cada arte ao código. Textos são renderizados pelo aplicativo em português e inglês, sem depender de letras nas imagens.
+Seis WebPs transparentes de até 768 × 768 em `../../assets/achievements/characters/`, derivados das ilustrações geradas com a ferramenta integrada de imagens. O [conjunto de prompts](../../assets/achievements/characters/prompts.json) registra as instruções usadas; `achievementImages.ts` associa cada arte ao código. Textos são renderizados pelo aplicativo em português, inglês e espanhol, sem depender de letras nas imagens.
 
 ## Validação
 

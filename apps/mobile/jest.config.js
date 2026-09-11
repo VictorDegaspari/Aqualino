@@ -11,6 +11,6 @@ module.exports = {
     '^react-native-worklets$': '<rootDir>/test/mocks/reactNativeWorklets.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|react-native-gesture-handler|react-native-reanimated|react-native-worklets)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation/routers|react-native-gesture-handler|react-native-reanimated|react-native-worklets)/)',
   ],
 };

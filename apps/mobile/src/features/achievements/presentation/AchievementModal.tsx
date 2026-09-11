@@ -6,9 +6,9 @@ import {scheduleOnRN} from 'react-native-worklets';
 import type {Achievement} from '@aqualino/contracts';
 import type {AppLocale} from '../../../shared/i18n/appLocale';
 import {haptics} from '../../../shared/device/haptics';
-import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import {AchievementMedal} from './AchievementMedal';
 import type {AchievementCopy} from './achievementCopy';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
 import {AppModal} from '../../../shared/components/AppModal';
 
 export function AchievementModal({achievement, copy, locale, celebration = false, onClose}: {
@@ -68,9 +68,12 @@ export function AchievementModal({achievement, copy, locale, celebration = false
                   </View>
                 </View>
               )}
-              <Pressable accessibilityRole="button" onPress={close} style={({pressed}) => [styles.button, pressed && styles.pressed]}>
-                <Text style={styles.buttonLabel}>{celebration ? copy.continue : copy.close}</Text>
-              </Pressable>
+              <RaisedButton
+                testID="achievement-modal-confirm"
+                label={celebration ? copy.continue : copy.close}
+                onPress={close}
+                style={styles.button}
+              />
             </Animated.View>
           </ScrollView>
         </SafeAreaView>
@@ -80,20 +83,19 @@ export function AchievementModal({achievement, copy, locale, celebration = false
 }
 
 const styles = StyleSheet.create({
-  modal: {flex: 1}, backdrop: {backgroundColor: 'rgba(0, 9, 18, 0.9)'}, safeArea: {flex: 1},
+  modal: {flex: 1}, backdrop: {backgroundColor: 'rgba(15, 37, 48, 0.65)'}, safeArea: {flex: 1},
   center: {flexGrow: 1, justifyContent: 'center', padding: 22},
-  card: {width: '100%', maxWidth: 440, alignSelf: 'center', alignItems: 'center', gap: 12, borderRadius: 30, padding: 24, paddingTop: 42, backgroundColor: '#102E3B', borderWidth: 1, borderColor: '#55868B'},
+  card: {width: '100%', maxWidth: 440, alignSelf: 'center', alignItems: 'center', gap: 12, borderRadius: 30, padding: 24, paddingTop: 42, backgroundColor: '#FFFFFF', borderWidth: 2, borderBottomWidth: 5, borderColor: '#E0EDF0'},
   close: {position: 'absolute', top: 2, right: 3, width: 48, height: 48, alignItems: 'center', justifyContent: 'center'},
-  closeText: {fontSize: 30, color: challengeTheme.colors.muted},
-  eyebrow: {fontSize: 11, fontWeight: '900', letterSpacing: 2, color: '#E7C478', textAlign: 'center'},
+  closeText: {fontSize: 30, color: '#6B7C86'},
+  eyebrow: {fontSize: 11, fontWeight: '900', letterSpacing: 2, color: '#A96816', textAlign: 'center'},
   medalStage: {alignItems: 'center', justifyContent: 'center', marginVertical: 4},
-  halo: {position: 'absolute', width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: 'rgba(145,200,209,0.25)', backgroundColor: 'rgba(145,200,209,0.06)'},
-  congratulations: {fontSize: 13, fontWeight: '800', color: challengeTheme.colors.cyanStrong},
-  title: {fontSize: 27, lineHeight: 34, fontWeight: '900', color: challengeTheme.colors.text, textAlign: 'center'},
-  description: {fontSize: 15, lineHeight: 22, textAlign: 'center', color: challengeTheme.colors.muted},
-  caption: {fontSize: 12, lineHeight: 18, textAlign: 'center', color: challengeTheme.colors.muted},
-  progressPanel: {width: '100%', gap: 9}, track: {height: 7, width: '100%', borderRadius: 4, overflow: 'hidden', backgroundColor: challengeTheme.colors.backgroundDeep},
-  fill: {height: '100%', backgroundColor: challengeTheme.colors.cyanStrong, borderRadius: 4},
-  button: {width: '100%', minHeight: 52, marginTop: 8, borderRadius: 26, padding: 14, backgroundColor: challengeTheme.colors.cyanStrong, alignItems: 'center', justifyContent: 'center'},
-  buttonLabel: {fontSize: 16, fontWeight: '900', color: challengeTheme.colors.backgroundDeep}, pressed: {opacity: 0.8},
+  halo: {position: 'absolute', width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: '#D9F4F7', backgroundColor: '#F0FBFC'},
+  congratulations: {fontSize: 13, fontWeight: '800', color: '#009EBB'},
+  title: {fontSize: 27, lineHeight: 34, fontWeight: '900', color: '#394D59', textAlign: 'center'},
+  description: {fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#6B7C86'},
+  caption: {fontSize: 12, lineHeight: 18, textAlign: 'center', color: '#6B7C86'},
+  progressPanel: {width: '100%', gap: 9}, track: {height: 7, width: '100%', borderRadius: 4, overflow: 'hidden', backgroundColor: '#E7F3F5'},
+  fill: {height: '100%', backgroundColor: '#009EBB', borderRadius: 4},
+  button: {width: '100%', marginTop: 8},
 });

@@ -1,4 +1,5 @@
 import {useTranslation} from '../../../shared/i18n/useTranslation';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
 import type {Inventory, InventoryItem, InventoryItemCode} from '@aqualino/contracts';
 import React, {useState} from 'react';
 import {Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
@@ -108,9 +109,7 @@ export function InventoryView(props: Props): React.JSX.Element {
           ) : props.error && !props.inventory ? (
             <View style={styles.center}>
               <Text accessibilityRole="alert" style={styles.error}>{props.error}</Text>
-              <Pressable accessibilityRole="button" onPress={props.onRetry} style={({pressed}) => [styles.retryButton, pressed && styles.buttonPressed]}>
-                <Text style={styles.retryLabel}>{t("Tentar novamente", "Try again", "Intentar de nuevo")}</Text>
-              </Pressable>
+              <RaisedButton onPress={props.onRetry} label={t("Tentar novamente", "Try again", "Intentar de nuevo")} variant="outlined" tone="aqua" />
             </View>
           ) : <>
             {props.inventory?.usage.blocked_by_group_challenge ? (
@@ -232,28 +231,22 @@ function InventoryItemCard(props: ItemCardProps): React.JSX.Element {
                 {props.freezeState?.status === 'suspended' ? t("Proteção suspensa durante a batalha", "Protection suspended during the challenge", "Protección suspendida durante el desafío") : t("Proteção ativa", "Protection active", "Protección activa")}
               </Text>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{disabled: props.actionInProgress, busy: props.actionInProgress}}
-              disabled={props.actionInProgress}
+            <RaisedButton
+              label={t("Cancelar proteção", "Cancel protection", "Cancelar protección")}
+              variant="outlined"
+              tone="neutral"
+              loading={props.actionInProgress}
               onPress={() => props.onReleaseFreeze(props.freezeState?.id ?? '')}
-              style={({pressed}) => [styles.secondaryButton, pressed && !props.actionInProgress && styles.buttonPressed]}>
-              {props.actionInProgress
-                ? <LoadingWaterDrop size={24} />
-                : <Text style={styles.secondaryLabel}>{t("Cancelar proteção", "Cancel protection", "Cancelar protección")}</Text>}
-            </Pressable>
+            />
           </>
         ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{disabled: actionDisabled, busy: props.actionInProgress}}
+          <RaisedButton
+            label={item.code === 'streak_freeze' ? t("Ativar proteção", "Activate protection", "Activar protección") : t("Reacender streak", "Revive streak", "Recuperar racha")}
+            tone={item.code === 'streak_freeze' ? 'aqua' : 'gold'}
             disabled={actionDisabled}
+            loading={props.actionInProgress}
             onPress={item.code === 'streak_freeze' ? props.onActivateFreeze : props.onReviveStreak}
-            style={({pressed}) => [styles.actionButton, actionDisabled && styles.actionButtonDisabled, pressed && !actionDisabled && styles.buttonPressed]}>
-            {props.actionInProgress
-              ? <LoadingWaterDrop size={24} />
-              : <Text style={styles.actionLabel}>{item.code === 'streak_freeze' ? t("Ativar proteção", "Activate protection", "Activar protección") : t("Reacender streak", "Revive streak", "Recuperar racha")}</Text>}
-          </Pressable>
+          />
         )}
       </View>
     </View>
@@ -320,8 +313,6 @@ const styles = StyleSheet.create({
   categoryLabel: {fontSize: 14, fontWeight: '800', color: challengeTheme.colors.muted},
   categoryLabelSelected: {color: challengeTheme.colors.backgroundDeep},
   error: {maxWidth: 300, color: challengeTheme.colors.danger, textAlign: 'center', fontSize: 15, lineHeight: 21},
-  retryButton: {minHeight: 50, justifyContent: 'center', paddingHorizontal: 22, borderRadius: challengeTheme.radius.pill, backgroundColor: challengeTheme.colors.cyanStrong},
-  retryLabel: {color: challengeTheme.colors.backgroundDeep, fontSize: 15, fontWeight: '900'},
   hero: {flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 2},
   mascotOrb: {width: 79, height: 79, borderRadius: 40, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(126, 246, 255, 0.66)', backgroundColor: 'rgba(4, 99, 143, 0.53)', shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.45, shadowRadius: 14, shadowOffset: {width: 0, height: 3}, elevation: 8},
   mascot: {width: 80, height: 70},
@@ -358,11 +349,6 @@ const styles = StyleSheet.create({
   action: {gap: 8, marginTop: 1},
   activeRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 22},
   activeState: {color: challengeTheme.colors.cyanStrong, fontSize: 12, lineHeight: 17, fontWeight: '900'},
-  actionButton: {minHeight: 47, alignItems: 'center', justifyContent: 'center', borderRadius: challengeTheme.radius.pill, backgroundColor: challengeTheme.colors.cyanStrong, shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.26, shadowRadius: 8, shadowOffset: {width: 0, height: 3}, elevation: 4},
-  actionButtonDisabled: {opacity: 0.38, shadowOpacity: 0},
-  actionLabel: {color: challengeTheme.colors.backgroundDeep, fontSize: 14, lineHeight: 19, fontWeight: '900'},
-  secondaryButton: {minHeight: 45, alignItems: 'center', justifyContent: 'center', borderRadius: challengeTheme.radius.pill, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: 'rgba(0, 28, 60, 0.68)'},
-  secondaryLabel: {color: challengeTheme.colors.cyanStrong, fontSize: 13, lineHeight: 18, fontWeight: '900'},
   storeSection: {gap: 13, marginTop: 8, padding: 17, borderRadius: challengeTheme.radius.panel, borderWidth: 1, borderColor: 'rgba(27, 102, 143, 0.82)', backgroundColor: 'rgba(0, 20, 45, 0.91)'},
   storeHeading: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12},
   storeHeadingCopy: {flex: 1},

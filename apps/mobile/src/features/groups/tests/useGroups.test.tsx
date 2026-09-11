@@ -8,6 +8,7 @@ import {groupsCopy} from '../presentation/groupsCopy';
 import {groupKey, useGroups} from '../presentation/useGroups';
 
 let mockUserId = 'ana';
+let mockActive = true;
 jest.mock('../../auth/application/sessionStore', () => ({
   useSessionStore: {getState: () => ({user: {id: mockUserId}})},
 }));
@@ -26,6 +27,7 @@ const clients: QueryClient[] = [];
 beforeEach(() => {
   jest.resetAllMocks();
   mockUserId = 'ana';
+  mockActive = true;
   repository.current.mockResolvedValue(null);
 });
 afterEach(() => clients.splice(0).forEach(client => client.clear()));
@@ -34,7 +36,7 @@ async function setup() {
   const client = new QueryClient({defaultOptions: {queries: {retry: false, gcTime: Infinity, staleTime: Infinity}}});
   clients.push(client);
   const wrapper = ({children}: React.PropsWithChildren) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  const hook = await renderHook(() => useGroups(mockUserId, groupsCopy['pt-BR']), {wrapper});
+  const hook = await renderHook(() => useGroups(mockUserId, groupsCopy['pt-BR'], mockActive), {wrapper});
   await waitFor(() => expect(hook.result.current.loading).toBe(false));
   return {...hook, client};
 }
@@ -97,4 +99,22 @@ test('recovers a previously successful creation after a lost response', async ()
   repository.current.mockResolvedValue(group);
   await act(async () => {await result.current.create('Maré de amigos');});
   await waitFor(() => expect(result.current.group).toEqual(group));
+});
+
+
+test('keeps cached members while inactive and refreshes invalidated data on return', async () => {
+  repository.current.mockResolvedValue(group);
+  const {result, client, rerender} = await setup();
+  expect(result.current.group).toEqual(group);
+  mockActive = false;
+  await rerender({});
+  repository.current.mockClear();
+  await act(async () => {await client.invalidateQueries({queryKey: groupKey('ana')});});
+  expect(repository.current).not.toHaveBeenCalled();
+  expect(result.current.group).toEqual(group);
+  repository.current.mockResolvedValue({...group, name: 'Novo nome'});
+  mockActive = true;
+  await rerender({});
+  await waitFor(() => expect(result.current.group?.name).toBe('Novo nome'));
+  expect(repository.current).toHaveBeenCalledTimes(1);
 });

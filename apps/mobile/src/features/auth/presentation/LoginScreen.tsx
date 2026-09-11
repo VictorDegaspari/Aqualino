@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
-import {Pressable, StyleSheet, Text} from 'react-native';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
+import {StyleSheet, Text} from 'react-native';
 import {AppError} from '../../../shared/errors/AppError';
 import {appCopy} from '../../../shared/i18n/appLocale';
 import {typography} from '../../../shared/theme/typography';
@@ -69,14 +70,12 @@ export function LoginForm({initialEmail = '', onAuthenticated, onCreateAccount, 
         autoComplete="current-password"
       />
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-      {onForgotPassword ? <SecurityLink label={accountSecurityCopy[locale].forgotLink}
+      {onForgotPassword ? <SecurityLink variant="text" label={accountSecurityCopy[locale].forgotLink}
         onPress={() => onForgotPassword(email.trim().toLowerCase())} disabled={loading} /> : null}
       <AuthButton testID="login-submit" label={copy.signIn} onPress={submit} loading={loading} disabled={!email || !password} />
 
       {onCreateAccount ? (
-        <Pressable accessibilityRole="button" onPress={onCreateAccount} style={({pressed}) => [styles.linkButton, pressed && styles.linkPressed]}>
-          <Text style={styles.link}>{copy.noAccount}</Text>
-        </Pressable>
+        <RaisedButton onPress={onCreateAccount} label={copy.noAccount} variant="outlined" tone="aqua" />
       ) : null}
     </>
   );
@@ -84,7 +83,4 @@ export function LoginForm({initialEmail = '', onAuthenticated, onCreateAccount, 
 
 const styles = StyleSheet.create({
   error: {fontFamily: typography.family, color: challengeTheme.colors.danger, textAlign: 'center', fontWeight: '700'},
-  linkButton: {minHeight: 45, alignItems: 'center', justifyContent: 'center'},
-  link: {fontFamily: typography.family, fontSize: 14, lineHeight: 19, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
-  linkPressed: {opacity: 0.75},
 });

@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
+import {StyleSheet, Text, View} from 'react-native';
 import {AppSwitch} from '../../../shared/components/AppSwitch';
 import {AppError} from '../../../shared/errors/AppError';
 import {appCopy} from '../../../shared/i18n/appLocale';
@@ -143,9 +144,7 @@ export function RegisterForm({onAuthenticated, onLogin}: RegisterFormProps): Rea
         disabled={!displayName || !canCheckUsername || !email || password.length < 8 || !terms || usernameStatus === 'checking' || usernameStatus === 'unavailable'}
       />
       {onLogin ? (
-        <Pressable accessibilityRole="button" onPress={onLogin} style={({pressed}) => [styles.linkButton, pressed && styles.linkPressed]}>
-          <Text style={styles.link}>{copy.signIn}</Text>
-        </Pressable>
+        <RaisedButton onPress={onLogin} label={copy.signIn} variant="outlined" tone="aqua" />
       ) : null}
     </>
   );
@@ -158,7 +157,4 @@ const styles = StyleSheet.create({
   usernameChecking: {fontFamily: typography.family, marginTop: -7, fontSize: 12, lineHeight: 17, color: challengeTheme.colors.muted},
   usernameAvailable: {fontFamily: typography.family, marginTop: -7, fontSize: 12, lineHeight: 17, color: '#8EE6C1', fontWeight: '700'},
   usernameUnavailable: {fontFamily: typography.family, marginTop: -7, fontSize: 12, lineHeight: 17, color: challengeTheme.colors.danger, fontWeight: '700'},
-  linkButton: {minHeight: 45, alignItems: 'center', justifyContent: 'center'},
-  link: {fontFamily: typography.family, fontSize: 14, lineHeight: 19, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
-  linkPressed: {opacity: 0.75},
 });

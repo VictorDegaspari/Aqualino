@@ -7,8 +7,8 @@ import {GroupChallengePanel} from '../presentation/challenge/GroupChallengePanel
 import {GroupChallengeTrophy} from '../presentation/challenge/GroupChallengeTrophy';
 
 const rules: GroupChallengeRules = {
-  version: 'group-v1', ranking: 'competition', daily_points_cap: 100, total_points_cap: 700,
-  points_decimals: 2, goal_policy: 'frozen_at_start', minimum_reward_points: 0.01, sync_grace_minutes: 15,
+  version: 'group-v3', ranking: 'competition', daily_points_cap: 100, total_points_cap: 700,
+  points_decimals: 2, goal_policy: 'shared_daily_goal', daily_goal_ml: 2000, minimum_reward_points: 0.01, sync_grace_minutes: 15,
   rewards: [{type: 'xp', probability: 70, amount: 100}, {type: 'streak_freeze', probability: 20, amount: 1}, {type: 'streak_revive', probability: 10, amount: 1}],
 };
 const challenge: HydrationChallenge = {
@@ -42,10 +42,13 @@ test('explains the published probabilities and tie rules before starting a chall
   expect(view.queryByText('Placar do grupo')).toBeNull();
   await fireEvent.press(view.getByRole('button', {name: 'Regras e prêmios'}));
   expect(view.getByText(/1º, 1º, 3º/)).toBeTruthy();
+  expect(view.getByText(/2000 ml para todos, independentemente da meta pessoal/)).toBeTruthy();
+  expect(view.getByText(/Só é possível entrar no grupo antes do início da primeira rodada/)).toBeTruthy();
   expect(view.getByText(/70%: \+100 XP/)).toBeTruthy();
   expect(view.getByText(/20%: 1 poção de congelamento/)).toBeTruthy();
   expect(view.getByText(/10%: 1 poção de reacender/)).toBeTruthy();
-  expect(view.getByText(/15 minutos/)).toBeTruthy();
+  expect(view.getByText(/24 horas após registrar/)).toBeTruthy();
+  expect(view.getByText(/antes da meia-noite no fuso da equipe/)).toBeTruthy();
 });
 
 test('keeps a confirmed reward accessible during the next challenge without offering another draw', async () => {

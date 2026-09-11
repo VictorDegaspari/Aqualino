@@ -13,6 +13,7 @@ import {hydrationService} from '../application/hydrationService';
 import {hydrationHomeAccountKey} from '../presentation/useHydrationHome';
 import {QuickHydrationScreen} from '../presentation/QuickHydrationScreen';
 
+
 const hydrationHomeKey = hydrationHomeAccountKey('ana');
 const mockPreferences = {lastAmountMl: 300, selectAmount: jest.fn()};
 const mockApplyGamification = jest.fn();
@@ -109,6 +110,7 @@ test('updates the Home drop before returning and prevents repeated taps during s
   await waitFor(() => expect(service.record).toHaveBeenCalledTimes(1));
   expect(view.queryByText('Registrando 300 ml…')).toBeNull();
   expect(view.queryByRole('progressbar')).toBeNull();
+  expect(view.queryByTestId('button-loading-spinner', {includeHiddenElements: true})).toBeNull();
   await fireEvent.press(view.getByRole('button', {name: 'Registrar 500 ml de água'}));
   expect(service.record).toHaveBeenCalledTimes(1);
   expect(navigation.popTo).not.toHaveBeenCalled();

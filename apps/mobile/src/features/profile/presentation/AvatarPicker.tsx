@@ -1,4 +1,5 @@
 import {useTranslation} from '../../../shared/i18n/useTranslation';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
 import React, {memo, useCallback} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {avatarIds, getAvatarSource, type AvatarId} from '../../../shared/avatars/avatarOptions';
@@ -26,13 +27,14 @@ export const AvatarPicker = memo(function AvatarPickerView({
           <Text style={styles.title}>{t("Escolha seu avatar", "Choose your avatar", "Elige tu avatar")}</Text>
           <Text style={styles.subtitle}>{t("A escolha é salva automaticamente e aparece no placar do grupo.", "Your choice is saved automatically and shown in the group standings.", "Tu elección se guarda automáticamente y aparece en la clasificación del grupo.")}</Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
+        <RaisedButton
           accessibilityLabel={t("Fechar editor de avatar", "Close avatar editor", "Cerrar editor de avatar")}
           onPress={onClose}
-          style={({pressed}) => [styles.closeButton, pressed && styles.buttonPressed]}>
-          <Text style={styles.closeLabel}>{t("Fechar", "Close", "Cerrar")}</Text>
-        </Pressable>
+          label={t("Fechar", "Close", "Cerrar")}
+          variant="outlined"
+          tone="neutral"
+          size="compact"
+        />
       </View>
 
       <View style={styles.grid}>
@@ -102,16 +104,6 @@ const styles = StyleSheet.create({
   heading: {flex: 1},
   title: {fontSize: 19, lineHeight: 25, fontWeight: '900', color: challengeTheme.colors.text},
   subtitle: {marginTop: 3, fontSize: 13, lineHeight: 18, color: challengeTheme.colors.muted},
-  closeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: challengeTheme.radius.pill,
-    backgroundColor: 'rgba(11, 225, 236, 0.12)',
-    borderWidth: 1,
-    borderColor: challengeTheme.colors.borderStrong,
-  },
-  closeLabel: {fontSize: 12, lineHeight: 16, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
-  buttonPressed: {opacity: 0.74},
   grid: {flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 13, marginTop: 18},
   option: {
     width: '21%',

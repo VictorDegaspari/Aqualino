@@ -1,5 +1,5 @@
 import React from 'react';
-import {Pressable, Text} from 'react-native';
+import {BackHandler, Pressable, Text} from 'react-native';
 import {act, fireEvent, render} from '@testing-library/react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {createGestureController} from 'react-native-gesture-handler/jest-utils';
@@ -46,4 +46,23 @@ test('provides the same back action through the visible button', async () => {
   const {view, onBack} = await setup();
   await fireEvent.press(view.getByRole('button', {name: 'Voltar'}));
   expect(onBack).toHaveBeenCalledTimes(1);
+});
+
+test('a page underneath another route releases the Android back handler', async () => {
+  const remove = jest.fn();
+  const subscribe = jest.spyOn(BackHandler, 'addEventListener').mockReturnValue({remove});
+  const onBack = jest.fn();
+  const content = (active: boolean) => <GestureHandlerRootView><SwipeBackScreen testID="friends" active={active} onBack={onBack}>{() => <Text>Amigos</Text>}</SwipeBackScreen></GestureHandlerRootView>;
+  try {
+    const view = await render(content(false));
+    expect(subscribe).not.toHaveBeenCalled();
+    await view.rerender(content(true));
+    expect(subscribe).toHaveBeenCalledTimes(1);
+    await view.rerender(content(false));
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(onBack).not.toHaveBeenCalled();
+    await view.unmount();
+  } finally {
+    subscribe.mockRestore();
+  }
 });

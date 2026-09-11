@@ -122,19 +122,20 @@ export function HomeView({motionEnabled = true, homeThemeId = defaultHomeThemeId
         {mode === 'solo' || showTimeline ? <View style={styles.fixedActions}>
           <DrinkWaterButton onPress={props.onOpenHydration} />
 
-          {props.recordedAmountMl ? (
-            <HydrationSuccessFeedback
-              amountMl={props.recordedAmountMl}
-              accessibilityLabel={t(`${props.recordedAmountMl} ml registrados`, `${props.recordedAmountMl} ml recorded`, `${props.recordedAmountMl} ml registrados`)}
-              onDismiss={props.onDismissRecorded}
-            />
-          ) : (today?.total_ml ?? 0) === 0 ? (
+          {!props.recordedAmountMl && (today?.total_ml ?? 0) === 0 ? (
             <Text style={styles.empty}>{t("Sua primeira gota de hoje está a um toque.", "Your first drop today is one tap away.", "Tu primera gota de hoy está a un toque.")}</Text>
           ) : null}
 
         </View> : null}
 
       </SafeAreaView>
+      {props.recordedAmountMl ? (
+        <HydrationSuccessFeedback
+          amountMl={props.recordedAmountMl}
+          accessibilityLabel={t(`${props.recordedAmountMl} ml registrados`, `${props.recordedAmountMl} ml recorded`, `${props.recordedAmountMl} ml registrados`)}
+          onDismiss={props.onDismissRecorded}
+        />
+      ) : null}
       {rewardOpen && challenges?.solo ? <SoloRewardDialog challenge={challenges.solo} onClaim={props.onClaimReward ?? (async () => undefined)} onClose={() => setRewardOpen(false)} /> : null}
     </View>
   );
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
     width: '100%', maxWidth: 420, alignSelf: 'center', paddingBottom: 16,
     borderRadius: 26, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: '#102B3B',
   },
-  fixedActions: {paddingHorizontal: 16, paddingTop: 2, paddingBottom: 3},
+  fixedActions: {paddingHorizontal: 16, paddingTop: 2, paddingBottom: 16},
   offline: {
     alignSelf: 'center', marginBottom: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8,
     backgroundColor: challengeTheme.colors.panelSoft,

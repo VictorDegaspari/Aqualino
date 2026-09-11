@@ -1,4 +1,7 @@
 import React, {useState} from 'react';
+import {useIsFocused, useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {RootStackParamList} from '../../../app/navigation/AppNavigation';
 import {Share} from 'react-native';
 import {useSessionStore} from '../../auth/application/sessionStore';
 import {useOnboardingPreferencesStore} from '../../onboarding/application/onboardingPreferencesStore';
@@ -9,10 +12,12 @@ import {AppDialog} from '../../../shared/components/AppDialog';
 import {HydrationReviews} from './HydrationReviews';
 
 export function GroupsScreen(): React.JSX.Element {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const isFocused = useIsFocused();
   const user = useSessionStore(state => state.user);
   const locale = useOnboardingPreferencesStore(state => state.locale);
   const copy = groupsCopy[locale];
-  const groups = useGroups(user?.id, copy);
+  const groups = useGroups(user?.id, copy, isFocused);
   const [shareError, setShareError] = useState(false);
   const [confirmation, setConfirmation] = useState<'renew' | 'leave' | null>(null);
 
@@ -32,6 +37,7 @@ export function GroupsScreen(): React.JSX.Element {
   return (
     <>
       <GroupsView
+        onOpenMember={memberId => memberId === user?.id ? navigation.navigate('Profile') : navigation.navigate('PersonProfile', {userId: memberId})}
         reviews={groups.group ? <HydrationReviews key={groups.group.id} locale={locale} groupId={groups.group.id} memberCount={groups.group.members.length} reviewEnabled={groups.group.photo_review_enabled ?? true} /> : undefined}
         displayName={user?.profile.display_name ?? copy.you} avatarId={user?.profile.avatar_url}
         userId={user?.id} locale={locale} group={groups.group}
@@ -39,7 +45,7 @@ export function GroupsScreen(): React.JSX.Element {
         loadError={groups.loadError} error={shareError ? copy.actionError : groups.error}
         onRefresh={groups.refresh} onClearError={() => {groups.clearError(); setShareError(false);}}
         onCreateGroup={groups.create} onPreviewInvite={groups.preview} onJoinGroup={groups.accept}
-        onShare={share} onRenewInvite={renew} onLeave={leave} onPhotoReviewChange={groups.updatePhotoReview}
+        onShare={share} onRenewInvite={renew} onLeave={leave} onPhotoReviewChange={groups.updatePhotoReview} onAutoRestartChange={groups.updateAutoRestart}
       />
       {confirmation ? <AppDialog
         title={confirmation === 'renew' ? copy.renewTitle : copy.leaveTitle}

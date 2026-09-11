@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
 import type {GroupInvitePreview, PrivateGroup} from '@aqualino/contracts';
-import {Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {Image, RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {UserAvatar} from '../../../shared/avatars/UserAvatar';
 import {AqualinoIcon, type AqualinoIconName} from '../../../shared/components/AqualinoIcon';
@@ -16,6 +17,7 @@ import {groupsCopy} from './groupsCopy';
 
 interface Props {
   reviews?: React.ReactNode;
+  onOpenMember?: (userId: string) => void;
   displayName: string;
   avatarId?: string | null;
   userId?: string;
@@ -34,12 +36,13 @@ interface Props {
   onShare: () => void;
   onRenewInvite: () => void;
   onLeave: () => void;
+  onAutoRestartChange?: (enabled: boolean) => Promise<boolean>;
   onPhotoReviewChange?: (enabled: boolean) => Promise<boolean>;
 }
 
 export function GroupsView({reviews, displayName, avatarId, userId, locale = 'pt-BR', group, loading = false,
   refreshing = false, busy = false, loadError, error, onRefresh, onClearError, onCreateGroup,
-  onPreviewInvite, onJoinGroup, onShare, onRenewInvite, onLeave, onPhotoReviewChange}: Props): React.JSX.Element {
+  onPreviewInvite, onJoinGroup, onShare, onRenewInvite, onLeave, onPhotoReviewChange, onAutoRestartChange, onOpenMember}: Props): React.JSX.Element {
   const copy = groupsCopy[locale];
   const [form, setForm] = useState<'create' | 'join' | null>(null);
   const openForm = (mode: 'create' | 'join') => {onClearError(); setForm(mode);};
@@ -62,11 +65,11 @@ export function GroupsView({reviews, displayName, avatarId, userId, locale = 'pt
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={challengeTheme.colors.cyanStrong} />}>
 
-          <TabScreenHeader
+          {!group ? <TabScreenHeader
             title={copy.title}
             subtitle={copy.subtitle}
             icon={<AqualinoIcon name="group" size={34} color={challengeTheme.colors.cyanStrong} />}
-          />
+          /> : null}
 
           {loadError ? <View style={styles.section}>
             <Text accessibilityRole="alert" style={styles.error}>{loadError}</Text>
@@ -76,8 +79,8 @@ export function GroupsView({reviews, displayName, avatarId, userId, locale = 'pt
           {loading && !loadError ? <View style={styles.section}>
             <LoadingWaterDrop size={44} accessibilityLabel={copy.loading} />
             <Text style={styles.cardDescription}>{copy.loading}</Text>
-          </View> : group ? <GroupTeam reviews={reviews} group={group} userId={userId} copy={copy} locale={locale} busy={busy}
-            onShare={onShare} onRenew={onRenewInvite} onLeave={onLeave} onPhotoReviewChange={onPhotoReviewChange} /> : !loadError ? <>
+          </View> : group ? <GroupTeam onOpenMember={onOpenMember} reviews={reviews} group={group} userId={userId} copy={copy} locale={locale} busy={busy}
+            onShare={onShare} onRenew={onRenewInvite} onLeave={onLeave} onPhotoReviewChange={onPhotoReviewChange} onAutoRestartChange={onAutoRestartChange} /> : !loadError ? <>
           <View style={styles.invitationCard}>
             <View style={styles.statusPill}>
               <View style={styles.statusDot} />
@@ -106,20 +109,21 @@ export function GroupsView({reviews, displayName, avatarId, userId, locale = 'pt
               ))}
             </View>
 
-            <Pressable
-              accessibilityRole="button"
+            <RaisedButton
               onPress={() => runAction(() => openForm('create'))}
-              style={({pressed}) => [styles.primaryButton, pressed && styles.buttonPressed]}>
-              <AqualinoIcon name="plus" size={20} color={challengeTheme.colors.backgroundDeep} />
-              <Text style={styles.primaryButtonLabel}>{copy.create}</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
+              style={buttonLayout.primary}
+              label={copy.create}
+              tone="aqua"
+              icon={<AqualinoIcon name="plus" size={20} color={challengeTheme.colors.backgroundDeep} />}
+            />
+            <RaisedButton
               onPress={() => runAction(() => openForm('join'))}
-              style={({pressed}) => [styles.secondaryButton, pressed && styles.buttonPressed]}>
-              <AqualinoIcon name="group" size={20} color={challengeTheme.colors.cyanStrong} />
-              <Text style={styles.secondaryButtonLabel}>{copy.join}</Text>
-            </Pressable>
+              style={buttonLayout.secondary}
+              label={copy.join}
+              variant="outlined"
+              tone="aqua"
+              icon={<AqualinoIcon name="group" size={20} color={challengeTheme.colors.cyanStrong} />}
+            />
           </View>
 
           <View style={styles.section}>
@@ -138,7 +142,7 @@ export function GroupsView({reviews, displayName, avatarId, userId, locale = 'pt
 
           </> : null}
 
-          <View style={styles.privacyCard}>
+          {!group ? <View style={styles.privacyCard}>
             <View style={styles.privacyIcon}>
               <AqualinoIcon name="lock" size={21} color={challengeTheme.colors.cyanStrong} />
             </View>
@@ -146,7 +150,7 @@ export function GroupsView({reviews, displayName, avatarId, userId, locale = 'pt
               <Text style={styles.privacyTitle}>{copy.privacy}</Text>
               <Text style={styles.privacyText}>{copy.privacyDescription}</Text>
             </View>
-          </View>
+          </View> : null}
         </ScrollView>
       </SafeAreaView>
       {form ? <GroupForm mode={form} copy={copy} busy={busy} error={error}
@@ -215,18 +219,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderStyle: 'dashed', borderColor: challengeTheme.colors.borderStrong, backgroundColor: 'rgba(15, 60, 91, 0.55)',
   },
   openSlotLabel: {fontSize: 9, lineHeight: 12, fontWeight: '700', color: challengeTheme.colors.muted},
-  primaryButton: {
-    width: '100%', minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderRadius: challengeTheme.radius.pill, backgroundColor: challengeTheme.colors.cyanStrong,
-    shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.46, shadowRadius: 11, shadowOffset: {width: 0, height: 4}, elevation: 6,
-  },
-  primaryButtonLabel: {fontSize: 16, lineHeight: 21, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
-  secondaryButton: {
-    width: '100%', minHeight: 50, marginTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderRadius: challengeTheme.radius.pill, borderWidth: 1.5, borderColor: challengeTheme.colors.cyanStrong, backgroundColor: 'rgba(11, 225, 236, 0.06)',
-  },
-  secondaryButtonLabel: {fontSize: 15, lineHeight: 20, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
-  buttonPressed: {opacity: 0.82, transform: [{scale: 0.985}]},
   section: {
     padding: 18, borderRadius: challengeTheme.radius.panel, borderWidth: 1,
     borderColor: challengeTheme.colors.border, backgroundColor: 'rgba(0, 22, 49, 0.88)',
@@ -257,3 +249,5 @@ const styles = StyleSheet.create({
   privacyTitle: {fontSize: 14, lineHeight: 19, fontWeight: '900', color: challengeTheme.colors.text},
   privacyText: {marginTop: 2, fontSize: 11, lineHeight: 16, color: challengeTheme.colors.muted},
 });
+
+const buttonLayout = StyleSheet.create({primary: {width: '100%'}, secondary: {width: '100%', marginTop: 10}});

@@ -12,11 +12,13 @@ Use nomes de arquivo em minúsculas, sem espaços ou acentos, separados por `_`.
 
 `OnboardingMascot` carrega o arquivo local com `require()` nas telas `WelcomeScreen` e `OnboardingScreen`. O Metro inclui `.riv` em `assetExts`, empacotando o arquivo no app para uso offline. A animação pausa em segundo plano, fora de foco e com redução de movimento. Se o runtime reportar erro, há fallback para o mascote estático existente.
 
-O runtime instalado é `rive-react-native@9.8.5`. O pacote mais novo `@rive-app/react-native@0.4.20` exige Nitro `<0.36`, incompatível com o `0.37.1` já utilizado pelo projeto. O runtime anterior evita trocar essa dependência. O patch versionado em `patches/rive-react-native@9.8.5.patch` adapta o plugin Kotlin ao AGP 9 do app.
+O runtime instalado é `rive-react-native@9.8.5`. O pacote mais novo `@rive-app/react-native@0.4.20` exige Nitro `<0.36`, incompatível com o `0.37.1` já utilizado pelo projeto. O runtime anterior evita trocar essa dependência. O patch versionado em `patches/rive-react-native@9.8.5.patch` adapta o plugin Kotlin ao AGP 9 do app e só busca o ViewModel do artboard quando há configuração explícita de data binding manual. Sem essa correção, arquivos que usam apenas timelines e máquinas de estados geram `DataBindingError: No default ViewModel found` no Android, acionando a imagem estática de reserva mesmo após carregar o `.riv`.
 
 Após instalar as dependências com `pnpm install`, é necessário recompilar o app nativo: `pnpm mobile:android`; no macOS, execute `bundle exec pod install` em `apps/mobile/ios` e depois `pnpm mobile:ios`. Uma recarga do Metro sozinha não instala o módulo nativo. Futuras trocas apenas do `.riv` não exigem alterar o componente.
 
 Guarde os backups editáveis `.rev` em [design/rive/backups](../../../../../../design/rive/backups/). Consulte os detalhes da animação em [design/rive](../../../../../../design/rive/README.md).
+
+Validação em 2026-09-10: build Android e instalação no Samsung Galaxy A30s (Android 11) concluídos; 19 testes dos componentes aprovados. Os seis componentes reais foram exibidos em uma prévia temporária no aparelho, com oito capturas sucessivas confirmando movimento em cada animação. A prévia foi removida e o app normal restaurado. Evidências locais em `.artifacts/rive-validation/`, incluindo `motion-report.json` e as capturas.
 # Aqualino chorando
 
 `aqualino_chorando.riv`: rosto vetorial com fundo transparente, lágrimas e soluço em ciclo de 3 segundos.
@@ -35,7 +37,7 @@ Backup editável: `design/rive/backups/aqualino_feliz_2026-09-09.rev`.
 
 `aqualino_strong.riv`: versão vetorial de `strong_aqualino.png`, com faixa turquesa, braços flexionados, sorriso e confetes. Fundo transparente e ciclo de 4 segundos.
 Artboard: `Aqualino Strong - Forca`. State machine: `Aqualino - Strong`.
-`StrongMascot` substitui a imagem forte no estado `boiling` da Home, com pausa fora da tela, em segundo plano e com redução de movimento. Falhas exibem a imagem forte estática.
+`StrongMascot` substitui a imagem forte no estado `boiling` da Home e no Histórico quando o consumo válido do dia selecionado atinge ou supera a meta desse dia. Pausa fora da tela, em segundo plano e com redução de movimento. Falhas exibem a imagem forte estática.
 Backup: `design/rive/backups/aqualino_strong_2026-09-10.rev`.
 # Aqualino Loading
 

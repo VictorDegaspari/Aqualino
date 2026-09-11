@@ -1,6 +1,6 @@
 import {useTranslation} from '../../../shared/i18n/useTranslation';
 import React, {useEffect, useId, useMemo} from 'react';
-import {Image, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -18,6 +18,7 @@ import Svg, {Defs, Ellipse, LinearGradient, Path, Rect, Stop} from 'react-native
 import {appCopy, type AppLocale} from '../../../shared/i18n/appLocale';
 import {typography} from '../../../shared/theme/typography';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
+import {StrongMascot} from '../../home/presentation/StrongMascot';
 
 const GLASS_HEIGHT = 200;
 // Leave room for the wave crests and the 16-degree tilt, even at a full goal.
@@ -69,10 +70,8 @@ export function HydrationWaterGauge({totalMl, goalMl, isToday = true, variant = 
           <Text adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1} style={styles.waterAmount}>{dataState === 'ready' ? formatMl(safeTotalMl, locale) : '— ml'}</Text>
           <Text style={styles.waterStatus}>{status}</Text>
           <Text style={styles.waterComparison}>{description}</Text>
-          {showStrongMascot ? <Image
-            source={{uri: 'aqualino_strong'}}
+          {showStrongMascot ? <StrongMascot
             accessibilityLabel={t("Aqualino forte: meta atingida", "Strong Aqualino: goal reached", "Aqualino fuerte: meta alcanzada")}
-            resizeMode="contain"
             style={styles.strongMascot}
           /> : null}
         </View>
@@ -316,6 +315,6 @@ const styles = StyleSheet.create({
   waterAmount: {fontFamily: typography.family, fontSize: 28, lineHeight: 37, fontWeight: '900', color: challengeTheme.colors.cyanStrong, fontVariant: ['tabular-nums']},
   waterStatus: {fontFamily: typography.family, fontSize: 16, lineHeight: 22, fontWeight: '800', color: challengeTheme.colors.text},
   waterComparison: {fontFamily: typography.family, fontSize: 12, lineHeight: 18, fontWeight: '600', color: challengeTheme.colors.muted},
-  strongMascot: {width: 136, maxWidth: '100%', aspectRatio: 4 / 3, alignSelf: 'center', marginTop: 'auto', marginBottom: -18},
+  strongMascot: {width: '100%', maxWidth: 220, aspectRatio: 1, alignSelf: 'center', marginTop: 4, marginBottom: -8},
   hint: {fontFamily: typography.family, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(105, 173, 186, 0.12)', fontSize: 11, lineHeight: 17, fontWeight: '600', color: challengeTheme.colors.muted, textAlign: 'center'},
 });

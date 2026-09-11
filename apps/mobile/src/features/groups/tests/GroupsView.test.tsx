@@ -1,7 +1,7 @@
 import React from 'react';
-import {fireEvent, render} from '@testing-library/react-native';
+import {act, fireEvent, render} from '@testing-library/react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import type {PrivateGroup} from '@aqualino/contracts';
+import type {GroupInvitePreview, PrivateGroup} from '@aqualino/contracts';
 import {GroupsView} from '../presentation/GroupsView';
 import {AppModalProvider} from '../../../shared/components/AppModal';
 
@@ -68,6 +68,44 @@ test('previews an invitation before explicitly joining', async () => {
   expect(options.onJoinGroup).toHaveBeenCalledWith('ABC123DEF456');
 });
 
+test('uses the final keyboard text and blocks duplicate invite submissions', async () => {
+  let finish!: (preview: GroupInvitePreview) => void;
+  const options = props({onPreviewInvite: jest.fn(() => new Promise<GroupInvitePreview>(resolve => {finish = resolve;}))});
+  const view = await renderGroups(options);
+  await fireEvent.press(view.getByRole('button', {name: 'Entrar com código'}));
+  await fireEvent.changeText(view.getByTestId('group-code'), 'abc123def45');
+  expect(view.getByRole('button', {name: 'Conferir convite'})).toBeDisabled();
+  const input = view.getByTestId('group-code');
+  await act(() => {
+    input.props.onSubmitEditing({nativeEvent: {text: 'abc123def456'}});
+    input.props.onSubmitEditing({nativeEvent: {text: 'abc123def456'}});
+  });
+  expect(options.onPreviewInvite).toHaveBeenCalledTimes(1);
+  expect(options.onPreviewInvite).toHaveBeenCalledWith('ABC123DEF456');
+  expect(view.getByRole('button', {name: 'Conferir convite'})).toBeDisabled();
+  expect(view.getByRole('button', {name: 'Cancelar'})).toBeDisabled();
+  expect(options.onJoinGroup).not.toHaveBeenCalled();
+  await act(() => finish({name: 'Maré de amigos', member_count: 2, max_members: 5, timezone: 'UTC', expires_at: '2099-01-01T00:00:00Z'}));
+  await fireEvent.press(view.getByRole('button', {name: 'Aceitar e entrar'}));
+  expect(options.onJoinGroup).toHaveBeenCalledWith('ABC123DEF456');
+});
+
+test('allows correcting a rapidly entered code after a failed preview', async () => {
+  const options = props({onPreviewInvite: jest.fn().mockRejectedValueOnce(new Error('Connection lost')).mockResolvedValueOnce(null)});
+  const view = await renderGroups(options);
+  await fireEvent.press(view.getByRole('button', {name: 'Entrar com código'}));
+  for (const value of ['abc', 'abc123', 'abc123def456', 'abc123def45', 'abc123def459']) {
+    await fireEvent.changeText(view.getByTestId('group-code'), value);
+  }
+  await fireEvent.press(view.getByRole('button', {name: 'Conferir convite'}));
+  expect(options.onPreviewInvite).toHaveBeenLastCalledWith('ABC123DEF459');
+  expect(view.getByRole('alert')).toHaveTextContent('Não foi possível concluir. Tente novamente.');
+  await fireEvent.changeText(view.getByTestId('group-code'), 'abc123def456');
+  expect(view.queryByRole('alert')).toBeNull();
+  await fireEvent.press(view.getByRole('button', {name: 'Conferir convite'}));
+  expect(options.onPreviewInvite).toHaveBeenLastCalledWith('ABC123DEF456');
+});
+
 test('does not accept a full team and allows changing the code', async () => {
   const options = props({onPreviewInvite: jest.fn().mockResolvedValue({name: 'Equipe cheia', member_count: 5, max_members: 5, timezone: 'UTC'})});
   const view = await renderGroups(options);
@@ -111,9 +149,18 @@ test('shows real members, available spots and owner invitation actions', async (
   expect(view.getByText('Maré de amigos')).toBeTruthy();
   expect(view.getByText('Ana · Você')).toBeTruthy();
   expect(view.getByText('Responsável')).toBeTruthy();
-  expect(view.getAllByText('Vaga')).toHaveLength(4);
+  expect(view.getByText('4 vagas disponíveis')).toBeTruthy();
+  expect(view.queryByText(group.invite!.code)).toBeNull();
+  await fireEvent.press(view.getByTestId('group-invite'));
+  expect(view.getByTestId('group-invite-panel')).toBeTruthy();
+  expect(view.queryByTestId('group-settings-panel')).toBeNull();
+  expect(view.queryByText('Reinício automático')).toBeNull();
+  expect(view.queryByText('Votação das marcações')).toBeNull();
   await fireEvent.press(view.getByRole('button', {name: 'Compartilhar convite'}));
+  expect(view.queryByTestId('group-invite-panel')).toBeNull();
+  await fireEvent.press(view.getByTestId('group-invite'));
   await fireEvent.press(view.getByRole('button', {name: 'Gerar novo código'}));
+  expect(view.queryByTestId('group-invite-panel')).toBeNull();
   await fireEvent.press(view.getByRole('button', {name: 'Sair do grupo'}));
   expect(options.onShare).toHaveBeenCalledTimes(1);
   expect(options.onRenewInvite).toHaveBeenCalledTimes(1);
@@ -123,6 +170,7 @@ test('shows real members, available spots and owner invitation actions', async (
 test('hides invitation management from members and supports the selected language', async () => {
   const view = await renderGroups(props({group: {...group, invite: null}, userId: 'bruno', locale: 'en-US'}));
   expect(view.getByText('Members')).toBeTruthy();
+  await fireEvent.press(view.getByTestId('group-invite'));
   expect(view.getByText('Ask the owner to invite more people.')).toBeTruthy();
   expect(view.queryByRole('button', {name: 'Share invitation'})).toBeNull();
   expect(view.queryByText(group.invite!.code)).toBeNull();
@@ -130,6 +178,7 @@ test('hides invitation management from members and supports the selected languag
 
 test('disables sharing an expired invitation', async () => {
   const view = await renderGroups(props({group: {...group, invite: {...group.invite!, expires_at: '2000-01-01T00:00:00Z'}}}));
+  await fireEvent.press(view.getByTestId('group-invite'));
   expect(view.getByRole('button', {name: 'Compartilhar convite'})).toBeDisabled();
   expect(view.getByRole('button', {name: 'Gerar novo código'})).toBeEnabled();
 });
@@ -138,12 +187,47 @@ test('disables sharing an expired invitation', async () => {
 test('lets only the leader change photo voting and disables the switch while saving', async () => {
   const onPhotoReviewChange = jest.fn().mockResolvedValue(true);
   const view = await renderGroups(props({group, onPhotoReviewChange}));
+  expect(view.queryByTestId('group-photo-review-toggle')).toBeNull();
+  await fireEvent.press(view.getByTestId('group-settings'));
   await fireEvent.press(view.getByTestId('group-photo-review-toggle'));
   expect(onPhotoReviewChange).toHaveBeenCalledWith(false);
   await view.unmount();
   const member = await renderGroups(props({group, userId: 'guest', onPhotoReviewChange}));
+  await fireEvent.press(member.getByTestId('group-settings'));
   expect(member.queryByTestId('group-photo-review-toggle')).toBeNull();
   await member.unmount();
   const saving = await renderGroups(props({group, busy: true, onPhotoReviewChange}));
+  await fireEvent.press(saving.getByTestId('group-settings'));
   expect(saving.getByRole('switch', {name: 'Votação das marcações'})).toBeDisabled();
+});
+
+
+test('hides invitation actions after the group rounds have started', async () => {
+  const view = await renderGroups(props({group: {...group, joining_closed: true}}));
+  expect(view.queryByTestId('group-invite')).toBeNull();
+  expect(view.queryByText('4 vagas disponíveis')).toBeNull();
+  await fireEvent.press(view.getByTestId('group-settings'));
+  expect(view.queryByText(group.invite!.code)).toBeNull();
+  expect(view.queryByRole('button', {name: 'Compartilhar convite'})).toBeNull();
+  expect(view.queryByRole('button', {name: 'Gerar novo código'})).toBeNull();
+});
+
+
+test('groups automatic restart and photo voting in settings and reports a failed save', async () => {
+  const onAutoRestartChange = jest.fn().mockResolvedValue(false);
+  const view = await renderGroups(props({group, onAutoRestartChange, onPhotoReviewChange: jest.fn()}));
+  expect(view.queryByText('Reinício automático')).toBeNull();
+  await fireEvent.press(view.getByTestId('group-settings'));
+  expect(view.queryByTestId('group-invite-panel')).toBeNull();
+  expect(view.queryByText(group.invite!.code)).toBeNull();
+  expect(view.queryByRole('button', {name: 'Compartilhar convite'})).toBeNull();
+  expect(view.queryByRole('button', {name: 'Sair do grupo'})).toBeNull();
+  expect(view.getByRole('switch', {name: 'Votação das marcações'})).toBeTruthy();
+  expect(view.getByRole('switch', {name: 'Reinício automático'}).props.accessibilityState.checked).toBe(false);
+  await fireEvent.press(view.getByTestId('group-auto-restart-toggle'));
+  expect(onAutoRestartChange).toHaveBeenCalledWith(true);
+  expect(view.getByRole('alert')).toHaveTextContent('Não foi possível salvar. Tente novamente.');
+  expect(view.getByRole('switch', {name: 'Reinício automático'}).props.accessibilityState.checked).toBe(false);
+  await fireEvent.press(view.getByTestId('group-settings-close'));
+  expect(view.queryByTestId('group-settings-panel')).toBeNull();
 });

@@ -4,6 +4,7 @@ import {TurboModuleRegistry} from 'react-native';
 export interface Spec extends TurboModule {
   writeSnapshot(snapshotJson: string): boolean;
   requestReload(): void;
+  requestPinWidget(): Promise<boolean>;
   readPendingAction(): string | null;
   getSchemaVersion(): number;
   setAppIconMood(mood: string): boolean;

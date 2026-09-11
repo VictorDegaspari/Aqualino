@@ -1,15 +1,19 @@
 import React, {useEffect, useState} from 'react';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
 import {Pressable, StyleSheet, Text} from 'react-native';
 import {AppError} from '../../../shared/errors/AppError';
 import {typography} from '../../../shared/theme/typography';
 import {challengeTheme} from '../../home/presentation/challenge/challengeTheme';
 import type {AccountSecurityCopy} from './accountSecurityCopy';
 
-export function SecurityLink({label, onPress, disabled = false}: {label: string; onPress: () => void; disabled?: boolean}): React.JSX.Element {
-  return <Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} onPress={onPress}
-    style={({pressed}) => [styles.linkButton, (pressed || disabled) && styles.dimmed]}>
-    <Text style={styles.link}>{label}</Text>
-  </Pressable>;
+export function SecurityLink({label, onPress, disabled = false, variant = 'outlined'}: {label: string; onPress: () => void; disabled?: boolean; variant?: 'outlined' | 'text'}): React.JSX.Element {
+  if (variant === 'text') {
+    return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled}}
+      disabled={disabled} onPress={onPress} style={({pressed}) => [styles.link, (pressed || disabled) && styles.linkDimmed]}>
+      <Text style={styles.linkText}>{label}</Text>
+    </Pressable>;
+  }
+  return <RaisedButton accessibilityState={{disabled}} disabled={disabled} onPress={onPress} label={label} variant="outlined" tone="aqua" size="compact" />;
 }
 
 export function SecurityNotice({message, error = false}: {message?: string; error?: boolean}): React.JSX.Element | null {
@@ -49,9 +53,9 @@ export function validSecurityEmail(email: string): boolean {
 }
 
 const styles = StyleSheet.create({
-  linkButton: {minHeight: 45, alignItems: 'center', justifyContent: 'center'},
-  link: {fontFamily: typography.family, fontSize: 14, lineHeight: 20, fontWeight: '800', color: challengeTheme.colors.cyanStrong, textAlign: 'center'},
-  dimmed: {opacity: 0.45},
+  link: {minHeight: 44, justifyContent: 'center', paddingVertical: 10},
+  linkText: {fontFamily: typography.family, fontSize: 14, lineHeight: 20, fontWeight: '700', color: challengeTheme.colors.cyanStrong, textAlign: 'center'},
+  linkDimmed: {opacity: 0.5},
   notice: {fontFamily: typography.family, fontSize: 14, lineHeight: 21, color: challengeTheme.colors.muted, textAlign: 'center'},
   error: {color: challengeTheme.colors.danger},
   email: {fontFamily: typography.family, fontSize: 17, lineHeight: 24, fontWeight: '800', color: challengeTheme.colors.text, textAlign: 'center', paddingVertical: 8},

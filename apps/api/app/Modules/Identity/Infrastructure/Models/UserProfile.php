@@ -25,6 +25,7 @@ class UserProfile extends Model
         'timezone',
         'locale',
         'favorite_volumes_ml',
+        'achievement_highlights',
         'onboarding_completed_at',
     ];
 
@@ -32,6 +33,7 @@ class UserProfile extends Model
     {
         return [
             'favorite_volumes_ml' => 'array',
+            'achievement_highlights' => 'array',
             'onboarding_completed_at' => 'immutable_datetime',
         ];
     }

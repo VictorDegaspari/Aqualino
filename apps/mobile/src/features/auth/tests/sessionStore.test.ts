@@ -110,6 +110,29 @@ describe('sessionStore', () => {
     expect(setWidgetAuthentication).toHaveBeenCalledWith(false);
   });
 
+  it('preserves the hydration widget when refreshing the same verified account', async () => {
+    useSessionStore.setState({status: 'signedIn', user});
+    repository.me.mockResolvedValue({...user, streak: 3});
+    await useSessionStore.getState().refreshUser();
+    expect(setWidgetAuthentication).not.toHaveBeenCalled();
+    expect(reloadWidgetState).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not overwrite the Home snapshot when bootstrap finishes revalidating a cached account', async () => {
+    tokenStore.hydrate.mockResolvedValue('token');
+    userStore.hydrate.mockResolvedValue(user);
+    let resolveMe!: (value: User) => void;
+    repository.me.mockReturnValue(new Promise(resolve => {resolveMe = resolve;}));
+    const bootstrap = useSessionStore.getState().bootstrap();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(useSessionStore.getState().status).toBe('signedIn');
+    setWidgetAuthentication.mockClear();
+    resolveMe(user);
+    await bootstrap;
+    expect(setWidgetAuthentication).not.toHaveBeenCalled();
+  });
+
   it('discards the revoked password-reset token without saving it again', async () => {
     useSessionStore.setState({status: 'signedIn', user});
     await useSessionStore.getState().clearPasswordResetCredentials(' ANA@EXAMPLE.COM ');

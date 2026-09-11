@@ -22,6 +22,9 @@ export const groupsRepository = {
   updatePhotoReview(enabled: boolean): Promise<PrivateGroup> {
     return apiRequest('/groups/current/settings', {...requestOptions, method: 'PATCH', body: {photo_review_enabled: enabled}});
   },
+  updateAutoRestart(enabled: boolean): Promise<PrivateGroup> {
+    return apiRequest('/groups/current/settings', {...requestOptions, method: 'PATCH', body: {auto_restart: enabled}});
+  },
   leave(): Promise<null> {
     return apiRequest('/groups/current/membership', {...requestOptions, method: 'DELETE'});
   },

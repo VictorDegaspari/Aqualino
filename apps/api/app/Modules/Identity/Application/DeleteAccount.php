@@ -36,6 +36,7 @@ final class DeleteAccount
             $user->streakPotionEffects()->delete();
             $user->potionUsageBlocks()->delete();
             $user->achievements()->delete();
+            DB::table('friendships')->where('user_low', $user->id)->orWhere('user_high', $user->id)->delete();
             HydrationChallenge::query()->where('user_id', $user->id)->delete();
             GroupChallengeParticipant::query()->where('user_id', $user->id)->delete();
             GroupMembership::query()->where('user_id', $user->id)->delete();

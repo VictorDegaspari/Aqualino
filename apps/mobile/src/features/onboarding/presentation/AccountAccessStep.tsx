@@ -1,7 +1,8 @@
 import React, {memo, useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
+import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
+import Svg, {Path} from 'react-native-svg';
 import {AqualinoIcon} from '../../../shared/components/AqualinoIcon';
-import {LoadingWaterDrop} from '../../../shared/components/LoadingWaterDrop';
 import {AppError} from '../../../shared/errors/AppError';
 import {appCopy, type AppLocale} from '../../../shared/i18n/appLocale';
 import {typography} from '../../../shared/theme/typography';
@@ -14,7 +15,6 @@ export type AccountMode = 'choice' | 'returning' | 'manage' | 'login' | 'registe
 
 interface Props {
   mode: AccountMode;
-  authBackMode: AccountMode;
   locale: AppLocale;
   goalMl: number;
   accounts: RememberedAccount[];
@@ -23,7 +23,6 @@ interface Props {
   onResumeAccount: (account: RememberedAccount) => Promise<boolean>;
   onRemoveAccount: (account: RememberedAccount) => Promise<void>;
   onManageAccounts: () => void;
-  onReturnToAccounts: () => void;
   onRestart: () => void;
   onAuthenticated: () => void;
   onForgotPassword?: (email: string) => void;
@@ -31,7 +30,6 @@ interface Props {
 
 export const AccountAccessStep = memo(function AccountAccessStepView({
   mode,
-  authBackMode,
   locale,
   goalMl,
   accounts,
@@ -40,7 +38,6 @@ export const AccountAccessStep = memo(function AccountAccessStepView({
   onResumeAccount,
   onRemoveAccount,
   onManageAccounts,
-  onReturnToAccounts,
   onRestart,
   onAuthenticated,
   onForgotPassword,
@@ -90,18 +87,7 @@ export const AccountAccessStep = memo(function AccountAccessStepView({
           <Text style={styles.summaryText}>{new Intl.NumberFormat(locale).format(goalMl)} ml</Text>
         </View>
         <View style={styles.actions}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => onShowAuth('register', 'choice')}
-            style={({pressed}) => [styles.primaryButton, pressed && styles.buttonPressed]}>
-            <Text style={styles.primaryLabel}>{copy.createAccount}</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => onShowAuth('login', 'choice')}
-            style={({pressed}) => [styles.secondaryButton, pressed && styles.buttonPressed]}>
-            <Text style={styles.secondaryLabel}>{copy.alreadyHaveAccount}</Text>
-          </Pressable>
+          <RaisedButton onPress={() => onShowAuth('register', 'choice')} label={copy.createAccount} tone="aqua" />
         </View>
       </>
     );
@@ -133,7 +119,7 @@ export const AccountAccessStep = memo(function AccountAccessStepView({
                 </View>
                 <View pointerEvents="none" style={styles.accountActionContent}>
                   {busyAccountId === account.id ? (
-                    <LoadingWaterDrop testID="saved-account-signing-in" size={23} />
+                    <ActivityIndicator testID="saved-account-signing-in" size="small" color={challengeTheme.colors.cyanStrong} accessible={false} />
                   ) : null}
                   <Text style={styles.accountAction}>{busyAccountId === account.id ? copy.signingIn : `${copy.signIn} ›`}</Text>
                 </View>
@@ -141,30 +127,11 @@ export const AccountAccessStep = memo(function AccountAccessStepView({
             ))}
           </View>
         ) : (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => onShowAuth('login', 'returning')}
-            style={({pressed}) => [styles.primaryButton, pressed && styles.buttonPressed]}>
-            <Text style={styles.primaryLabel}>{copy.alreadyHaveAccount}</Text>
-          </Pressable>
+          <RaisedButton onPress={() => onShowAuth('login', 'returning')} label={copy.alreadyHaveAccount} tone="aqua" />
         )}
-        <Pressable
-          accessibilityRole="button"
-          onPress={onRestart}
-          style={({pressed}) => [styles.addAccountButton, pressed && styles.buttonPressed]}>
-          <Text style={styles.addAccountIcon}>＋</Text>
-          <View style={styles.addAccountCopy}>
-            <Text style={styles.addAccountTitle}>{copy.addAccount}</Text>
-            <Text style={styles.addAccountSubtitle}>{copy.addAccountSubtitle}</Text>
-          </View>
-        </Pressable>
+        <RaisedButton onPress={onRestart} label={copy.addAccount} variant="outlined" tone="aqua" subtitle={copy.addAccountSubtitle} />
         {accounts.length > 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={onManageAccounts}
-            style={({pressed}) => [styles.manageAccountsButton, pressed && styles.buttonPressed]}>
-            <Text style={styles.manageAccountsLabel}>{copy.manageAccounts}</Text>
-          </Pressable>
+          <RaisedButton onPress={onManageAccounts} label={copy.manageAccounts} variant="outlined" tone="neutral" size="compact" />
         ) : null}
         <Text style={styles.securityHint}>{copy.savedAccountSecurity}</Text>
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
@@ -188,21 +155,26 @@ export const AccountAccessStep = memo(function AccountAccessStepView({
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${copy.removeAccount} ${account.email}`}
-                accessibilityState={{busy: busyAccountId === account.id}}
+                accessibilityState={{busy: busyAccountId === account.id, disabled: Boolean(busyAccountId)}}
                 disabled={Boolean(busyAccountId)}
                 onPress={() => removeAccount(account)}
-                style={({pressed}) => [styles.removeAccountButton, pressed && !busyAccountId && styles.buttonPressed]}>
-                <Text style={styles.removeAccountLabel}>{busyAccountId === account.id ? '…' : copy.removeAccount}</Text>
+                style={[styles.removeButton, Boolean(busyAccountId) && styles.removeButtonDisabled]}>
+                {({pressed}) => (
+                  <>
+                    <View pointerEvents="none" style={[styles.removeButtonDepth, pressed && styles.removeButtonDepthPressed]} />
+                    <View pointerEvents="none" style={[styles.removeButtonFace, pressed && styles.removeButtonPressed]}>
+                      {busyAccountId === account.id ? <ActivityIndicator size="small" color="#411820" accessible={false} /> : (
+                        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" accessible={false}>
+                          <Path d="M3 6h18M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14M10 10v7M14 10v7" stroke="#411820" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                        </Svg>
+                      )}
+                    </View>
+                  </>
+                )}
               </Pressable>
             </View>
           ))}
         </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onReturnToAccounts}
-          style={({pressed}) => [styles.backToAccountsButton, pressed && styles.buttonPressed]}>
-          <Text style={styles.backToAccountsLabel}>{copy.backToAccounts}</Text>
-        </Pressable>
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </View>
     );
@@ -226,7 +198,6 @@ export const AccountAccessStep = memo(function AccountAccessStepView({
     <View style={styles.authPanel}>
       <RegisterForm
         onAuthenticated={onAuthenticated}
-        onLogin={() => onShowAuth('login', authBackMode)}
       />
     </View>
   );
@@ -255,30 +226,16 @@ const styles = StyleSheet.create({
   accountEmail: {fontFamily: typography.family, fontSize: 12, lineHeight: 17, color: challengeTheme.colors.muted},
   accountActionContent: {minWidth: 68, alignItems: 'center', justifyContent: 'center', gap: 4},
   accountAction: {fontFamily: typography.family, fontSize: 12, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
-  manageAccountsButton: {minHeight: 43, alignItems: 'center', justifyContent: 'center'},
-  manageAccountsLabel: {fontFamily: typography.family, fontSize: 13, lineHeight: 18, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
-  addAccountButton: {
-    minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 15, paddingVertical: 12,
-    borderRadius: 20, borderWidth: 1, borderStyle: 'dashed', borderColor: challengeTheme.colors.borderStrong,
-    backgroundColor: 'rgba(0, 21, 47, 0.58)',
-  },
-  addAccountIcon: {fontFamily: typography.family, width: 35, fontSize: 28, lineHeight: 32, fontWeight: '500', color: challengeTheme.colors.cyanStrong, textAlign: 'center'},
-  addAccountCopy: {flex: 1, gap: 2},
-  addAccountTitle: {fontFamily: typography.family, fontSize: 15, lineHeight: 20, fontWeight: '900', color: challengeTheme.colors.text},
-  addAccountSubtitle: {fontFamily: typography.family, fontSize: 12, lineHeight: 17, color: challengeTheme.colors.muted},
+  removeButton: {width: 44, height: 44, borderRadius: 12, paddingBottom: 4, flexShrink: 0},
+  removeButtonDepth: {position: 'absolute', left: 0, right: 0, bottom: 0, height: 20, borderRadius: 12, backgroundColor: '#9E485A'},
+  removeButtonDepthPressed: {opacity: 0},
+  removeButtonFace: {height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FF94A4'},
+  removeButtonPressed: {transform: [{translateY: 4}]},
+  removeButtonDisabled: {opacity: 0.45},
   securityHint: {fontFamily: typography.family, paddingHorizontal: 8, fontSize: 11, lineHeight: 16, color: challengeTheme.colors.muted, textAlign: 'center'},
   error: {fontFamily: typography.family, color: challengeTheme.colors.danger, textAlign: 'center', fontWeight: '700'},
-  removeAccountButton: {paddingHorizontal: 9, paddingVertical: 7, borderRadius: 10, backgroundColor: 'rgba(166, 42, 63, 0.16)', borderWidth: 1, borderColor: 'rgba(255, 119, 137, 0.54)'},
-  removeAccountLabel: {fontFamily: typography.family, fontSize: 11, lineHeight: 15, fontWeight: '900', color: challengeTheme.colors.danger},
-  backToAccountsButton: {minHeight: 46, alignItems: 'center', justifyContent: 'center', borderRadius: challengeTheme.radius.pill, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong},
-  backToAccountsLabel: {fontFamily: typography.family, fontSize: 14, lineHeight: 19, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
   authPanel: {
     gap: 14, padding: 19, borderRadius: challengeTheme.radius.panel, borderWidth: 1,
     borderColor: challengeTheme.colors.borderStrong, backgroundColor: challengeTheme.colors.panel,
   },
-  primaryButton: {height: 57, alignItems: 'center', justifyContent: 'center', borderRadius: challengeTheme.radius.pill, backgroundColor: challengeTheme.colors.cyanStrong, shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.52, shadowRadius: 12, shadowOffset: {width: 0, height: 5}, elevation: 8},
-  primaryLabel: {fontFamily: typography.family, fontSize: 17, lineHeight: 22, fontWeight: '900', color: challengeTheme.colors.backgroundDeep},
-  secondaryButton: {height: 52, alignItems: 'center', justifyContent: 'center', borderRadius: challengeTheme.radius.pill, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong, backgroundColor: 'rgba(0, 21, 47, 0.58)'},
-  secondaryLabel: {fontFamily: typography.family, fontSize: 15, lineHeight: 20, fontWeight: '900', color: challengeTheme.colors.cyanStrong},
-  buttonPressed: {opacity: 0.86, transform: [{scale: 0.985}]},
 });

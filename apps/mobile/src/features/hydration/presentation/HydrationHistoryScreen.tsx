@@ -1,4 +1,5 @@
 import {useTranslation} from '../../../shared/i18n/useTranslation';
+import {RaisedButton} from '../../../shared/components/RaisedButton';
 import type {AppLocale} from '../../../shared/i18n/appLocale';
 import React, {useMemo, useState} from 'react';
 import {Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View} from 'react-native';
@@ -26,7 +27,7 @@ export function HydrationHistoryScreen(): React.JSX.Element {
   const [pickedDate, setSelectedDate] = useState<string | null>(null);
   const [isRefreshing, setRefreshing] = useState(false);
   const selectedDate = dates.find(day => day.value === pickedDate)?.value ?? today;
-  const days = useHydrationLogs(dates.map(day => day.value), timezone);
+  const days = useHydrationLogs(dates.map(day => day.value), timezone, isFocused);
   const query = days[dates.findIndex(day => day.value === selectedDate)];
   const home = useHydrationHomeData();
   const logs = query.data?.data ?? [];
@@ -109,7 +110,14 @@ export function HydrationHistoryScreen(): React.JSX.Element {
                   ? t(`${formatMl(weekTotal, locale)} nos últimos 7 dias, incluindo hoje`, `${formatMl(weekTotal, locale)} in the last 7 days, including today`, `${formatMl(weekTotal, locale)} en los últimos 7 días, incluido hoy`)
                   : weekError ? t("Não foi possível carregar a média.", "Could not load the average.", "No se pudo cargar el promedio.") : t("Calculando os últimos 7 dias…", "Calculating the last 7 days…", "Calculando los últimos 7 días…")}
               </Text>
-              {weekError ? <Pressable accessibilityRole="button" accessibilityLabel={t("Recarregar média semanal", "Reload weekly average", "Actualizar el promedio semanal")} onPress={refresh} style={styles.weekRetry}><Text style={styles.retryLabel}>{t("Tentar novamente", "Try again", "Intentar de nuevo")}</Text></Pressable> : null}
+              {weekError ? <RaisedButton
+                accessibilityLabel={t("Recarregar média semanal", "Reload weekly average", "Actualizar el promedio semanal")}
+                onPress={refresh}
+                label={t("Tentar novamente", "Try again", "Intentar de nuevo")}
+                variant="outlined"
+                tone="aqua"
+                size="compact"
+              /> : null}
             </View>
           </View>
 
@@ -126,7 +134,7 @@ export function HydrationHistoryScreen(): React.JSX.Element {
             {query.error ? (
               <View style={styles.emptyState}>
                 <Text accessibilityRole="alert" style={styles.error}>{t("Não foi possível carregar os registros.", "Could not load the logs.", "No se pudieron cargar los registros.")}</Text>
-                <Pressable accessibilityRole="button" onPress={refresh} style={styles.retryButton}><Text style={styles.retryLabel}>{t("Tentar novamente", "Try again", "Intentar de nuevo")}</Text></Pressable>
+                <RaisedButton onPress={refresh} label={t("Tentar novamente", "Try again", "Intentar de nuevo")} variant="outlined" tone="aqua" />
               </View>
             ) : null}
             {!query.isLoading && !query.error && logs.length === 0 ? (
@@ -206,7 +214,6 @@ const styles = StyleSheet.create({
   weekTitle: {fontSize: 12, lineHeight: 17, fontWeight: '800', color: challengeTheme.colors.muted},
   weekAmount: {fontSize: 23, lineHeight: 30, fontWeight: '900', fontVariant: ['tabular-nums'], color: challengeTheme.colors.cyanStrong},
   weekCaption: {fontSize: 11, lineHeight: 16, color: challengeTheme.colors.muted},
-  weekRetry: {alignSelf: 'flex-start', paddingVertical: 12},
   panel: {minHeight: 260, padding: 19, borderRadius: challengeTheme.radius.panel, backgroundColor: challengeTheme.colors.panel, borderWidth: 1, borderColor: challengeTheme.colors.borderStrong},
   panelHeading: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: challengeTheme.colors.border},
   panelDate: {fontSize: 17, lineHeight: 23, fontWeight: '900', color: challengeTheme.colors.text, textTransform: 'capitalize'},
@@ -217,8 +224,6 @@ const styles = StyleSheet.create({
   emptyTitle: {fontSize: 16, lineHeight: 21, fontWeight: '800', color: challengeTheme.colors.text},
   emptyText: {textAlign: 'center', fontSize: 13, lineHeight: 19, color: challengeTheme.colors.muted},
   error: {textAlign: 'center', color: challengeTheme.colors.danger},
-  retryButton: {marginTop: 8, paddingHorizontal: 18, paddingVertical: 10, borderRadius: challengeTheme.radius.pill, borderWidth: 1, borderColor: challengeTheme.colors.cyanStrong},
-  retryLabel: {fontWeight: '800', color: challengeTheme.colors.cyanStrong},
   log: {flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: 'rgba(23, 75, 115, 0.7)'},
   logIcon: {width: 39, height: 39, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(11, 225, 236, 0.11)'},
   logContent: {flex: 1},

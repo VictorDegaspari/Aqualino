@@ -1,5 +1,8 @@
 package com.aqualino.widget
 
+import android.appwidget.AppWidgetManager
+import android.os.Build
+import com.facebook.react.bridge.Promise
 import android.content.Context
 import android.content.ComponentName
 import android.content.pm.PackageManager
@@ -25,6 +28,22 @@ class AqualinoWidgetModule(reactContext: ReactApplicationContext) : NativeAquali
       synchronizeGlanceSnapshot()
       AqualinoGlanceWidget().updateAll(reactApplicationContext)
       AqualinoSmallGlanceWidget().updateAll(reactApplicationContext)
+    }
+  }
+
+  override fun requestPinWidget(promise: Promise) {
+    reactApplicationContext.runOnUiQueueThread {
+      try {
+        val manager = AppWidgetManager.getInstance(reactApplicationContext)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || !manager.isRequestPinAppWidgetSupported) {
+          promise.resolve(false)
+        } else {
+          val provider = ComponentName(reactApplicationContext, AqualinoWidgetReceiver::class.java)
+          promise.resolve(manager.requestPinAppWidget(provider, null, null))
+        }
+      } catch (error: Exception) {
+        promise.reject("WIDGET_PIN_FAILED", "Não foi possível abrir a confirmação do widget.", error)
+      }
     }
   }
 

@@ -5,7 +5,7 @@ import {hydrationService} from '../application/hydrationService';
 import {useSessionStore} from '../../auth/application/sessionStore';
 import {hydrationLogsKey} from '../application/hydrationHistory';
 
-export function useHydrationLogs(localDates: string[], timezone: string) {
+export function useHydrationLogs(localDates: string[], timezone: string, active = true) {
   const queryClient = useQueryClient();
   const network = useNetInfo();
   const userId = useSessionStore(state => state.user?.id);
@@ -14,6 +14,7 @@ export function useHydrationLogs(localDates: string[], timezone: string) {
       const queryKey = [...hydrationLogsKey, userId, localDate];
       return {
         queryKey,
+        enabled: active,
         networkMode: 'always' as const,
         queryFn: () => hydrationService.logs(localDate, timezone, queryClient.getQueryData<HydrationLogPage>(queryKey), network.isConnected !== false),
       };

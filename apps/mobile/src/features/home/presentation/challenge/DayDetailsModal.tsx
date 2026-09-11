@@ -1,13 +1,15 @@
 import {useTranslation} from '../../../../shared/i18n/useTranslation';
 import type {HydrationWeekDay} from '@aqualino/contracts';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
 import React, {useCallback, useEffect, useMemo, useRef} from 'react';
-import {Pressable, StyleSheet, Text, View, type ViewStyle} from 'react-native';
+import {Modal, Pressable, StyleSheet, Text, View, type ViewStyle} from 'react-native';
+import Animated, {
+  Easing,
+  ReduceMotion,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {AqualinoIcon, type AqualinoIconName} from '../../../../shared/components/AqualinoIcon';
 import {challengeDateLabel, dayStateLabel, weekdayLabel} from './challengeLocale';
@@ -20,31 +22,42 @@ interface Props {
   onClose: () => void;
 }
 
+const HIDDEN_OFFSET = 560;
+const transition = {
+  duration: 180,
+  easing: Easing.out(Easing.cubic),
+  reduceMotion: ReduceMotion.System,
+};
+
 export function DayDetailsModal({day, onClose}: Props): React.JSX.Element {
   const {locale, t} = useTranslation();
-  const sheetRef = useRef<BottomSheetModal>(null);
+  const closing = useRef(false);
   const insets = useSafeAreaInsets();
+  const translateY = useSharedValue(HIDDEN_OFFSET);
+  const backdropOpacity = useSharedValue(0);
   const safePercentage = Math.min(100, Math.max(0, day?.percentage ?? 0));
   const fillStyle = useMemo<ViewStyle>(() => ({width: `${safePercentage}%`}), [safePercentage]);
   const cardInset = useMemo<ViewStyle>(() => ({paddingBottom: Math.max(18, insets.bottom + 10)}), [insets.bottom]);
-  const renderBackdrop = useCallback((props: BottomSheetBackdropProps) => (
-    <BottomSheetBackdrop
-      {...props}
-      appearsOnIndex={0}
-      disappearsOnIndex={-1}
-      opacity={0.72}
-      pressBehavior="close"
-    />
-  ), []);
-  const dismiss = useCallback(() => sheetRef.current?.dismiss(), []);
+  const sheetStyle = useAnimatedStyle(() => ({transform: [{translateY: translateY.value}]}));
+  const backdropStyle = useAnimatedStyle(() => ({opacity: backdropOpacity.value}));
+
+  const dismiss = useCallback(() => {
+    if (closing.current) return;
+    closing.current = true;
+    backdropOpacity.value = withTiming(0, transition);
+    translateY.value = withTiming(HIDDEN_OFFSET, transition, finished => {
+      if (finished) runOnJS(onClose)();
+    });
+  }, [backdropOpacity, onClose, translateY]);
 
   useEffect(() => {
-    if (day) {
-      sheetRef.current?.present();
-    } else {
-      sheetRef.current?.dismiss();
-    }
-  }, [day]);
+    if (!day) return;
+    closing.current = false;
+    translateY.value = HIDDEN_OFFSET;
+    backdropOpacity.value = 0;
+    translateY.value = withTiming(0, transition);
+    backdropOpacity.value = withTiming(0.72, transition);
+  }, [backdropOpacity, day, translateY]);
 
   if (!day) {
     return <></>;
@@ -52,48 +65,45 @@ export function DayDetailsModal({day, onClose}: Props): React.JSX.Element {
 
   const details = getDetails(day, locale, t);
   return (
-    <BottomSheetModal
-      ref={sheetRef}
-      accessibilityLabel={t("Detalhes de hidratação do dia", "Daily hydration details", "Detalles de hidratación del día")}
-      backdropComponent={renderBackdrop}
-      backgroundStyle={styles.sheetBackground}
-      enableDynamicSizing
-      enablePanDownToClose
-      handleIndicatorStyle={styles.handleIndicator}
-      maxDynamicContentSize={440}
-      onDismiss={onClose}
-      style={styles.sheet}>
-      <BottomSheetView accessibilityViewIsModal style={[styles.card, cardInset]}>
-        <View style={styles.heading}>
-          <Text accessibilityRole="header" style={styles.title}>{weekdayLabel(day.weekday, locale)} • {challengeDateLabel(day.date, locale)}</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel={t("Fechar", "Close", "Cerrar")} onPress={dismiss} style={styles.close}>
-            <Text style={styles.closeText}>{t("Fechar", "Close", "Cerrar")}</Text>
-          </Pressable>
-        </View>
+    <Modal animationType="none" onRequestClose={dismiss} transparent visible>
+      <View style={styles.modal}>
+        <Animated.View pointerEvents="none" style={[styles.backdrop, backdropStyle]} />
+        <Pressable accessibilityLabel={t("Fechar detalhes de hidratação", "Close hydration details", "Cerrar detalles de hidratación")} accessibilityRole="button" onPress={dismiss} style={StyleSheet.absoluteFill} />
+        <Animated.View accessibilityLabel={t("Detalhes de hidratação do dia", "Daily hydration details", "Detalles de hidratación del día")} accessibilityViewIsModal style={[styles.sheet, sheetStyle]}>
+          <View style={styles.handleIndicator} />
+          <View style={[styles.card, cardInset]}>
+            <View style={styles.heading}>
+              <Text accessibilityRole="header" style={styles.title}>{weekdayLabel(day.weekday, locale)} • {challengeDateLabel(day.date, locale)}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel={t("Fechar", "Close", "Cerrar")} onPress={dismiss} style={styles.close}>
+                <Text style={styles.closeText}>{t("Fechar", "Close", "Cerrar")}</Text>
+              </Pressable>
+            </View>
 
-        <View style={styles.amountRow}>
-          <AqualinoIcon name="water" size={31} />
-          <Text style={styles.amount}>{day.total_ml.toLocaleString(locale)} ml</Text>
-        </View>
-        <View style={styles.goalRow}>
-          <Text style={styles.muted}>{t("Meta", "Goal", "Meta")}</Text>
-          <Text style={styles.goal}>{day.goal_ml.toLocaleString(locale)} ml</Text>
-        </View>
-        <View style={styles.track}>
-          <View style={[styles.fill, fillStyle]} />
-        </View>
-        <Text style={styles.percentage}>{t(`${Math.round(day.percentage)}% da meta`, `${Math.round(day.percentage)}% of goal`, `${Math.round(day.percentage)}% de la meta`)}</Text>
+            <View style={styles.amountRow}>
+              <AqualinoIcon name="water" size={31} />
+              <Text style={styles.amount}>{day.total_ml.toLocaleString(locale)} ml</Text>
+            </View>
+            <View style={styles.goalRow}>
+              <Text style={styles.muted}>{t("Meta", "Goal", "Meta")}</Text>
+              <Text style={styles.goal}>{day.goal_ml.toLocaleString(locale)} ml</Text>
+            </View>
+            <View style={styles.track}>
+              <View style={[styles.fill, fillStyle]} />
+            </View>
+            <Text style={styles.percentage}>{t(`${Math.round(day.percentage)}% da meta`, `${Math.round(day.percentage)}% of goal`, `${Math.round(day.percentage)}% de la meta`)}</Text>
 
-        <View style={styles.statusRow}>
-          <AqualinoIcon name={details.icon} size={22} color={details.color} />
-          <View style={styles.statusCopy}>
-            <Text style={[styles.status, {color: details.color}]}>{details.status}</Text>
-            {details.complement ? <Text style={styles.complement}>{details.complement}</Text> : null}
-            {day.protection ? <Text style={styles.protection}>{protectionLabel(day.protection, t)}</Text> : null}
+            <View style={styles.statusRow}>
+              <AqualinoIcon name={details.icon} size={22} color={details.color} />
+              <View style={styles.statusCopy}>
+                <Text style={[styles.status, {color: details.color}]}>{details.status}</Text>
+                {details.complement ? <Text style={styles.complement}>{details.complement}</Text> : null}
+                {day.protection ? <Text style={styles.protection}>{protectionLabel(day.protection, t)}</Text> : null}
+              </View>
+            </View>
           </View>
-        </View>
-      </BottomSheetView>
-    </BottomSheetModal>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
@@ -123,13 +133,15 @@ function protectionLabel(protection: HydrationWeekDay['protection'], t: (pt: str
 
 
 const styles = StyleSheet.create({
-  sheet: {shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.24, shadowRadius: 18, shadowOffset: {width: 0, height: -5}, elevation: 18},
-  sheetBackground: {
+  modal: {flex: 1, justifyContent: 'flex-end'},
+  backdrop: {position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: '#000'},
+  sheet: {
     borderTopLeftRadius: 26, borderTopRightRadius: 26,
     borderWidth: 2, borderBottomWidth: 0, borderColor: challengeTheme.colors.borderStrong,
     backgroundColor: '#001B39',
+    shadowColor: challengeTheme.colors.cyan, shadowOpacity: 0.24, shadowRadius: 18, shadowOffset: {width: 0, height: -5}, elevation: 18,
   },
-  handleIndicator: {width: 43, height: 4, backgroundColor: '#3C7192'},
+  handleIndicator: {alignSelf: 'center', width: 43, height: 4, marginTop: 10, borderRadius: 2, backgroundColor: '#3C7192'},
   card: {
     paddingHorizontal: 22, paddingTop: 5,
   },

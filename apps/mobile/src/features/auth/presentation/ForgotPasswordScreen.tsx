@@ -41,7 +41,8 @@ export function ForgotPasswordScreen({navigation, route}: Props): React.JSX.Elem
   };
 
   return <AuthScaffold eyebrow={copy.eyebrow} title={sentTo ? copy.sentTitle : copy.forgotTitle}
-    subtitle={sentTo ? copy.sentSubtitle : copy.forgotSubtitle}>
+    subtitle={sentTo ? copy.sentSubtitle : copy.forgotSubtitle}
+    back={{label: copy.backToLogin, disabled: busy, onPress: () => navigation.canGoBack() ? navigation.goBack() : navigation.replace('SignIn', {email})}}>
     {sentTo ? <><SecurityEmail email={sentTo} /><SecurityNotice message={copy.sentHint} /></> : (
       <AuthField label={copy.email} placeholder={copy.emailPlaceholder} value={email} onChangeText={setEmail}
         autoCapitalize="none" autoCorrect={false} autoComplete="email" keyboardType="email-address"
@@ -51,7 +52,5 @@ export function ForgotPasswordScreen({navigation, route}: Props): React.JSX.Elem
     <AuthButton label={cooldown.remaining > 0 ? copy.resendIn(cooldown.remaining) : sentTo ? copy.resend : copy.sendLink}
       onPress={submit} loading={busy} disabled={cooldown.remaining > 0 || !email.trim()} />
     {sentTo ? <SecurityLink label={copy.changeEmail} disabled={busy} onPress={() => {setSentTo(undefined); setError(undefined);}} /> : null}
-    <SecurityLink label={copy.backToLogin} disabled={busy}
-      onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('SignIn', {email})} />
   </AuthScaffold>;
 }

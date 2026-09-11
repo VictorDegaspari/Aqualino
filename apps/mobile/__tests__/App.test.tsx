@@ -31,3 +31,9 @@ test('email actions are available as app links and verification preserves existi
   expect(requiresEmailVerification({email_verification_required: true, email_verified_at: null} as User)).toBe(true);
   expect(requiresEmailVerification({email_verification_required: true, email_verified_at: '2026-09-04'} as User)).toBe(false);
 });
+
+
+test('provides separate links for the friend list and adding friends', () => {
+  expect(linking.config.screens.Friends).toBe('friends');
+  expect(linking.config.screens.AddFriends).toBe('friends/add');
+});

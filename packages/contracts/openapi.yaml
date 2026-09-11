@@ -10,6 +10,8 @@ servers:
   - url: http://localhost:8080/api
     description: Ambiente local Docker
 tags:
+  - name: Friends
+    description: Pedidos de amizade, amigos e perfis públicos para pessoas autenticadas.
   - name: System
     description: Disponibilidade e diagnóstico sem dados pessoais.
   - name: Authentication
@@ -451,7 +453,7 @@ paths:
   /v1/groups/current/settings:
     patch:
       operationId: updateGroupSettings
-      summary: Líder habilita ou desabilita a votação de novos envios
+      summary: Líder configura votação de fotos e reinício automático das rodadas
       tags: [Groups]
       requestBody:
         required: true
@@ -459,8 +461,12 @@ paths:
           application/json:
             schema:
               type: object
-              required: [photo_review_enabled]
+              anyOf:
+                - required: [photo_review_enabled]
+                - required: [auto_restart]
               properties:
+                auto_restart:
+                  type: boolean
                 photo_review_enabled:
                   type: boolean
       responses:
@@ -768,6 +774,198 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '409':
           $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/friends:
+    get:
+      operationId: listFriends
+      summary: Lista amigos e pedidos recebidos e enviados
+      tags: [Friends]
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FriendshipCollectionEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/people:
+    get:
+      operationId: searchPeople
+      summary: Busca até 20 pessoas por prefixo do nome de usuário
+      tags: [Friends]
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema: {type: string, pattern: '^@?[a-zA-Z0-9_]{3,24}$'}
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeopleEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/people/{userId}:
+    get:
+      operationId: getPersonProfile
+      summary: Exibe perfil público com medalhas e conquistas desbloqueadas
+      tags: [Friends]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: {type: string, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$'}
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonProfileEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/friends/{userId}:
+    put:
+      operationId: requestFriendship
+      summary: Envia um pedido de amizade sem duplicar pedidos existentes
+      tags: [Friends]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: {type: string, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$'}
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonSummaryEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      operationId: removeFriendship
+      summary: Cancela ou recusa um pedido ou remove uma amizade
+      tags: [Friends]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: {type: string, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$'}
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonSummaryEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/friends/{userId}/accept:
+    post:
+      operationId: acceptFriendship
+      summary: Aceita um pedido recebido pela pessoa autenticada
+      tags: [Friends]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: {type: string, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$'}
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonSummaryEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v1/achievements/highlights:
+    put:
+      operationId: saveAchievementHighlights
+      summary: Salva de zero a quatro conquistas desbloqueadas em ordem no perfil
+      tags: [Gamification]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [codes]
+              properties:
+                codes:
+                  type: array
+                  maxItems: 4
+                  uniqueItems: true
+                  items:
+                    $ref: '#/components/schemas/AchievementCode'
+      responses:
+        '200':
+          description: Operação concluída.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AchievementCollectionEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
         '429':
@@ -1097,6 +1295,101 @@ components:
       maximum: 2
       multipleOf: 0.1
       description: Multiplicador das marcações e do bônus de meta, calculado pelo servidor; +10% por dia seguido até 2×. Fica fixo após a primeira marcação aceita do dia, respeita proteção de sequência e não altera recompensas passadas. Baús não recebem este multiplicador.
+    PersonSummary:
+      type: object
+      required: [id, display_name, username, avatar_url, level, relationship]
+      properties:
+        id: {type: string}
+        display_name: {type: string}
+        username: {type: string}
+        avatar_url: {type: [string, 'null']}
+        level: {type: integer, minimum: 1}
+        relationship: {type: string, enum: [self, none, outgoing, incoming, friends]}
+    PersonSummaryEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PersonSummary'
+    PeopleEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/PersonSummary'
+    FriendshipCollectionEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [friends, incoming, outgoing]
+          properties:
+            friends:
+              type: array
+              items:
+                $ref: '#/components/schemas/PersonSummary'
+            incoming:
+              type: array
+              items:
+                $ref: '#/components/schemas/PersonSummary'
+            outgoing:
+              type: array
+              items:
+                $ref: '#/components/schemas/PersonSummary'
+    ProfileHydrationWeek:
+      type: object
+      description: Semana de segunda a domingo no fuso do participante. Média diária até hoje, incluindo dias sem registros; dias futuros têm volume zero.
+      required: [starts_on, ends_on, current_date, total_ml, average_daily_ml, days]
+      properties:
+        starts_on: {type: string, format: date}
+        ends_on: {type: string, format: date}
+        current_date: {type: string, format: date}
+        total_ml: {type: integer, minimum: 0}
+        average_daily_ml: {type: integer, minimum: 0}
+        days:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items:
+            type: object
+            required: [date, total_ml]
+            properties:
+              date: {type: string, format: date}
+              total_ml: {type: integer, minimum: 0}
+    PersonProfileEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          allOf:
+            - $ref: '#/components/schemas/PersonSummary'
+            - type: object
+              required: [group_medals, achievements, profile_highlights, hydration_week]
+              properties:
+                hydration_week:
+                  $ref: '#/components/schemas/ProfileHydrationWeek'
+                group_medals:
+                  type: object
+                  required: [gold, silver, bronze]
+                  properties:
+                    gold: {type: integer, minimum: 0}
+                    silver: {type: integer, minimum: 0}
+                    bronze: {type: integer, minimum: 0}
+                achievements:
+                  type: array
+                  description: Apenas conquistas desbloqueadas. celebrated_at não é compartilhado.
+                  items:
+                    $ref: '#/components/schemas/Achievement'
+                profile_highlights:
+                  type: array
+                  maxItems: 4
+                  uniqueItems: true
+                  items:
+                    $ref: '#/components/schemas/AchievementCode'
     AchievementCode:
       type: string
       enum: [first_drop, first_reminder, first_goal, team_player, streak_3, streak_7, streak_14, streak_30, goals_7, goals_30, level_5, level_10, level_50, level_100]
@@ -1132,8 +1425,15 @@ components:
       properties:
         data:
           type: object
-          required: [items, unlocked_count, total]
+          required: [items, unlocked_count, total, profile_highlights]
           properties:
+            profile_highlights:
+              type: [array, 'null']
+              description: Null usa destaques automáticos; uma lista vazia oculta os destaques. A ordem é preservada.
+              maxItems: 4
+              uniqueItems: true
+              items:
+                $ref: '#/components/schemas/AchievementCode'
             items:
               type: array
               items:
@@ -1198,6 +1498,11 @@ components:
       type: object
       required: [id, name, timezone, owner_id, max_members, members, invite]
       properties:
+        auto_restart:
+          type: boolean
+          default: false
+        joining_closed:
+          type: boolean
         photo_review_enabled:
           type: boolean
           default: true
@@ -1453,6 +1758,12 @@ components:
           type: array
           items:
             type: integer
+        achievement_highlights:
+          type: [array, 'null']
+          maxItems: 4
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/AchievementCode'
         onboarding_completed_at:
           type: [string, 'null']
           format: date-time
@@ -1712,7 +2023,10 @@ components:
           const: 2
         goal_policy:
           type: string
-          const: frozen_at_start
+          enum: [frozen_at_start, shared_daily_goal]
+        daily_goal_ml:
+          type: integer
+          minimum: 1
         minimum_reward_points:
           type: number
           const: 0.01

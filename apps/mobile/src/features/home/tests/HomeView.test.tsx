@@ -7,6 +7,8 @@ import {HomeView} from '../presentation/HomeView';
 import {AppModalProvider} from '../../../shared/components/AppModal';
 import {defaultHomeThemeId, type HomeThemeId} from '../domain/homeThemes';
 
+jest.mock('@react-navigation/native', () => ({useIsFocused: () => true}));
+
 const data: HydrationHomeData = {
   today: {
     local_date: '2026-09-02', timezone: 'America/Sao_Paulo', total_ml: 0, goal_ml: 2000,
@@ -70,12 +72,25 @@ test('renders friendly empty state and opens the hydration picker', async () => 
   expect(props.onOpenHydration).toHaveBeenCalledTimes(1);
 });
 
-test('shows an animated check after registering water', async () => {
-  const view = await renderHome(<HomeView {...props} recordedAmountMl={300} />);
+test('shows a full-screen confirmation with motivation and dismisses it automatically', async () => {
+  jest.useFakeTimers();
+  try {
+    const onDismissRecorded = jest.fn();
+    const view = await renderHome(<HomeView {...props} recordedAmountMl={300} onDismissRecorded={onDismissRecorded} />);
 
-  expect(view.getByTestId('hydration-success-feedback')).toBeTruthy();
-  expect(view.getByLabelText('300 ml registrados')).toBeTruthy();
-  expect(view.getByText('+300 ml')).toBeTruthy();
+    expect(view.getByTestId('hydration-success-feedback')).toBeTruthy();
+    expect(view.getByRole('alert', {name: /300 ml registrados/})).toBeTruthy();
+    expect(view.getByText('+300 ml')).toBeTruthy();
+    expect(view.getByText('Cada gole é um cuidado com você. Continue assim!')).toBeTruthy();
+    expect(view.queryByRole('button', {name: 'Bebi água'})).toBeNull();
+    await act(() => jest.advanceTimersByTime(2100));
+    expect(onDismissRecorded).toHaveBeenCalledTimes(1);
+    expect(view.queryByTestId('hydration-success-feedback')).toBeNull();
+    expect(view.getByRole('button', {name: 'Bebi água'})).toBeTruthy();
+    await view.unmount();
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test('keeps group mode locked when the person has no active group', async () => {
@@ -312,4 +327,18 @@ test('lets a late group member follow the standings without displaying a persona
   expect(view.queryByTestId('current-water-drop')).toBeNull();
   expect(view.queryByRole('button', {name: 'Iniciar desafio do grupo'})).toBeNull();
   expect(view.queryByRole('button', {name: 'Bebi água'})).toBeNull();
+});
+
+
+test.each(['completed', 'settling'] as const)('offers the leader a manual next round when the current round is %s', async status => {
+  const home = activeData(data);
+  home.challenges!.group_name = 'Equipe';
+  home.challenges!.can_start_group = true;
+  home.challenges!.group = {...home.challenges!.solo!, id: 'group', mode: 'group', status, reward: null};
+  const onStartChallenge = jest.fn();
+  const view = await renderHome(<HomeView {...props} data={home} onStartChallenge={onStartChallenge} />);
+  await fireEvent.press(view.getByRole('tab', {name: 'Grupo'}));
+  expect(onStartChallenge).not.toHaveBeenCalled();
+  await fireEvent.press(view.getByRole('button', {name: 'Iniciar próxima rodada'}));
+  expect(onStartChallenge).toHaveBeenCalledWith('group');
 });

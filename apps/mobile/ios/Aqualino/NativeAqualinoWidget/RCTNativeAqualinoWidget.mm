@@ -31,6 +31,12 @@ static NSString *const AqualinoPendingActionKey = @"pending_action";
   [AqualinoWidgetReloader reload];
 }
 
+- (void)requestPinWidget:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
+{
+  // WidgetKit has no equivalent to Android's launcher pin request.
+  resolve(@NO);
+}
+
 - (NSString *_Nullable)readPendingAction
 {
   NSString *action = [self.sharedDefaults stringForKey:AqualinoPendingActionKey];

@@ -1,0 +1,40 @@
+{
+  "mode": "Built-in image generation",
+  "prompts": [
+    {
+      "code": "first_drop",
+      "prompt": "Use case: stylized-concept. Asset type: ONE collectible achievement sticker icon for Aqualino, a hydration app. Primary request: a charismatic little AQUATIC OTTER character enthusiastically drinking water from an oversized turquoise sports bottle, celebrating their first sip. Original premium 2D mobile game character illustration with the visual craftsmanship of playful language learning app achievement awards: dynamic asymmetric pose, expressive confident eyelids and brows, rounded chunky silhouette, tiny paws, warm brown and cream fur, very simple flat colored shapes with selective cel shading. A loose turquoise and pale yellow medal wreath frames the lower half, character and bottle break outside its silhouette; two small coral confetti marks. Bold clean graphic composition readable at 80 pixels. Centered square canvas, complete icon occupies 85%, isolated on genuinely transparent alpha background. No white rectangular background. No words, no letters, NO NUMBERS (added natively in the app). Avoid teardrop-shaped blob characters, identical round medallions, clipart, 3D, glossy metallic materials, realistic texture, thin linework. The result must feel like a lovingly art-directed collectible character with a story, not a generic emoji."
+    },
+    {
+      "code": "first_reminder",
+      "prompt": "Use case: stylized-concept. Asset type: ONE collectible achievement character sticker icon for Aqualino hydration app. Original premium playful 2D mobile game achievement illustration. Rounded chunky character design, lively expression, dynamic asymmetrical pose, strong silhouette easily readable at 80px, very clean broad flat color shapes and minimal cel shading. Loosely framed at lower half by a simple turquoise open wreath with small pale yellow shell at bottom; character breaks outside wreath. Square canvas, whole icon fully visible centered with 8% clear padding, real transparent alpha background. NO text, letters, numbers, white rectangle, 3D metallic medallion, realistic textures, tiny details, teardrop blob mascot. Keep shapes simple and colors bold. Subject: a cheerful navy blue and white PENGUIN wearing a coral sweatband, energetically ringing a small golden alarm clock and holding a tiny cyan water bottle. Dynamic three-quarter pose, one flipper raised."
+    },
+    {
+      "code": "first_goal",
+      "prompt": "Use case: stylized-concept. Asset type: ONE collectible achievement character sticker icon for Aqualino hydration app. Original premium playful 2D mobile game achievement illustration. Rounded chunky character design, lively expression, dynamic asymmetrical pose, strong silhouette easily readable at 80px, very clean broad flat color shapes and minimal cel shading. Loosely framed at lower half by a simple turquoise open wreath with small pale yellow shell at bottom; character breaks outside wreath. Square canvas, whole icon fully visible centered with 8% clear padding, real transparent alpha background. NO text, letters, numbers, white rectangle, 3D metallic medallion, realistic textures, tiny details, teardrop blob mascot. Keep shapes simple and colors bold. Subject: a proud small emerald green SEA TURTLE with a cream belly, lifting a golden star trophy over its head, laughing with eyes joyfully closed. An oversized turquoise shell and jaunty celebratory pose."
+    },
+    {
+      "code": "team_player",
+      "prompt": "Use case: stylized-concept. Asset type: ONE collectible achievement character sticker icon for Aqualino hydration app. Original premium playful 2D mobile game achievement illustration. Rounded chunky character design, lively expression, dynamic asymmetrical pose, strong silhouette easily readable at 80px, very clean broad flat color shapes and minimal cel shading. Loosely framed at lower half by a simple turquoise open wreath with small pale yellow shell at bottom; character breaks outside wreath. Square canvas, whole icon fully visible centered with 8% clear padding, real transparent alpha background. NO text, letters, numbers, white rectangle, 3D metallic medallion, realistic textures, tiny details, teardrop blob mascot. Keep shapes simple and colors bold. Subject: TWO best friends, a warm brown OTTER and a navy blue PENGUIN, high-fiving with delighted expressions, leaning toward each other. One little cyan water bottle between them. Strong readable paired silhouette."
+    },
+    {
+      "code": "streak",
+      "prompt": "Use case: stylized-concept. Asset type: ONE collectible achievement character sticker icon for Aqualino hydration app. Original premium playful 2D mobile game achievement illustration. Rounded chunky character design, lively expression, dynamic asymmetrical pose, strong silhouette easily readable at 80px, very clean broad flat color shapes and minimal cel shading. Loosely framed at lower half by a simple turquoise open wreath with small pale yellow shell at bottom; character breaks outside wreath. Square canvas, whole icon fully visible centered with 8% clear padding, real transparent alpha background. NO text, letters, numbers, white rectangle, 3D metallic medallion, realistic textures, tiny details, teardrop blob mascot. Keep shapes simple and colors bold. Subject: a determined athletic coral-orange AXOLOTL with three rounded external gill fronds on each side of its head, wearing a turquoise headband, running triumphantly with a cyan water bottle in one hand. Confident eyebrows and a wide delighted grin. Three small yellow-orange flame shapes behind the character celebrate a daily streak."
+    },
+    {
+      "code": "level",
+      "prompt": "Use case: stylized-concept. Asset type: ONE collectible achievement character sticker icon for Aqualino hydration app. Original premium playful 2D mobile game achievement illustration. Rounded chunky character design, lively expression, dynamic asymmetrical pose, strong silhouette easily readable at 80px, very clean broad flat color shapes and minimal cel shading. Loosely framed at lower half by a simple turquoise open wreath with small pale yellow shell at bottom; character breaks outside wreath. Square canvas, whole icon fully visible centered with 8% clear padding, real transparent alpha background. NO text, letters, numbers, white rectangle, 3D metallic medallion, realistic textures, tiny details, teardrop blob mascot. Keep shapes simple and colors bold. Subject: a charismatic purple OCTOPUS wearing a chunky golden three-point crown with a turquoise jewel, proudly spreading four curled arms in an energetic victory pose, one arm holding a small golden star wand. Lavender face and deep violet arm shadows, mischievous confident smile."
+    }
+  ],
+  "delivery": {
+    "format": "WebP",
+    "max_dimensions": [
+      768,
+      768
+    ],
+    "quality": 82,
+    "method": 6,
+    "alpha": "Lossless; verified against resized source.",
+    "originals": "Original generated PNGs retained in the Codex generated_images directory."
+  }
+}

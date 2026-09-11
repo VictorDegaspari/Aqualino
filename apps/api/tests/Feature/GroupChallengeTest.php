@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Modules\Group\Infrastructure\Models\Group;
 use App\Modules\Group\Infrastructure\Models\GroupChallengeParticipant;
+use App\Modules\Hydration\Infrastructure\Models\HydrationChallenge;
 use App\Modules\Hydration\Infrastructure\Models\HydrationGoal;
 use App\Modules\Hydration\Infrastructure\Models\HydrationLog;
 use App\Modules\Inventory\Infrastructure\Models\PotionUsageBlock;
@@ -70,7 +71,7 @@ class GroupChallengeTest extends TestCase
         $this->assertDatabaseCount('group_challenge_participants', 0);
     }
 
-    public function test_caps_daily_points_uses_personal_goals_and_keeps_competition_ties(): void
+    public function test_caps_daily_points_uses_a_shared_goal_and_keeps_competition_ties(): void
     {
         [$users] = $this->group([2000, 4000, 2000, 2000, 2000]);
         $this->start();
@@ -107,7 +108,7 @@ class GroupChallengeTest extends TestCase
         $this->log($users[0], '2026-09-03T11:00:00Z', 50);
         $this->log($users[1], '2026-09-03T11:00:00Z', 50);
         $rows = $this->home()->json('data.challenges.group.leaderboard');
-        $this->assertSame([1.67, 1.67], array_column($rows, 'points'));
+        $this->assertSame([2.5, 2.5], array_column($rows, 'points'));
         $this->assertSame([1, 1], array_column($rows, 'rank'));
     }
 
@@ -126,26 +127,85 @@ class GroupChallengeTest extends TestCase
         $this->assertDatabaseHas('group_challenge_participants', ['challenge_id' => $id, 'user_id' => $users[0]->id, 'goal_ml' => 2000]);
     }
 
-    public function test_late_joiner_waits_for_the_next_roster_and_cannot_receive_competitive_progress_or_potion_blocks(): void
+    #[TestWith(['2026-09-03T03:00:00Z'])]
+    #[TestWith(['2026-09-03T12:00:00Z'])]
+    public function test_rejects_new_members_from_the_exact_start_even_with_a_previously_previewed_invite(string $moment): void
     {
         [$users, $group] = $this->group([2000, 2000]);
         $id = $this->start();
-        $this->travelTo(CarbonImmutable::parse('2026-09-03T12:00:00Z'));
         $late = $this->member();
-        $this->join($late, $group);
-        $this->log($late, '2026-09-03T11:00:00Z', 2000);
-        $this->home()->assertJsonPath('data.challenges.group.participating', false)
-            ->assertJsonPath('data.challenges.group.progress.total_ml', 0)->assertJsonCount(2, 'data.challenges.group.leaderboard');
+        Sanctum::actingAs($late);
+        $this->postJson('/api/v1/groups/invites/preview', ['code' => $group['invite']['code']])->assertOk();
+        $this->travelTo(CarbonImmutable::parse($moment));
+        foreach (['preview', 'accept'] as $action) {
+            $this->postJson('/api/v1/groups/invites/'.$action, ['code' => $group['invite']['code'], ...($action === 'accept' ? ['accept' => true] : [])])
+                ->assertStatus(409)->assertJsonPath('error.code', 'GROUP_JOIN_CLOSED');
+        }
+        $this->assertDatabaseMissing('group_memberships', ['group_id' => $group['id'], 'user_id' => $late->id]);
         $this->assertDatabaseMissing('group_challenge_participants', ['challenge_id' => $id, 'user_id' => $late->id]);
         $this->assertFalse(PotionUsageBlock::isActiveFor($late, now()));
-        $this->travelTo(CarbonImmutable::parse('2026-09-10T03:00:00Z'));
-        $this->home()->assertJsonPath('data.challenges.group.status', 'active')
-            ->assertJsonPath('data.challenges.group.progress.starts_on', '2026-09-10')
-            ->assertJsonPath('data.challenges.group.participating', true)->assertJsonCount(3, 'data.challenges.group.leaderboard')
-            ->assertJsonPath('data.challenges.group_result.status', 'settling');
         Sanctum::actingAs($users[0]);
+        $this->getJson('/api/v1/groups/current')->assertJsonPath('data.joining_closed', true);
+        $this->postJson('/api/v1/groups/current/invite')->assertStatus(409)->assertJsonPath('error.code', 'GROUP_JOIN_CLOSED');
+        $this->join($users[0], $group);
+    }
+
+    public function test_accepts_members_until_the_last_second_before_start(): void
+    {
+        [$users, $group] = $this->group([2000, 2000]);
+        $this->start();
+        $guest = $this->member(1000);
+        $this->travelTo(CarbonImmutable::parse('2026-09-03T02:59:59Z'));
+        $this->join($guest, $group);
+        $this->travelTo(CarbonImmutable::parse('2026-09-03T03:00:00Z'));
+        $this->home()->assertJsonPath('data.challenges.group.participating', true)
+            ->assertJsonCount(3, 'data.challenges.group.leaderboard');
+    }
+
+    public function test_equal_water_earns_equal_points_despite_different_personal_goals(): void
+    {
+        [$users] = $this->group([2000, 1000]);
+        $id = $this->start();
+        $this->travelTo(CarbonImmutable::parse('2026-09-03T12:00:00Z'));
+        foreach ($users as $user) {
+            $this->log($user, '2026-09-03T11:00:00Z', 1000);
+        }
+        $rows = $this->home()->json('data.challenges.group.leaderboard');
+        $this->assertSame([50, 50], array_column($rows, 'points'));
+        $this->assertSame([2000, 2000], array_column($rows, 'goal_ml'));
+        $this->assertSame([1, 1], array_column($rows, 'rank'));
+        $this->assertDatabaseHas('hydration_goals', ['user_id' => $users[1]->id, 'daily_goal_ml' => 1000]);
+        $this->assertSame([2000, 2000], GroupChallengeParticipant::where('challenge_id', $id)->pluck('goal_ml')->all());
+    }
+
+    public function test_existing_unfinished_rounds_adopt_the_shared_goal(): void
+    {
+        [$users] = $this->group([2000, 1000]);
+        $id = $this->start();
+        $this->travelTo(CarbonImmutable::parse('2026-09-03T12:00:00Z'));
+        $this->home();
+        $challenge = HydrationChallenge::findOrFail($id);
+        $rules = $challenge->rules;
+        unset($rules['daily_goal_ml']);
+        $challenge->update(['rules' => [...$rules, 'version' => 'group-v2', 'goal_policy' => 'frozen_at_start']]);
+        $challenge->participants()->where('user_id', $users[1]->id)->update(['goal_ml' => 1000]);
+        foreach ($users as $user) {
+            $this->log($user, '2026-09-03T11:00:00Z', 1000);
+        }
+        $response = $this->home()->assertJsonPath('data.challenges.group.rules.goal_policy', 'shared_daily_goal');
+        $this->assertSame([50, 50], array_column($response->json('data.challenges.group.leaderboard'), 'points'));
+    }
+
+    public function test_leaving_does_not_allow_reentry_after_rounds_start(): void
+    {
+        [$users, $group] = $this->group([2000, 2000, 2000]);
+        $this->start();
+        $this->travelTo(CarbonImmutable::parse('2026-09-03T12:00:00Z'));
+        Sanctum::actingAs($users[1]);
         $this->deleteJson('/api/v1/groups/current/membership')->assertOk();
-        $this->home()->assertJsonPath('data.challenges.group', null)->assertJsonPath('data.challenges.group_result', null);
+        $this->postJson('/api/v1/groups/invites/accept', ['code' => $group['invite']['code'], 'accept' => true])
+            ->assertStatus(409)->assertJsonPath('error.code', 'GROUP_JOIN_CLOSED');
+        $this->getJson('/api/v1/groups/current')->assertJsonPath('data', null);
     }
 
     #[TestWith([0, 'xp', 100])]
@@ -321,6 +381,76 @@ class GroupChallengeTest extends TestCase
         $this->artisan('groups:advance-challenges')->assertSuccessful();
         $this->assertSame(2, GroupChallengeParticipant::withTrashed()->where('challenge_id', $id)->whereNotNull('reward_granted_at')->count());
         $this->getJson('/api/v1/me')->assertJsonPath('data.group_medals.gold', 1);
+    }
+
+    public function test_rounds_wait_for_a_manual_start_by_default(): void
+    {
+        [$users] = $this->group([2000, 2000]);
+        $id = $this->start();
+        $this->travelTo(CarbonImmutable::parse('2026-09-10T03:00:00Z'));
+        $this->artisan('groups:advance-challenges')->assertSuccessful();
+        $this->home()->assertJsonPath('data.challenges.group.id', $id)
+            ->assertJsonPath('data.challenges.group.status', 'settling');
+        $this->travelTo(CarbonImmutable::parse('2026-09-12T12:00:00Z'));
+        $this->artisan('groups:advance-challenges')->assertSuccessful();
+        $this->home()->assertJsonPath('data.challenges.group.status', 'completed');
+        $this->assertDatabaseCount('hydration_challenges', 1);
+        Sanctum::actingAs($users[1]);
+        $this->postJson('/api/v1/hydration/challenges', ['mode' => 'group'])->assertForbidden();
+        Sanctum::actingAs($users[0]);
+        $next = $this->postJson('/api/v1/hydration/challenges', ['mode' => 'group'])->assertOk()
+            ->assertJsonPath('data.group.status', 'scheduled')
+            ->assertJsonPath('data.group.starts_at', '2026-09-13T03:00:00+00:00')->json('data.group.id');
+        $this->assertNotSame($id, $next);
+        $this->assertSame($next, $this->start());
+        $this->assertDatabaseCount('hydration_challenges', 2);
+        $this->home()->assertJsonPath('data.challenges.group_result.id', $id);
+    }
+
+    #[TestWith([true, 2])]
+    #[TestWith([false, 1])]
+    public function test_auto_restart_respects_the_saved_setting(bool $enabled, int $roundCount): void
+    {
+        [$users] = $this->group([2000, 2000]);
+        $this->start();
+        $this->patchJson('/api/v1/groups/current/settings', ['auto_restart' => true])->assertOk();
+        if (! $enabled) {
+            $this->patchJson('/api/v1/groups/current/settings', ['auto_restart' => false])->assertOk();
+        }
+        $this->travelTo(CarbonImmutable::parse('2026-09-10T03:00:00Z'));
+        $this->artisan('groups:advance-challenges')->assertSuccessful();
+        $this->artisan('groups:advance-challenges')->assertSuccessful();
+        $this->assertDatabaseCount('hydration_challenges', $roundCount);
+        $this->home()->assertJsonPath('data.challenges.group.status', $enabled ? 'active' : 'settling');
+    }
+
+    public function test_only_the_owner_can_save_valid_group_settings_without_resetting_the_other_option(): void
+    {
+        [$users, $group] = $this->group([2000, 2000]);
+        $this->getJson('/api/v1/groups/current')->assertJsonPath('data.auto_restart', false);
+        Sanctum::actingAs($users[1]);
+        $this->patchJson('/api/v1/groups/current/settings', ['auto_restart' => true])->assertForbidden();
+        Sanctum::actingAs($users[0]);
+        $this->patchJson('/api/v1/groups/current/settings', [])->assertUnprocessable();
+        $this->patchJson('/api/v1/groups/current/settings', ['auto_restart' => 'invalid'])->assertUnprocessable();
+        $this->patchJson('/api/v1/groups/current/settings', ['auto_restart' => true])->assertOk()
+            ->assertJsonPath('data.auto_restart', true)->assertJsonPath('data.photo_review_enabled', true);
+        $this->patchJson('/api/v1/groups/current/settings', ['photo_review_enabled' => false])->assertOk()
+            ->assertJsonPath('data.auto_restart', true)->assertJsonPath('data.photo_review_enabled', false);
+        $this->assertDatabaseHas('groups', ['id' => $group['id'], 'auto_restart' => true, 'photo_review_enabled' => false]);
+    }
+
+    public function test_enabling_auto_restart_does_not_duplicate_a_manually_scheduled_next_round(): void
+    {
+        $this->group([2000, 2000]);
+        $this->start();
+        $this->travelTo(CarbonImmutable::parse('2026-09-10T03:00:00Z'));
+        $next = $this->start();
+        $this->patchJson('/api/v1/groups/current/settings', ['auto_restart' => true])->assertOk();
+        $this->artisan('groups:advance-challenges')->assertSuccessful();
+        $this->assertDatabaseCount('hydration_challenges', 2);
+        $this->home()->assertJsonPath('data.challenges.group.id', $next)
+            ->assertJsonPath('data.challenges.group.status', 'scheduled');
     }
 
     private function group(array $goals): array
