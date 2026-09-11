@@ -57,3 +57,8 @@ Backup editável: `design/rive/backups/streak_fire_2026-09-10.rev`.
 Artboard: `Aqualino Happy - Celebracao`. State machine: `Aqualino - Celebracao`. Ciclo de 4 segundos com salto suave, piscadas e estrelas pulsando.
 Asset preparado para uso; ainda não associado a uma tela. O rosto feliz da Home continua usando seu artboard próprio.
 Backup: `design/rive/backups/aqualino_happy_celebracao_2026-09-10.rev`.
+# Aqualino 2D
+
+`aqualino_2d.riv`: versão vetorial com cores chapadas, olhos simplificados, piscadas e olhadas laterais. Fundo transparente, ciclo de 4 segundos.
+Artboard: `Aqualino 2D`. State machine: `Aqualino - 2D`.
+Asset disponível para uso, ainda sem associação a uma tela. Backup: `design/rive/backups/aqualino_2d_2026-09-10.rev`.

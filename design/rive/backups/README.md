@@ -19,3 +19,4 @@ Backup exportado após a liberação do plano: `aqualino_professor_2026-09-09.re
 `aqualino_feliz_olhar_lateral_2026-09-10.rev` acrescenta olhadas suaves para os lados ao Aqualino feliz, mantendo piscadas e balanço.
 `aqualino_happy_celebracao_2026-09-10.rev` adiciona a composição de `happy_aqualino.png`: salto, braços erguidos, estrelas nos olhos, nuvens e gotinhas. Artboard `Aqualino Happy - Celebracao`, state machine `Aqualino - Celebracao`.
 `aqualino_happy_perna_atras_2026-09-10.rev` coloca a perna traseira da celebração parcialmente escondida pelo corpo, mais alta e menor para reforçar a profundidade do salto.
+`aqualino_2d_2026-09-10.rev` adiciona a versão em cores chapadas no artboard separado `Aqualino 2D`, com piscadas e olhadas laterais.
